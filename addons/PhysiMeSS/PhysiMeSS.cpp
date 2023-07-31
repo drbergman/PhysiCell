@@ -139,7 +139,7 @@ void physimess_mechanics( double dt )
     {
         last_update_time = PhysiCell_globals.current_time;
         
-        #pragma omp parallel for
+        // #pragma omp parallel for // doing this in parallel results in the error: project(73891,0x16d113000) malloc: Double free of object 0x153f4c3b0
         for( int i=0; i < (*all_cells).size(); i++ )
         {
             Cell* pC = (*all_cells)[i];
