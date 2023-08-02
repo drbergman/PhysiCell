@@ -129,7 +129,7 @@ void PhysiMeSS_Cell::degrade_fibre(PhysiMeSS_Fibre* pFibre)
         double dotproduct = dot_product(displacement, phenotype.motility.motility_vector);
         if (dotproduct >= 0) {
             double rand_degradation = PhysiCell::UniformRandom();
-            double prob_degradation = PhysiCell::parameters.doubles("fibre_degradation_rate") * mechanics_dt;
+            double prob_degradation = PhysiCell::parameters.doubles("fibre_degradation_rate") * PhysiCell::mechanics_dt;
             if (rand_degradation <= prob_degradation) {
                 //std::cout << " --------> fibre " << (*other_agent).ID << " is flagged for degradation " << std::endl;
                 // (*other_agent).parameters.degradation_flag = true;
