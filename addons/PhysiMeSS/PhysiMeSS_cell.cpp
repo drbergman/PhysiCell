@@ -83,22 +83,23 @@ void PhysiMeSS_Cell::add_potentials_from_fibre(PhysiMeSS_Fibre* pFibre)
         for (unsigned int j = 0; j < 3; j++) {
             cell_velocity_dot_fibre_direction += pFibre->state.orientation[j] * previous_velocity[j];
         }
-        double cell_velocity = 0;
+        double previous_speed = 0;
         for (unsigned int j = 0; j < velocity.size(); j++) {
-            cell_velocity += previous_velocity[j] * previous_velocity[j];
+            previous_speed += previous_velocity[j] * previous_velocity[j];
         }
-        cell_velocity = std::max(sqrt(cell_velocity), 1e-8);
+        previous_speed = std::max(sqrt(previous_speed), 1e-8);
 
         double p_exponent = 1.0;
         double q_exponent = 1.0;
-        double xi = fabs(cell_velocity_dot_fibre_direction) / (cell_velocity);
+        double xi = fabs(cell_velocity_dot_fibre_direction) / (previous_speed);
         double xip = pow(xi, p_exponent);
         double xiq = pow((1 - xi * xi), q_exponent);
 
-        fibre_adhesion = PhysiCell::parameters.doubles("vel_adhesion") * xip *
-                            (1 - cell_velocity / PhysiCell::parameters.doubles("cell_velocity_max"));
+        double base_cell_speed = get_single_base_behavior(this, "migration speed");
+        fibre_adhesion = get_single_behavior(this, "custom:vel_adhesion") * xip *
+                            (1 - previous_speed / base_cell_speed);
 
-        fibre_repulsion = PhysiCell::parameters.doubles("vel_contact") * xiq;
+        fibre_repulsion = get_single_behavior(this, "custom:vel_contact") * xiq;
 
         axpy(&(velocity), fibre_adhesion, pFibre->state.orientation);
         naxpy(&(velocity), fibre_repulsion, previous_velocity);
@@ -110,31 +111,30 @@ void PhysiMeSS_Cell::add_potentials_from_fibre(PhysiMeSS_Fibre* pFibre)
 
 void PhysiMeSS_Cell::degrade_fibre(PhysiMeSS_Fibre* pFibre)
 {
-    
+    if (this->custom_data["can_degrade_fibre"] < 0.5) // this means it was set to false=0
+    {
+        return;
+    }
     double distance = 0.0;
     pFibre->nearest_point_on_fibre(position, displacement);
-    for (int index = 0; index < 3; index++) {
+    for (int index = 0; index < 3; index++)
+    {
         distance += displacement[index] * displacement[index];
     }
     distance = std::max(sqrt(distance), 0.00001);
-    
+
     // Fibre degradation by cell - switched on by flag fibre_degradation
-    double stuck_threshold = PhysiCell::parameters.doubles("fibre_stuck_time");
-    if (PhysiCell::parameters.bools("fibre_degradation") && stuck_counter >= stuck_threshold) {
-        // if (stuck_counter >= stuck_threshold){
-        //     std::cout << "Cell " << ID << " is stuck at time " << PhysiCell::PhysiCell_globals.current_time
-        //                 << " near fibre " << pFibre->ID  << std::endl;;
-        // }
-        displacement *= -1.0/distance;
+    if (stuck_counter >= this->custom_data["fibre_stuck_count_threshold"])
+    {
+        displacement *= -1.0 / distance;
         double dotproduct = dot_product(displacement, phenotype.motility.motility_vector);
-        if (dotproduct >= 0) {
+        if (dotproduct >= 0)
+        {
             double rand_degradation = PhysiCell::UniformRandom();
-            double prob_degradation = PhysiCell::parameters.doubles("fibre_degradation_rate") * PhysiCell::mechanics_dt;
-            if (rand_degradation <= prob_degradation) {
-                //std::cout << " --------> fibre " << (*other_agent).ID << " is flagged for degradation " << std::endl;
-                // (*other_agent).parameters.degradation_flag = true;
+            double prob_degradation = this->custom_data["fibre_degradation_rate"] * PhysiCell::mechanics_dt;
+            if (rand_degradation <= prob_degradation)
+            {
                 pFibre->flag_for_removal();
-                // std::cout << "Degrading fibre agent " << pFibre->ID << " using flag for removal !!" << std::endl;
                 stuck_counter = 0;
             }
         }

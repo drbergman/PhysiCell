@@ -256,8 +256,8 @@ void load_cells_csv_v1( std::string filename )
 		Cell_Definition* pCD = find_cell_definition( my_type );
 		if( pCD != NULL )
 		{
-			std::cout << "Creating " << pCD->name << " (type=" << pCD->type << ") at " 
-			<< position << std::endl; 
+			// std::cout << "Creating " << pCD->name << " (type=" << pCD->type << ") at " 
+			// << position << std::endl; 
 			Cell* pCell = create_cell( *pCD ); 
 			pCell->assign_position( position ); 
 		}

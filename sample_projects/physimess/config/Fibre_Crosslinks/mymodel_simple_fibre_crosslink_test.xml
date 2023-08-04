@@ -387,7 +387,6 @@
         
         <vel_adhesion type="double" units="none" description="cell velocity parallel to fibres">0.6</vel_adhesion>
         <vel_contact type="double" units="none" description="cell velocity orthongonal to fibres">0.1</vel_contact>
-         <cell_velocity_max type="double" units="none" description="used in cell-fibre adhesion">1.0</cell_velocity_max>
         </user_parameters>
 	
 </PhysiCell_settings>

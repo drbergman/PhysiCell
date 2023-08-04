@@ -28,3 +28,12 @@ addons/PhysiBoSS/MaBoSS-env-2.0/
 addons/PhysiBoSS/libMaBoSS-*.tar.gz
 user_projects/*
 !user_projects/empty.txt
+
+# additions by drbergman
+output
+.vscode
+config
+custom_modules
+main.cpp
+# I do not want to track changes to this Makefile; I want to leave the Makefile that ships with base PhysiCell alone
+Makefile
