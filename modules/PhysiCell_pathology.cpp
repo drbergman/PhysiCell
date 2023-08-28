@@ -402,7 +402,7 @@ std::string formatted_minutes_to_DDHHMM( double minutes )
 	return output ;
 }
 
-void SVG_plot( std::string filename , Microenvironment& M, double z_slice , double time, std::vector<std::string> (*cell_coloring_function)(Cell*), std::vector<std::string> (*substrate_coloring_function)(double, double, double) , void (cell_counts_function)(char*))
+void SVG_plot( std::string filename , Microenvironment& M, double z_slice , double time, std::vector<std::string> (*cell_coloring_function)(Cell*), std::string (*substrate_coloring_function)(double, double, double) , void (cell_counts_function)(char*))
 {
 	double X_lower = M.mesh.bounding_box[0];
 	double X_upper = M.mesh.bounding_box[3];
@@ -554,9 +554,9 @@ void SVG_plot( std::string filename , Microenvironment& M, double z_slice , doub
 
 					double concentration = M.density_vector(n)[sub_index];
 
-					std::vector< std::string > output = substrate_coloring_function(concentration, max_conc, min_conc );
+					std::string output = substrate_coloring_function(concentration, max_conc, min_conc );
 
-					Write_SVG_rect( os , x_displ - X_lower , y_displ - Y_lower, dx_stroma, dy_stroma , 0 , "none", output[0] );
+					Write_SVG_rect( os , x_displ - X_lower , y_displ - Y_lower, dx_stroma, dy_stroma , 0 , "none", output );
 				}
 
 			}
@@ -725,11 +725,11 @@ void SVG_plot( std::string filename , Microenvironment& M, double z_slice , doub
 
 			double concentration_sample = min_conc + (conc_interval * (9-i)); // the color depends on the concentration, starting from the min concentration to the max (which was sampled before)
 
-			std::vector< std::string > output = substrate_coloring_function(concentration_sample, max_conc, min_conc );
+			std::string output = substrate_coloring_function(concentration_sample, max_conc, min_conc );
 
 			double upper_left_y = sub_rect_height * i; // here I set the position of each rectangole
 
-			Write_SVG_rect(os, upper_left_x, top_margin + upper_left_y, 25.0, sub_rect_height, 0.002 * plot_height , "none", output[0]); //drawing each piece of the barplot
+			Write_SVG_rect(os, upper_left_x, top_margin + upper_left_y, 25.0, sub_rect_height, 0.002 * plot_height , "none", output); //drawing each piece of the barplot
 
 			if(i%2 != 0){ // of course I am not printing each value of the barplot, otherwise is too crowded, so just one each 2
 
@@ -782,16 +782,16 @@ void standard_agent_SVG(std::ofstream& os, PhysiCell::Cell* pC, double z_slice, 
 }
 
 
-std::vector<std::string> paint_by_density_percentage( double concentration, double max_conc, double min_conc ){
+std::string paint_by_density_percentage( double concentration, double max_conc, double min_conc ){
 
-	std::vector< std::string > output( 4 , "black" );
+	std::string output;
 	int color = (int) round( ((concentration - min_conc) / (max_conc - min_conc)) * 255 );
 	if(color > 255){
 		color = 255;
 	}
 	char szTempString [128];
 	sprintf( szTempString , "rgb(%u,234,197)", 255 - color);
-	output[0].assign( szTempString );
+	output.assign( szTempString );
 
 	return output;
 
