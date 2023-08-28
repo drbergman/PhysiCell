@@ -797,6 +797,52 @@ std::vector<std::string> paint_by_density_percentage( double concentration, doub
 
 }
 
+std::string paint_by_density_percentage_ylorrd(double concentration, double max_conc, double min_conc)
+{
+	// WARNING: This only outputs a single std::string, which is not what SVG_plot currently expects.
+	//          SVG_plot uses only one color for each voxel, so a single string is all that's needed.
+	//          I want to eventually make this change and also add in other color schemes that studio allows.
+	static std::vector<std::string> YlOrRdMap = {"rgb(255,255,204)",
+												 "rgb(255,250,193)",
+												 "rgb(255,246,181)",
+												 "rgb(255,241,170)",
+												 "rgb(255,236,159)",
+												 "rgb(255,231,148)",
+												 "rgb(254,226,137)",
+												 "rgb(254,221,126)",
+												 "rgb(254,214,115)",
+												 "rgb(254,204,104)",
+												 "rgb(254,194,94)",
+												 "rgb(254,184,83)",
+												 "rgb(254,174,74)",
+												 "rgb(254,165,70)",
+												 "rgb(253,155,66)",
+												 "rgb(253,146,62)",
+												 "rgb(253,133,58)",
+												 "rgb(253,117,53)",
+												 "rgb(252,100,48)",
+												 "rgb(252,84,44)",
+												 "rgb(248,70,40)",
+												 "rgb(242,56,36)",
+												 "rgb(235,43,33)",
+												 "rgb(229,29,29)",
+												 "rgb(220,21,30)",
+												 "rgb(210,14,33)",
+												 "rgb(200,8,35)",
+												 "rgb(190,1,38)",
+												 "rgb(175,0,38)",
+												 "rgb(159,0,38)",
+												 "rgb(144,0,38)",
+												 "rgb(128,0,38)"};
+	static int n_color_bins = YlOrRdMap.size();
+	std::string output;
+	int ind = (int) round( ((concentration - min_conc) / (max_conc - min_conc)) * n_color_bins );
+	if(ind >= n_color_bins){
+		ind = n_color_bins-1;
+	}
+	return YlOrRdMap[ind];
+}
+
 std::vector<std::string> paint_by_number_cell_coloring( Cell* pCell )
 {
 	static std::vector< std::string > colors(0); 

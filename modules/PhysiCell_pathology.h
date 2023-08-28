@@ -105,6 +105,7 @@ std::vector<double> transmission( std::vector<double>& incoming_light, std::vect
 std::vector<std::string> simple_cell_coloring( Cell* pCell ); // done 
 
 std::vector<std::string> paint_by_density_percentage( double concentration, double max_conc, double min_conc ); //done
+std::string paint_by_density_percentage_ylorrd(double concentration, double max_conc, double min_conc); // WARNING: cannot be used at the moment because SVG_plot needs it to output a std::vector<std::string> (even though only a single std::string is used to pick the color)
 
 std::vector<std::string> false_cell_coloring_Ki67( Cell* pCell ); // done 
 std::vector<std::string> false_cell_coloring_live_dead( Cell* pCell ); // done 
