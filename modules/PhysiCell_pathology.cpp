@@ -1686,7 +1686,11 @@ std::string paint_by_density_percentage(double concentration, double max_conc, d
 	int ind = (int)round(((concentration - min_conc) / (max_conc - min_conc)) * n_color_bins);
 	if (ind >= n_color_bins)
 	{
-		ind = n_color_bins-1;
+		ind = n_color_bins - 1;
+	}
+	else if (ind < 0)
+	{
+		ind = 0;
 	}
 	return colormap[ind];
 }
