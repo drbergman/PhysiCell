@@ -725,7 +725,7 @@ void SVG_plot( std::string filename , Microenvironment& M, double z_slice , doub
 
 			double concentration_sample = min_conc + (conc_interval * (9-i)); // the color depends on the concentration, starting from the min concentration to the max (which was sampled before)
 
-			std::string output = substrate_coloring_function(concentration_sample, max_conc, min_conc );
+			std::string output = substrate_coloring_function(concentration_sample, max_conc, min_conc);
 
 			double upper_left_y = sub_rect_height * i; // here I set the position of each rectangole
 
