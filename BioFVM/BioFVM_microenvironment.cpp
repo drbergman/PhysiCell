@@ -1327,6 +1327,10 @@ void initialize_microenvironment( void )
 		{
 			load_initial_conditions_from_matlab(default_microenvironment_options.initial_condition_file);
 		}
+		else if (default_microenvironment_options.initial_condition_file_type=="csv" || default_microenvironment_options.initial_condition_file_type=="CSV")
+		{
+			load_initial_conditions_from_csv(default_microenvironment_options.initial_condition_file);
+		}
 		else // eventually can add other file types
 		{
 			std::cout << "ERROR : Load BioFVM initial conditions from " << default_microenvironment_options.initial_condition_file_type << " not yet supported." << std::endl;
@@ -1569,17 +1573,17 @@ void load_initial_conditions_from_matlab(std::string filename)
 	if (num_mat_voxels != microenvironment.number_of_voxels())
 	{
 		std::cout << "ERROR : Wrong number of voxels supplied in the .mat file specifying BioFVM initial conditions." << std::endl
-				  << "\t Expected: " << microenvironment.number_of_voxels() << std::endl
-				  << "\t Found: " << num_mat_voxels << std::endl
-				  << "\t Remember, save your matrix as a #voxels x (3 + #densities) matrix." << std::endl;
+				  << "\tExpected: " << microenvironment.number_of_voxels() << std::endl
+				  << "\tFound: " << num_mat_voxels << std::endl
+				  << "\tRemember, save your matrix as a #voxels x (3 + #densities) matrix." << std::endl;
 		exit(-1);
 	}
 	if (num_mat_features != (microenvironment.number_of_densities() + 3))
 	{
 		std::cout << "ERROR : Wrong number of density values supplied in the .mat file specifying BioFVM initial conditions." << std::endl
-				  << "\t Expected: " << microenvironment.number_of_voxels() << std::endl
-				  << "\t Found: " << num_mat_features - 3 << std::endl
-				  << "\t Remember, save your matrix as a #voxels x (3 + #densities) matrix." << std::endl;
+				  << "\tExpected: " << microenvironment.number_of_densities() << std::endl
+				  << "\tFound: " << num_mat_features - 3 << std::endl
+				  << "\tRemember, save your matrix as a #voxels x (3 + #densities) matrix." << std::endl;
 		exit(-1);
 	}
 	std::vector<int> voxel_set = {}; // set to check that no voxel value is set twice
@@ -1588,7 +1592,6 @@ void load_initial_conditions_from_matlab(std::string filename)
 	for (unsigned int i = 0; i < num_mat_voxels; i++)
 	{
 		position = {M[i][0], M[i][1], M[i][2]};
-		std::cout << "position = " << position << std::endl;
 		voxel_ind = microenvironment.mesh.nearest_voxel_index(position);
 		for (unsigned int ci = 0; ci < microenvironment.number_of_densities(); ci++)
 		{
@@ -1599,11 +1602,97 @@ void load_initial_conditions_from_matlab(std::string filename)
 			if (voxel_ind==voxel_set[j])
 			{
 				std::cout << "ERROR : the matlab-supplied initial conditions for BioFVM repeat the same voxel. Fix the .mat file and try again." << std::endl
-						  << "\t Position that was repeated: " << position << std::endl;
+						  << "\tPosition that was repeated: " << position << std::endl;
 				exit(-1);
 			}
 		}
 		voxel_set.push_back(voxel_ind);
 	}
+
+	return;
+}
+
+void load_initial_conditions_from_csv(std::string filename)
+{
+	// The .csv file needs to contain one row per voxel.
+	// Each row is a vector of values as follows: [x coord, y coord, z coord, substrate id 0 value, substrate id 1 value, ...]
+	// Thus, your table should be of size #voxels x (3 + #densities) (rows x columns)
+	// Do not include a header row.
+
+	// open file 
+	std::ifstream file( filename, std::ios::in );
+	if( !file )
+	{ 
+		std::cout << "Error: " << filename << " not found during cell loading. Quitting." << std::endl; 
+		exit(-1);
+	}
+
+	// determine if header row exists 
+	std::string line; 
+	std::getline( file , line );
+	char c = line.c_str()[0]; 
+
+	if( c == 'X' || c == 'x' )
+	{ 
+		// do not support this with a header yet
+		std::cout << "ERROR: Setting substrate initial conditions by CSV requires the CSV have no header row." << std::endl;
+		file.close();
+		exit(-1);
+	}
+
+	std::cout << "Loading substrate initial conditions from CSV file " << filename << " ... " << std::endl;
+	std::vector<int> voxel_set = {}; // set to check that no voxel value is set twice
+	get_row_from_substrate_initial_condition_csv(voxel_set, line); // the first line was already read, so make sure it is not skipped!
+	
+	while (std::getline(file, line))
+	{
+		get_row_from_substrate_initial_condition_csv(voxel_set, line);
+	}
+	
+	if (voxel_set.size() != microenvironment.number_of_voxels())
+	{
+		std::cout << "ERROR : Wrong number of voxels supplied in the .csv file specifying BioFVM initial conditions." << std::endl
+				  << "\tExpected: " << microenvironment.number_of_voxels() << std::endl
+				  << "\tFound: " << voxel_set.size() << std::endl
+				  << "\tRemember, your table should have dimensions #voxels x (3 + #densities)." << std::endl;
+		exit(-1);
+	}
+
+	file.close(); 	
+	
+	return;
+}
+
+void get_row_from_substrate_initial_condition_csv(std::vector<int> &voxel_set, const std::string line)
+{
+	std::cout << "Number found so far = " << voxel_set.size() << std::endl;
+	std::vector<double> data;
+	csv_to_vector(line.c_str(), data);
+
+	if (data.size() != (microenvironment.number_of_densities() + 3))
+	{
+		std::cout << "ERROR: Wrong number of density values supplied in the .csv file specifying BioFVM initial conditions." << std::endl
+				  << "\tExpected: " << microenvironment.number_of_voxels() << std::endl
+				  << "\tFound: " << data.size() - 3 << std::endl
+				  << "\tRemember, save your csv with columns as: x, y, z, substrate_0, substrate_1,...." << std::endl;
+		exit(-1);
+	}
+
+	std::vector<double> position = {data[0], data[1], data[2]};
+	int voxel_ind = microenvironment.mesh.nearest_voxel_index(position);
+	for (unsigned int ci = 0; ci < microenvironment.number_of_densities(); ci++)
+	{
+		microenvironment.density_vector(voxel_ind)[ci] = data[ci + 3];
+	}
+	for (unsigned int j = 0; j < voxel_set.size(); j++)
+	{
+		if (voxel_ind == voxel_set[j])
+		{
+			std::cout << "ERROR : the csv-supplied initial conditions for BioFVM repeat the same voxel. Fix the .csv file and try again." << std::endl
+					  << "\tPosition that was repeated: " << position << std::endl;
+			exit(-1);
+		}
+	}
+	voxel_set.push_back(voxel_ind);
 }
 };
