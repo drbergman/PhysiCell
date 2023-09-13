@@ -1635,7 +1635,7 @@ void load_initial_conditions_from_csv(std::string filename)
 	if( c == 'X' || c == 'x' )
 	{ 
 		// do not support this with a header yet
-		if ((line.c_str()[1] != 'Y' && line.c_str()[1] != 'Y') || (line.c_str()[2] != 'Z' && line.c_str()[2] != 'z'))
+		if ((line.c_str()[2] != 'Y' && line.c_str()[2] != 'y') || (line.c_str()[4] != 'Z' && line.c_str()[4] != 'z'))
 		{
 			std::cout << "ERROR: Header row starts with x but then not y,z? What is this? Exiting now." << std::endl;
 			file.close();
