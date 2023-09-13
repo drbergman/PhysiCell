@@ -1676,7 +1676,7 @@ void load_initial_conditions_from_csv(std::string filename)
 	
 	while (std::getline(file, line))
 	{
-		get_row_from_substrate_initial_condition_csv(voxel_set, line);
+		get_row_from_substrate_initial_condition_csv(voxel_set, line, substrate_indices);
 	}
 	
 	if (voxel_set.size() != microenvironment.number_of_voxels())
