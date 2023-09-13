@@ -49,6 +49,7 @@
 #ifndef __BioFVM_microenvironment_h__
 #define __BioFVM_microenvironment_h__
 
+#include <sstream>
 #include "BioFVM_mesh.h"
 #include "BioFVM_agent_container.h"
 #include "BioFVM_MultiCellDS.h"
@@ -365,7 +366,7 @@ void initialize_microenvironment( void );
 
 void load_initial_conditions_from_matlab( std::string filename );
 void load_initial_conditions_from_csv( std::string filename );
-void get_row_from_substrate_initial_condition_csv(std::vector<int> &voxel_set, const std::string line);
+void get_row_from_substrate_initial_condition_csv(std::vector<int> &voxel_set, const std::string line, const std::vector<int> substrate_indices);
 };
 
 #endif

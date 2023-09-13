@@ -1630,23 +1630,53 @@ void load_initial_conditions_from_csv(std::string filename)
 	// determine if header row exists 
 	std::string line; 
 	std::getline( file , line );
-	char c = line.c_str()[0]; 
-
+	char c = line.c_str()[0];
+	std::vector<int> substrate_indices;
 	if( c == 'X' || c == 'x' )
 	{ 
 		// do not support this with a header yet
-		std::cout << "ERROR: Setting substrate initial conditions by CSV requires the CSV have no header row." << std::endl;
+		if ((line.c_str()[2] != 'Y' && line.c_str()[2] != 'y') || (line.c_str()[4] != 'Z' && line.c_str()[4] != 'z'))
+		{
+			std::cout << "ERROR: Header row starts with x but then not y,z? What is this? Exiting now." << std::endl;
+			file.close();
+			exit(-1);
+		}
+		std::vector< std::string> column_names; // this will include x,y,z (so make sure to skip those below)
+		std::stringstream stream(line);
+		std::string field;
+
+		while (std::getline(stream, field, ','))
+		{
+			column_names.push_back(field);
+		}
+		for (int i = 3; i<column_names.size(); i++) // skip x,y,z by starting at 3, not 0
+		{
+			substrate_indices.push_back(microenvironment.find_density_index(column_names[i]));
+		}
+	}
+	else // no column labels given; just assume that the first n substrates are supplied (n = # columns after x,y,z)
+	{
+		std::stringstream stream(line);
+		std::string field;
+		int i = 0;
+		while (std::getline(stream, field, ','))
+		{
+			if (i<3) {continue;} // skip (x,y,z)
+			substrate_indices.push_back(i-3); // the substrate index is the column index - 3 (since x,y,z are the first 3 columns)
+			i++;
+		}
+		// in this case, we want to read this first line, so close the file and re-open so that we start with this line
 		file.close();
-		exit(-1);
+		std::ifstream file(filename, std::ios::in);
+		std::getline(file, line);
 	}
 
 	std::cout << "Loading substrate initial conditions from CSV file " << filename << " ... " << std::endl;
 	std::vector<int> voxel_set = {}; // set to check that no voxel value is set twice
-	get_row_from_substrate_initial_condition_csv(voxel_set, line); // the first line was already read, so make sure it is not skipped!
 	
 	while (std::getline(file, line))
 	{
-		get_row_from_substrate_initial_condition_csv(voxel_set, line);
+		get_row_from_substrate_initial_condition_csv(voxel_set, line, substrate_indices);
 	}
 	
 	if (voxel_set.size() != microenvironment.number_of_voxels())
@@ -1663,26 +1693,26 @@ void load_initial_conditions_from_csv(std::string filename)
 	return;
 }
 
-void get_row_from_substrate_initial_condition_csv(std::vector<int> &voxel_set, const std::string line)
+void get_row_from_substrate_initial_condition_csv(std::vector<int> &voxel_set, const std::string line, const std::vector<int> substrate_indices)
 {
 	std::cout << "Number found so far = " << voxel_set.size() << std::endl;
 	std::vector<double> data;
 	csv_to_vector(line.c_str(), data);
 
-	if (data.size() != (microenvironment.number_of_densities() + 3))
+	if ((voxel_set.size()==0) && (data.size() != (microenvironment.number_of_densities() + 3)))
 	{
-		std::cout << "ERROR: Wrong number of density values supplied in the .csv file specifying BioFVM initial conditions." << std::endl
+		std::cout << "WARNING: Wrong number of density values supplied in the .csv file specifying BioFVM initial conditions." << std::endl
 				  << "\tExpected: " << microenvironment.number_of_voxels() << std::endl
 				  << "\tFound: " << data.size() - 3 << std::endl
-				  << "\tRemember, save your csv with columns as: x, y, z, substrate_0, substrate_1,...." << std::endl;
-		exit(-1);
+				  << "\tRemember, save your csv with columns as: x, y, z, substrate_0, substrate_1,...." << std::endl
+				  << "\tThough the order does not matter if you include a header row \"x,y,z,[substrate_i0,substrate_i1]\"" << std::endl;
 	}
 
 	std::vector<double> position = {data[0], data[1], data[2]};
 	int voxel_ind = microenvironment.mesh.nearest_voxel_index(position);
-	for (unsigned int ci = 0; ci < microenvironment.number_of_densities(); ci++)
+	for (unsigned int ci = 0; ci < substrate_indices.size(); ci++) // column index, counting from the first substrate (or just the index of the vector substrate_indices)
 	{
-		microenvironment.density_vector(voxel_ind)[ci] = data[ci + 3];
+		microenvironment.density_vector(voxel_ind)[substrate_indices[ci]] = data[ci + 3];
 	}
 	for (unsigned int j = 0; j < voxel_set.size(); j++)
 	{
