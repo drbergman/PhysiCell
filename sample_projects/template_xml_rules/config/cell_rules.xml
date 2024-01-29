@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<hypothesis_rulesets>
+
+    <hypothesis_ruleset>
+        <cell_definition>default</cell_definition>
+        <behavior>
+            <name>apoptosis</name>
+            <min_value>0</min_value>
+            <max_value>1e-4</max_value>
+            <signals>
+                <signal>
+                    <name>substrate</name>
+                    <response>increases</response>
+                    <half_max>4</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </signals>
+        </behavior>
+        <behavior>
+            <name>proliferation</name>
+            <min_value>0</min_value>
+            <max_value>1</max_value>
+            <signals>
+                <signal>
+                    <name>substrate</name>
+                    <response>increases</response>
+                    <half_max>50</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </signals>
+        </behavior>
+    </hypothesis_ruleset>
+
+</hypothesis_rulesets>
