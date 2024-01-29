@@ -1831,7 +1831,8 @@ void parse_xml_rules(std::string filename)
 			if (cell_type == cell_definitions_ruled[i])
 			{
 				std::cout << "XML Rules ERROR: Two rulesets for " << cell_type << " found." << std::endl
-						  << "\tCombine them into a single ruleset please :)" << std::endl;
+						  << "\tCombine them into a single ruleset please :)" << std::endl
+						  << "\tSupport for rules across multiple files for the same cell type not yet supported." << std::endl;
 				exit(-1);
 			}
 		}
@@ -1950,11 +1951,6 @@ void process_signal(std::vector<std::string> input)
 	{ set_behavior_min_value(cell_type,behavior,max_response); }
 
 	return;  
-}
-
-void read_rules_from_pugixml( void )
-{
-	
 }
 
 // needs fixing
