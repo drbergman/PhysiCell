@@ -1620,7 +1620,7 @@ void prebuild_cell_definition_index_maps( void )
 		node = node.next_sibling( "cell_definition" ); 
 		n++; 
 	}	
-	
+
 	return; 
 }
 
