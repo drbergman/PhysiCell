@@ -79,7 +79,8 @@
 namespace PhysiCell
 {
 // loaders 
-	
+bool load_cells_from_file( std::string path_to_file );
+bool load_cells_from_file( std::string path_to_file, std::string filetype );
 void load_cells_csv_v1( std::string filename ); // done 
 
 

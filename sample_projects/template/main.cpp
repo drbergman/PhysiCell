@@ -72,6 +72,7 @@
 #include <cmath>
 #include <omp.h>
 #include <fstream>
+#include <getopt.h>
 
 #include "./core/PhysiCell.h"
 #include "./modules/PhysiCell_standard_modules.h" 
@@ -83,24 +84,86 @@
 using namespace BioFVM;
 using namespace PhysiCell;
 
+void parse_arguments(int argc, char* argv[], std::string& path_to_config_file, bool& config_file_flagged, std::string& path_to_ic_cells_file, bool& ic_cell_file_included, std::string& path_to_rules_file, bool& rules_file_included, std::string& path_to_output_folder, bool& output_folder_included) {
+	// read arguments
+	int opt;
+	static struct option long_options[] = {
+		{"config", required_argument, 0, 'c'},
+		{"ic-cells", required_argument, 0, 'i'},
+		{"rules", required_argument, 0, 'r'},
+		{"output", required_argument, 0, 'o'},
+		{0, 0, 0, 0}
+	};
+
+	while ((opt = getopt_long(argc, argv, "c:i:r:o:", long_options, NULL)) != -1)
+	{
+		switch (opt)
+		{
+		case 'c':
+			config_file_flagged = true;
+			path_to_config_file = optarg;
+			break;
+		case 'i':
+			path_to_ic_cells_file = optarg;
+			ic_cell_file_included = true;
+			break;
+		case 'r':
+			path_to_rules_file = optarg;
+			rules_file_included = true;
+			break;
+		case 'o':
+			path_to_output_folder = optarg;
+			output_folder_included = true;
+			break;
+		default:
+			std::cerr << "Usage: " << argv[0] << " [-c path_to_config_file] [-i path_to_ic_cells_file] [-o path_to_output_folder]" << std::endl
+					  << "   Or: " << argv[0] << " path_to_config_file [-i path_to_ic_cells_file] [-o path_to_output_folder]" << std::endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	// backwards compatibility for loading config file
+	std::string usage = "Usage: " + std::string(argv[0]) + " [-c path_to_config_file] [-i path_to_ic_cells_file] [-o path_to_output_folder]\n"
+                      + "   Or: " + std::string(argv[0]) + " path_to_config_file [-i path_to_ic_cells_file] [-o path_to_output_folder]";
+
+	if (optind == argc - 1 && !config_file_flagged) // config file not flagged and passed in as unflagged argument
+	{
+		path_to_config_file = argv[optind];
+	}
+	else if (optind < argc - 1 || (optind == argc - 1 && config_file_flagged)) // too many unflagged arguments OR config file passed in as both flagged and unflagged arguments
+	{
+		std::cerr << usage << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	return;
+}
+
 int main( int argc, char* argv[] )
 {
+	// read arguments
+	std::string path_to_config_file = "./config/PhysiCell_settings.xml";
+	bool config_file_flagged = false;
+	std::string path_to_ic_cells_file;
+	bool ic_cell_file_included = false;
+	std::string path_to_rules_file;
+	bool rules_file_included = false;
+	std::string path_to_output_folder;
+	bool output_folder_included = false;
+
+	parse_arguments(argc, argv, path_to_config_file, config_file_flagged, path_to_ic_cells_file, ic_cell_file_included, path_to_rules_file, rules_file_included, path_to_output_folder, output_folder_included);
+
 	// load and parse settings file(s)
-	
-	bool XML_status = false; 
+	bool XML_status = load_PhysiCell_config_file( path_to_config_file );
+	if (!XML_status) {
+		std::cerr << "Error: failed to load settings file " << path_to_config_file << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	if (output_folder_included) {
+		PhysiCell_settings.folder = path_to_output_folder; // overwrite output folder if supplied by flag
+	}
 	char copy_command [1024]; 
-	if( argc > 1 )
-	{
-		XML_status = load_PhysiCell_config_file( argv[1] ); 
-		sprintf( copy_command , "cp %s %s" , argv[1] , PhysiCell_settings.folder.c_str() ); 
-	}
-	else
-	{
-		XML_status = load_PhysiCell_config_file( "./config/PhysiCell_settings.xml" );
-		sprintf( copy_command , "cp ./config/PhysiCell_settings.xml %s" , PhysiCell_settings.folder.c_str() ); 
-	}
-	if( !XML_status )
-	{ exit(-1); }
+
+	sprintf( copy_command , "cp %s %s/PhysiCell_settings.xml" , path_to_config_file, PhysiCell_settings.folder.c_str() ); //, PhysiCell_settings.folder.c_str() ); 
 	
 	// copy config file to output directry 
 	system( copy_command ); 
@@ -123,9 +186,16 @@ int main( int argc, char* argv[] )
 	
 	/* Users typically start modifying here. START USERMODS */ 
 	
-	create_cell_types();
-	
-	setup_tissue();
+	if (rules_file_included) {
+		create_cell_types(path_to_rules_file);
+	} else {
+		create_cell_types();
+	}
+	if (ic_cell_file_included) {
+		setup_tissue(path_to_ic_cells_file);
+	} else {
+		setup_tissue();
+	}
 
 	/* Users typically stop modifying here. END USERMODS */ 
 	
