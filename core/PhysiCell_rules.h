@@ -223,6 +223,9 @@ void parse_csv_rule_v2( std::vector<std::string> input ); // parse a tokenized s
 void parse_csv_rule_v2( std::string input ); // parse a single string (a single line from CSV)
 void parse_csv_rules_v2( std::string filename ); // parse all rules in a CSV file 
 
+void parse_xml_rules( std::string filename );
+void process_signal(std::vector<std::string> input);
+
 void parse_rules_from_pugixml( void );
 
 // needs fixing March 2023 // probably deprecate

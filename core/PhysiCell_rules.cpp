@@ -1801,7 +1801,198 @@ void parse_csv_rules_v2( std::string filename )
 
 /* end of v2 work */
 
-// needs fixing
+void parse_xml_rules(std::string filename)
+{
+	bool physicell_rules_dom_initialized = false;
+	pugi::xml_document physicell_rules_doc;
+	pugi::xml_node physicell_rules_root;
+	std::cout << "Using rules file " << filename << " ... " << std::endl;
+	pugi::xml_parse_result result = physicell_rules_doc.load_file(filename.c_str());
+
+	if (result.status != pugi::xml_parse_status::status_ok)
+	{
+		std::cout << "Error loading " << filename << "!" << std::endl;
+		exit(-1);
+	}
+
+	physicell_rules_root = physicell_rules_doc.child("hypothesis_rulesets");
+	physicell_rules_dom_initialized = true;
+
+	pugi::xml_node ruleset_node;
+	ruleset_node = xml_find_node(physicell_rules_root, "hypothesis_ruleset");
+	std::vector<std::string> cell_definitions_ruled;
+
+	while (ruleset_node)
+	{
+		std::string cell_type = ruleset_node.child_value("cell_definition");
+		// check if cell_type has already had a ruleset defined for it
+		for (int i = 0; i < cell_definitions_ruled.size(); i++)
+		{
+			if (cell_type == cell_definitions_ruled[i])
+			{
+				std::cout << "XML Rules ERROR: Two rulesets for " << cell_type << " found." << std::endl
+						  << "\tCombine them into a single ruleset please :)" << std::endl
+						  << "\tSupport for rules across multiple files for the same cell type not yet supported." << std::endl;
+				exit(-1);
+			}
+		}
+		cell_definitions_ruled.push_back(cell_type);
+
+		std::vector<std::string> behaviors_ruled;
+
+		pugi::xml_node behavior_node = ruleset_node.child("behavior");
+		while (behavior_node)
+		{
+			std::string behavior = behavior_node.child_value("name");
+			for (int i = 0; i < behaviors_ruled.size(); i++)
+			{
+				if (behavior == behaviors_ruled[i])
+				{
+					std::cout << "XML Rules ERROR: The behavior " << behavior << " is being set again for " << cell_type << "." << std::endl
+							  << "\tSelect only one to keep. :)" << std::endl;
+					exit(-1);
+				}
+			}
+			behaviors_ruled.push_back(behavior);
+			std::string min_value = "";
+			std::string max_value = "";
+			if (behavior_node.child("min_value"))
+			{ min_value = behavior_node.child_value("min_value"); }
+			if (behavior_node.child("max_value"))
+			{ max_value = behavior_node.child_value("max_value"); }
+			pugi::xml_node signal_node = behavior_node.child("signals");
+			signal_node = signal_node.child("signal");
+
+			std::vector<std::string> signals_set;
+			std::vector<std::string> responses_set;
+
+			while (signal_node)
+			{
+				std::string signal = signal_node.child_value("name");
+				std::string response = signal_node.child_value("response");
+
+				for (int i = 0; i < signals_set.size(); i++)
+				{
+					if (signal == signals_set[i] && response == responses_set[i])
+					{
+						std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
+								  << "\tis defined twice." << std::endl
+								  << "\tSelect only one to keep. :)" << std::endl;
+						exit(-1);
+					}
+				}
+				signals_set.push_back(signal);
+				responses_set.push_back(response);
+
+				std::vector<std::string> input;
+				input.resize(8);
+				input[0] = cell_type;
+				input[1] = signal;
+				input[2] = response;
+				input[3] = behavior;
+				if (input[2] == "increases")
+				{
+					input[4] = max_value;
+				}
+				else
+				{
+					input[4] = min_value;
+				}
+				if (input[4] == "")
+				{
+					// sternly warn and issue error
+					std::string temp;
+					if (response == "increases")
+					{
+						temp = "max_value";
+					}
+					else
+					{
+						temp = "min_value";
+					}
+
+					std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
+								<< "\tdoes not have the necessary max response set." << std::endl
+								<< "\tSet " << temp << " for " << behavior << "in " << cell_type << "." << std::endl;
+					exit(-1);
+				}
+				input[5] = signal_node.child_value("half_max");
+				input[6] = signal_node.child_value("hill_power");
+				input[7] = signal_node.child_value("applies_to_dead");
+				process_signal(input);
+				signal_node = signal_node.next_sibling("signal");
+			}
+
+			behavior_node = behavior_node.next_sibling("behavior");
+		}
+
+		ruleset_node = ruleset_node.next_sibling("hypothesis_ruleset");
+	}
+
+	return;
+}
+
+void process_signal(std::vector<std::string> input)
+{
+	std::string temp = csv_strings_to_English_v2( input , false ); // need a v1 version of this
+
+	// string portions of the rule
+	std::string cell_type = input[0]; 
+	std::string signal = input[1]; 
+	std::string response = input[2]; 
+	std::string behavior = input[3]; 
+
+	// numeric portions of the rule 
+	// double min_value  = std::atof( input[2].c_str() );
+
+	// double base_value = std::atof( input[4].c_str() );
+	double max_response = std::atof( input[4].c_str() ); 
+
+	// hmm from here 
+	// double max_value  = std::atof( input[4].c_str() ); 
+
+	double half_max  = std::atof( input[5].c_str() );
+	double hill_power = std::atof( input[6].c_str() );
+	bool use_for_dead = (bool) std::atof( input[7].c_str() ); 
+
+	std::cout << "Adding rule for " << cell_type << " cells:\n\t"; 
+	std::cout << temp << std::endl; 
+
+	// add_rule(cell_type,signal,behavior,response);  
+	add_rule(cell_type,signal,behavior,response,use_for_dead);  
+	set_hypothesis_parameters(cell_type,signal,behavior,half_max,hill_power);  
+
+	// compare to base behavior value in cell def for discrepancies 
+	Cell_Definition* pCD = find_cell_definition(cell_type); 
+	double ref_base_value = get_single_base_behavior(pCD,behavior); 
+
+	set_behavior_base_value(cell_type,behavior,ref_base_value);
+	if (response == "increases")
+	{
+		if (max_response <= ref_base_value)
+		{
+			std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
+					  << "\thas a max response <= the base value." << std::endl
+					  << "\tSet max_value for " << behavior << " in " << cell_type << " as > " << ref_base_value << "." << std::endl;
+			exit(-1);
+		}
+		set_behavior_max_value(cell_type, behavior, max_response);
+	}
+	else
+	{
+		if (max_response >= ref_base_value)
+		{
+			std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
+					  << "\thas a min response >= the base value." << std::endl
+					  << "\tSet min_value for " << behavior << " in " << cell_type << " as < " << ref_base_value << "." << std::endl;
+			exit(-1);
+		}
+		set_behavior_min_value(cell_type, behavior, max_response);
+	}
+
+	return;
+}
+
 void parse_rules_from_pugixml( void )
 {
 	pugi::xml_node node = physicell_config_root.child( "cell_rules" ); 
@@ -1886,7 +2077,14 @@ void parse_rules_from_pugixml( void )
 					done = true; 
 				}
 
-			}  
+			} 
+			else if (format == "XML" || format == "xml")
+			{
+				std::cout << "\tFormat: XML" << std::endl;
+				parse_xml_rules( input_filename);
+				PhysiCell_settings.rules_enabled = true; 
+				done = true;
+			}
 
 
 			if( done == false )
