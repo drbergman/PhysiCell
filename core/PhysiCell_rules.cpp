@@ -2089,7 +2089,7 @@ void parse_rules_from_file(std::string path_to_file, std::string format, std::st
 	else if (format == "XML" || format == "xml")
 	{
 		std::cout << "\tFormat: XML" << std::endl;
-		parse_xml_rules(input_filename);
+		parse_xml_rules(path_to_file);
 		PhysiCell_settings.rules_enabled = true;
 	}
 	else
