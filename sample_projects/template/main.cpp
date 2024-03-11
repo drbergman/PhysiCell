@@ -163,7 +163,7 @@ int main( int argc, char* argv[] )
 	}
 	char copy_command [1024]; 
 
-	sprintf( copy_command , "cp %s %s/PhysiCell_settings.xml" , path_to_config_file, PhysiCell_settings.folder.c_str() ); //, PhysiCell_settings.folder.c_str() ); 
+	sprintf( copy_command , "cp %s %s/PhysiCell_settings.xml" , path_to_config_file.c_str(), PhysiCell_settings.folder.c_str() ); //, PhysiCell_settings.folder.c_str() ); 
 	
 	// copy config file to output directry 
 	system( copy_command ); 
