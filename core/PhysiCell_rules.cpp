@@ -1797,7 +1797,6 @@ void parse_csv_rules_v2( std::string filename )
 	return; 
 }
 
-
 /* end of v2 work */
 
 void parse_xml_rules(std::string filename)
@@ -1853,8 +1852,12 @@ void parse_xml_rules(std::string filename)
 				}
 			}
 			behaviors_ruled.push_back(behavior);
-			std::string min_value = behavior_node.child_value("min_value");
-			std::string max_value = behavior_node.child_value("max_value");
+			std::string min_value = "";
+			std::string max_value = "";
+			if (behavior_node.child("min_value"))
+			{ min_value = behavior_node.child_value("min_value"); }
+			if (behavior_node.child("max_value"))
+			{ max_value = behavior_node.child_value("max_value"); }
 			pugi::xml_node signal_node = behavior_node.child("signals");
 			signal_node = signal_node.child("signal");
 
@@ -1892,6 +1895,24 @@ void parse_xml_rules(std::string filename)
 				else
 				{
 					input[4] = min_value;
+				}
+				if (input[4] == "")
+				{
+					// sternly warn and issue error
+					std::string temp;
+					if (response == "increases")
+					{
+						temp = "max_value";
+					}
+					else
+					{
+						temp = "min_value";
+					}
+
+					std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
+								<< "\tdoes not have the necessary max response set." << std::endl
+								<< "\tSet " << temp << " for " << behavior << "in " << cell_type << "." << std::endl;
+					exit(-1);
 				}
 				input[5] = signal_node.child_value("half_max");
 				input[6] = signal_node.child_value("hill_power");
@@ -1944,15 +1965,32 @@ void process_signal(std::vector<std::string> input)
 	double ref_base_value = get_single_base_behavior(pCD,behavior); 
 
 	set_behavior_base_value(cell_type,behavior,ref_base_value);
-	if( response == "increases")
-	{ set_behavior_max_value(cell_type,behavior,max_response); }
+	if (response == "increases")
+	{
+		if (max_response <= ref_base_value)
+		{
+			std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
+					  << "\thas a max response <= the base value." << std::endl
+					  << "\tSet max_value for " << behavior << " in " << cell_type << " as > " << ref_base_value << "." << std::endl;
+			exit(-1);
+		}
+		set_behavior_max_value(cell_type, behavior, max_response);
+	}
 	else
-	{ set_behavior_min_value(cell_type,behavior,max_response); }
+	{
+		if (max_response >= ref_base_value)
+		{
+			std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
+					  << "\thas a min response >= the base value." << std::endl
+					  << "\tSet min_value for " << behavior << " in " << cell_type << " as < " << ref_base_value << "." << std::endl;
+			exit(-1);
+		}
+		set_behavior_min_value(cell_type, behavior, max_response);
+	}
 
-	return;  
+	return;
 }
 
-// needs fixing
 void parse_rules_from_pugixml( void )
 {
 	pugi::xml_node node = physicell_config_root.child( "cell_rules" ); 
