@@ -227,6 +227,7 @@ void parse_xml_rules( std::string filename );
 void process_signal(std::vector<std::string> input);
 
 void parse_rules_from_pugixml( void );
+void parse_rules_from_file(std::string path_to_file, std::string format = "", std::string protocol = "", double version = -1.0);
 
 // needs fixing March 2023 // probably deprecate
 void parse_rules_from_parameters_v0( void ); 
@@ -279,6 +280,8 @@ std::vector<double> Hill_response_to_linear_parameters( double half_max , double
 */
 
 void setup_cell_rules( void );
+void setup_cell_rules( std::string filename );
+void record_cell_rules( void );
 
 }; 
 

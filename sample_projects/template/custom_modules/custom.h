@@ -74,7 +74,10 @@ using namespace PhysiCell;
 // setup functions to help us along 
 
 void create_cell_types( void );
+void create_cell_types( std::string path_to_rules_file );
 void setup_tissue( void ); 
+void setup_tissue( std::string path_to_ic_cells_file ); 
+void setup_tissue_domain( void );
 
 // set up the BioFVM microenvironment 
 void setup_microenvironment( void ); 

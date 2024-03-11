@@ -1986,101 +1986,80 @@ void parse_rules_from_pugixml( void )
 		return; 
 	}
 
-	while( node )
+	while (node)
 	{
 		std::cout << node.name() << std::endl;
-		if( node.attribute("enabled").as_bool() == true )
-		{ 
-			std::string folder = xml_get_string_value( node, "folder" ); 
-			std::string filename = xml_get_string_value( node, "filename" ); 
-			std::string input_filename = folder + "/" + filename; 
+		if (node.attribute("enabled").as_bool() == true)
+		{
+			std::string folder = xml_get_string_value(node, "folder");
+			std::string filename = xml_get_string_value(node, "filename");
+			std::string input_filename = folder + "/" + filename;
 
-			std::cout << "\tProcessing ruleset in " << input_filename << " ... " << std::endl; 
 			std::string format = node.attribute("format").as_string(); 
 			std::string protocol = node.attribute("protocol").as_string(); 
-			double version = node.attribute("version").as_double(); 
+			double version = node.attribute("version").as_double();
 
-			bool done = false; 
-
-			if( format == "CSV" || format == "csv" )  
-			{ 			
-				if( version < 1.0 )
-				{
-					std::cout << "\tFormat: CSV (prototype version)" << std::endl; 
-
-					parse_csv_rules_v0( input_filename ); // parse all rules in a CSV file 
-
-					PhysiCell_settings.rules_enabled = true; 
-
-					done = true; 
-				}
-			
-				if(version >= 1.0 - 1e-10 && version < 2.0 - 1e-10 && protocol == "CBHG" && done == false )
-				{
-					std::cout << "\tFormat: CSV (version " << version << ")" << std::endl; 
-
-					parse_csv_rules_v1( input_filename ); // parse all rules in a CSV file 
-
-					PhysiCell_settings.rules_enabled = true; 
-
-					done = true; 
-				}
-
-				if(version >= 2.0 - 1e-10 && protocol == "CBHG" && done == false )
-				{
-					std::cout << "\tFormat: CSV (version " << version << ")" << std::endl; 
-
-					parse_csv_rules_v2( input_filename ); // parse all rules in a CSV file 
-
-					PhysiCell_settings.rules_enabled = true; 
-
-					done = true; 
-				}
-
-			} 
-			else if (format == "XML" || format == "xml")
-			{
-				std::cout << "\tFormat: XML" << std::endl;
-				parse_xml_rules( input_filename);
-				PhysiCell_settings.rules_enabled = true; 
-				done = true;
-			}
-
-
-			if( done == false )
-			{ std::cout << "\tWarning: Ruleset had unknown format (" << format << "). Skipping!" << std::endl; }
-
+			parse_rules_from_file(input_filename, format, protocol, version);
 		}
 		else
 		{ std::cout << "\tRuleset disabled ... " << std::endl; }
-		node = node.next_sibling( "ruleset"); 		
+		node = node.next_sibling( "ruleset");
 	}
 	return; 
+}
 
-	exit(0); 
-	
-	// enabled? 
-	if( node.attribute("enabled").as_bool() == false )
-	{ return; }
+void parse_rules_from_file(std::string path_to_file, std::string format, std::string protocol, double version) // see PhysiCell_rules.h for default values of format, protocol, and version
+{
+	std::cout << "\tProcessing ruleset in " << path_to_file << " ... " << std::endl;
 
-	// get filename 
-
-	std::string folder = xml_get_string_value( node, "folder" ); 
-	std::string filename = xml_get_string_value( node, "filename" ); 
-	std::string input_filename = folder + "/" + filename; 
-
-	std::string filetype = node.attribute("type").value() ; 
-
-	// what kind? 
-	if( filetype == "csv" || filetype == "CSV" )
+	// get the file  extension of path_to_file
+	if (format == "")
 	{
-		std::cout << "Loading rules from CSV file " << input_filename << " ... " << std::endl; 
-		// load_cells_csv( input_filename );
-		parse_csv_rules_v0( input_filename ); 
-		return; 
+		format = path_to_file.substr(path_to_file.find_last_of(".") + 1);
+	}
+	if (protocol == "")
+	{
+		protocol = "CBHG"; // default protocol (at least for CSVs)
+	}
+	if (version == -1.0)
+	{
+		version = 2.0; // default version (at least for CSVs)
 	}
 
-	return; 
+	if (format == "CSV" || format == "csv")
+	{
+		std::cout << "\tFormat: CSV (version " << version << ")" << std::endl;
+
+		if (version < 1.0)
+		{
+			parse_csv_rules_v0(path_to_file); // parse all rules in a CSV file
+		}
+		else if (version >= 1.0 - 1e-10 && version < 2.0 - 1e-10 && protocol == "CBHG")
+		{
+			parse_csv_rules_v1(path_to_file); // parse all rules in a CSV file
+		}
+		else if (version >= 2.0 - 1e-10 && protocol == "CBHG")
+		{
+			parse_csv_rules_v2(path_to_file); // parse all rules in a CSV file
+		}
+		else
+		{
+			std::cout << "\tWarning: CSV ruleset had unknown version (" << version << ") or protocol (" << protocol << "). Skipping!" << std::endl;
+			return;
+		}
+	}
+	else if (format == "XML" || format == "xml")
+	{
+		std::cout << "\tFormat: XML" << std::endl;
+		parse_xml_rules(input_filename);
+		PhysiCell_settings.rules_enabled = true;
+	}
+	else
+	{
+		std::cout << "\tWarning: Unknown format (" << format << ") for ruleset " << path_to_file << ". Skipping!" << std::endl;
+		return;
+	}
+	PhysiCell_settings.rules_enabled = true;
 }
 
 void parse_rules_from_parameters_v0( void )
@@ -2484,38 +2463,56 @@ std::vector<double> UniformInShell( double r1, double r2 )
 	return { param2*sin(theta) , param2*cos(theta), param1*(1-2*T) }; 
 }
 
-void setup_cell_rules( void )
+void setup_cell_rules(void)
 {
-	// setup 
-	intialize_hypothesis_rulesets(); 
+	// setup
+	intialize_hypothesis_rulesets();
 
-	// load rules 
-	parse_rules_from_pugixml(); 
+	// load rules
+	parse_rules_from_pugixml();
 
-	// display rules to screen
-	display_hypothesis_rulesets( std::cout );
+	record_cell_rules();
 
-	// save annotations 
-	save_annotated_detailed_English_rules(); 
-	save_annotated_detailed_English_rules_HTML(); 
-	save_annotated_English_rules(); 
-	save_annotated_English_rules_HTML(); 
-
-	// save dictionaries 
-	std::string dictionary_file = "./" + PhysiCell_settings.folder + "/dictionaries.txt";
-	std::ofstream dict_of( dictionary_file , std::ios::out ); 
-
-	display_signal_dictionary( dict_of ); // done 
-	display_behavior_dictionary( dict_of ); // done 
-	dict_of.close(); 
-
-	// save rules (v1)
-	std::string rules_file = PhysiCell_settings.folder + "/cell_rules.csv"; 
-	export_rules_csv_v1( rules_file ); 
-
-
-	return; 
+	return;
 }
 
+void setup_cell_rules(std::string path_to_rules_file)
+{
+	// setup
+	intialize_hypothesis_rulesets();
+
+	// load rules
+	parse_rules_from_file(path_to_rules_file);
+
+	record_cell_rules();
+
+	return;
+}
+
+void record_cell_rules( void )
+{
+	// display rules to screen
+	display_hypothesis_rulesets(std::cout);
+
+	// save annotations
+	save_annotated_detailed_English_rules();
+	save_annotated_detailed_English_rules_HTML();
+	save_annotated_English_rules();
+	save_annotated_English_rules_HTML();
+
+	// save dictionaries
+	std::string dictionary_file = "./" + PhysiCell_settings.folder + "/dictionaries.txt";
+	std::ofstream dict_of(dictionary_file, std::ios::out);
+
+	display_signal_dictionary(dict_of);	  // done
+	display_behavior_dictionary(dict_of); // done
+	dict_of.close();
+
+	// save rules (v1)
+	std::string rules_file = PhysiCell_settings.folder + "/cell_rules.csv";
+	export_rules_csv_v1(rules_file);
+
+	return;
+}
 
 };
