@@ -81,4 +81,6 @@
 
 #include "./PhysiCell_geometry.h" 
 
+#include "./extracellular_matrix.h"
+
 #endif
