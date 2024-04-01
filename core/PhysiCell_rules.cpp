@@ -1852,81 +1852,109 @@ void parse_xml_rules(std::string filename)
 				}
 			}
 			behaviors_ruled.push_back(behavior);
-			std::string min_value = "";
-			std::string max_value = "";
-			if (behavior_node.child("min_value"))
-			{ min_value = behavior_node.child_value("min_value"); }
-			if (behavior_node.child("max_value"))
-			{ max_value = behavior_node.child_value("max_value"); }
-			pugi::xml_node signal_node = behavior_node.child("signals");
-			signal_node = signal_node.child("signal");
 
-			std::vector<std::string> signals_set;
-			std::vector<std::string> responses_set;
-
-			while (signal_node)
-			{
-				std::string signal = signal_node.child_value("name");
-				std::string response = signal_node.child_value("response");
-
-				for (int i = 0; i < signals_set.size(); i++)
-				{
-					if (signal == signals_set[i] && response == responses_set[i])
-					{
-						std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
-								  << "\tis defined twice." << std::endl
-								  << "\tSelect only one to keep. :)" << std::endl;
-						exit(-1);
-					}
-				}
-				signals_set.push_back(signal);
-				responses_set.push_back(response);
-
-				std::vector<std::string> input;
-				input.resize(8);
-				input[0] = cell_type;
-				input[1] = signal;
-				input[2] = response;
-				input[3] = behavior;
-				if (input[2] == "increases")
-				{
-					input[4] = max_value;
-				}
-				else
-				{
-					input[4] = min_value;
-				}
-				if (input[4] == "")
-				{
-					// sternly warn and issue error
-					std::string temp;
-					if (response == "increases")
-					{
-						temp = "max_value";
-					}
-					else
-					{
-						temp = "min_value";
-					}
-
-					std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
-								<< "\tdoes not have the necessary max response set." << std::endl
-								<< "\tSet " << temp << " for " << behavior << "in " << cell_type << "." << std::endl;
-					exit(-1);
-				}
-				input[5] = signal_node.child_value("half_max");
-				input[6] = signal_node.child_value("hill_power");
-				input[7] = signal_node.child_value("applies_to_dead");
-				process_signal(input);
-				signal_node = signal_node.next_sibling("signal");
-			}
+			process_decreasing_signals(behavior_node, cell_type, behavior);
+			process_increasing_signals(behavior_node, cell_type, behavior);
 
 			behavior_node = behavior_node.next_sibling("behavior");
 		}
-
 		ruleset_node = ruleset_node.next_sibling("hypothesis_ruleset");
 	}
+	return;
+}
 
+void process_decreasing_signals(pugi::xml_node behavior_node, std::string cell_type, std::string behavior)
+{
+	pugi::xml_node response_node = behavior_node.child("decreasing_signals");
+	if (!response_node)
+	{ return; }
+	std::string min_value = response_node.child_value("min_value");
+	process_signals(response_node, cell_type, behavior, "decreases", min_value);
+	return;
+}
+
+void process_increasing_signals(pugi::xml_node behavior_node, std::string cell_type, std::string behavior)
+{
+	pugi::xml_node response_node = behavior_node.child("increasing_signals");
+	if (!response_node)
+	{ return; }
+	std::string max_value = response_node.child_value("max_value");
+	process_signals(response_node, cell_type, behavior, "increases", max_value);
+	return;
+}
+
+void process_signals(pugi::xml_node response_node, std::string cell_type, std::string behavior, std::string response, std::string saturation_value)
+{
+	pugi::xml_node signal_node = response_node.child("signal");
+	if (!signal_node)
+	{ return; }
+	std::vector<std::string> signals_set;
+
+	std::cout << "Processing " << response << " signals for " << behavior << " in " << cell_type << std::endl;
+
+	std::vector<std::string> input;
+	input.resize(8);
+	input[0] = cell_type;
+	input[2] = response;
+	input[3] = behavior;
+	input[4] = saturation_value;
+
+	while (signal_node)
+	{
+		std::string signal = signal_node.child_value("name");
+
+		for (int i = 0; i < signals_set.size(); i++)
+		{
+			if (signal == signals_set[i])
+			{
+				std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
+						  << "\tis defined twice." << std::endl
+						  << "\tSelect only one to keep. :)" << std::endl;
+				exit(-1);
+			}
+		}
+		signals_set.push_back(signal);
+
+		input[1] = signal;
+		input[5] = signal_node.child_value("half_max");
+		input[6] = signal_node.child_value("hill_power");
+		input[7] = signal_node.child_value("applies_to_dead");
+		process_signal(input);
+
+		signal_node = signal_node.next_sibling("signal");
+	}
+
+	// compare to base behavior value in cell def for discrepancies
+	Cell_Definition *pCD = find_cell_definition(cell_type);
+	double max_response = std::atof(saturation_value.c_str());
+	double ref_base_value = get_single_base_behavior(pCD, behavior);
+	
+
+	set_behavior_base_value(cell_type, behavior, ref_base_value);
+	if (response == "increases")
+	{
+		if (max_response <= ref_base_value)
+		{
+			std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
+					  << "\thas a max response <= the base value." << std::endl
+					  << "\tSet max_value for " << behavior << " in " << cell_type << " as > " << ref_base_value << "." << std::endl;
+			exit(-1);
+		}
+		set_behavior_max_value(cell_type, behavior, max_response);
+	}
+	else
+	{
+		if (max_response >= ref_base_value)
+		{
+			std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
+					  << "\thas a min response >= the base value." << std::endl
+					  << "\tSet min_value for " << behavior << " in " << cell_type << " as < " << ref_base_value << "." << std::endl;
+			exit(-1);
+		}
+		set_behavior_min_value(cell_type, behavior, max_response);
+	}
+
+	std::cout << "Done processing " << response << " signals for " << behavior << " in " << cell_type << std::endl;
 	return;
 }
 
@@ -1959,34 +1987,6 @@ void process_signal(std::vector<std::string> input)
 	// add_rule(cell_type,signal,behavior,response);  
 	add_rule(cell_type,signal,behavior,response,use_for_dead);  
 	set_hypothesis_parameters(cell_type,signal,behavior,half_max,hill_power);  
-
-	// compare to base behavior value in cell def for discrepancies 
-	Cell_Definition* pCD = find_cell_definition(cell_type); 
-	double ref_base_value = get_single_base_behavior(pCD,behavior); 
-
-	set_behavior_base_value(cell_type,behavior,ref_base_value);
-	if (response == "increases")
-	{
-		if (max_response <= ref_base_value)
-		{
-			std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
-					  << "\thas a max response <= the base value." << std::endl
-					  << "\tSet max_value for " << behavior << " in " << cell_type << " as > " << ref_base_value << "." << std::endl;
-			exit(-1);
-		}
-		set_behavior_max_value(cell_type, behavior, max_response);
-	}
-	else
-	{
-		if (max_response >= ref_base_value)
-		{
-			std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
-					  << "\thas a min response >= the base value." << std::endl
-					  << "\tSet min_value for " << behavior << " in " << cell_type << " as < " << ref_base_value << "." << std::endl;
-			exit(-1);
-		}
-		set_behavior_min_value(cell_type, behavior, max_response);
-	}
 
 	return;
 }
