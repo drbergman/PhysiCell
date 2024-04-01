@@ -1623,8 +1623,6 @@ void prebuild_cell_definition_index_maps( void )
 		n++; 
 	}	
 
-	std::cout << "Done pre-processing cell definitions." << std::endl;
-	
 	return; 
 }
 

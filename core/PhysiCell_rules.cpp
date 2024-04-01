@@ -1890,8 +1890,6 @@ void process_signals(pugi::xml_node response_node, std::string cell_type, std::s
 	{ return; }
 	std::vector<std::string> signals_set;
 
-	std::cout << "Processing " << response << " signals for " << behavior << " in " << cell_type << std::endl;
-
 	std::vector<std::string> input;
 	input.resize(8);
 	input[0] = cell_type;
@@ -1935,8 +1933,8 @@ void process_signals(pugi::xml_node response_node, std::string cell_type, std::s
 	{
 		if (max_response <= ref_base_value)
 		{
-			std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
-					  << "\thas a max response <= the base value." << std::endl
+			std::cout << "XML Rules ERROR: Signals increasing " << behavior << " for " << cell_type << std::endl
+					  << "\thave a max response <= the base value." << std::endl
 					  << "\tSet max_value for " << behavior << " in " << cell_type << " as > " << ref_base_value << "." << std::endl;
 			exit(-1);
 		}
@@ -1946,8 +1944,8 @@ void process_signals(pugi::xml_node response_node, std::string cell_type, std::s
 	{
 		if (max_response >= ref_base_value)
 		{
-			std::cout << "XML Rules ERROR: " << signal << " " << response << " " << behavior << " for " << cell_type << std::endl
-					  << "\thas a min response >= the base value." << std::endl
+			std::cout << "XML Rules ERROR: Signals decreasing " << behavior << " for " << cell_type << std::endl
+					  << "\thave a min response >= the base value." << std::endl
 					  << "\tSet min_value for " << behavior << " in " << cell_type << " as < " << ref_base_value << "." << std::endl;
 			exit(-1);
 		}
@@ -2033,18 +2031,21 @@ void parse_rules_from_pugixml( void )
 			std::string filename = xml_get_string_value(node, "filename");
 			std::string input_filename = folder + "/" + filename;
 
-			std::string format = node.attribute("format").as_string(); 
-			std::string protocol = node.attribute("protocol").as_string(); 
+			std::string format = node.attribute("format").as_string();
+			std::string protocol = node.attribute("protocol").as_string();
 			double version = node.attribute("version").as_double();
 
 			parse_rules_from_file(input_filename, format, protocol, version);
 		}
 		else
-		{ std::cout << "\tRuleset disabled ... " << std::endl; }
-		node = node.next_sibling( "ruleset");
+		{
+			std::cout << "\tRuleset disabled ... " << std::endl;
+		}
+		node = node.next_sibling("ruleset");
 	}
-	return; 
+	return;
 }
+
 
 void parse_rules_from_file(std::string path_to_file, std::string format, std::string protocol, double version) // see PhysiCell_rules.h for default values of format, protocol, and version
 {
@@ -2099,6 +2100,7 @@ void parse_rules_from_file(std::string path_to_file, std::string format, std::st
 	}
 	PhysiCell_settings.rules_enabled = true;
 }
+
 
 void parse_rules_from_parameters_v0( void )
 {
