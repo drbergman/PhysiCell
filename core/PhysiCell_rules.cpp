@@ -1822,7 +1822,7 @@ void parse_xml_rules(std::string filename)
 
 	while (ruleset_node)
 	{
-		std::string cell_type = ruleset_node.child_value("cell_definition");
+		std::string cell_type = ruleset_node.attribute("name").value();
 		// check if cell_type has already had a ruleset defined for it
 		for (int i = 0; i < cell_definitions_ruled.size(); i++)
 		{
@@ -1841,7 +1841,7 @@ void parse_xml_rules(std::string filename)
 		pugi::xml_node behavior_node = ruleset_node.child("behavior");
 		while (behavior_node)
 		{
-			std::string behavior = behavior_node.child_value("name");
+			std::string behavior = behavior_node.attribute("name").value();
 			for (int i = 0; i < behaviors_ruled.size(); i++)
 			{
 				if (behavior == behaviors_ruled[i])
@@ -1899,7 +1899,7 @@ void process_signals(pugi::xml_node response_node, std::string cell_type, std::s
 
 	while (signal_node)
 	{
-		std::string signal = signal_node.child_value("name");
+		std::string signal = signal_node.attribute("name").value();
 
 		for (int i = 0; i < signals_set.size(); i++)
 		{
