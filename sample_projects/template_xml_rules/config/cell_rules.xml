@@ -2,28 +2,23 @@
 
 <hypothesis_rulesets>
 
-    <hypothesis_ruleset>
-        <cell_definition>default</cell_definition>
-        <behavior>
-            <name>apoptosis</name>
+    <hypothesis_ruleset name="default">
+        <behavior name="apoptosis">
             <decreasing_signals />
             <increasing_signals>
                 <max_value>1e-4</max_value>
-                <signal>
-                    <name>substrate</name>
+                <signal name="substrate">
                     <half_max>4</half_max>
                     <hill_power>2</hill_power>
                     <applies_to_dead>0</applies_to_dead>
                 </signal>
             </increasing_signals>
         </behavior>
-        <behavior>
-            <name>cycle entry</name>
+        <behavior name="cycle entry">
             <decreasing_signals />
             <increasing_signals>
                 <max_value>1e-2</max_value>
-                <signal>
-                    <name>substrate</name>
+                <signal name="substrate">
                     <half_max>1</half_max>
                     <hill_power>2</hill_power>
                     <applies_to_dead>0</applies_to_dead>
