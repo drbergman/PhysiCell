@@ -123,7 +123,7 @@ int main( int argc, char* argv[] )
 	
 	/* Users typically start modifying here. START USERMODS */ 
 	
-	create_cell_types(path_to_rules_file);
+	create_cell_types();
 	
 	setup_tissue();
 

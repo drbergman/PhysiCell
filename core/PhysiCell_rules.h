@@ -224,6 +224,9 @@ void parse_csv_rule_v2( std::string input ); // parse a single string (a single 
 void parse_csv_rules_v2( std::string filename ); // parse all rules in a CSV file 
 
 void parse_xml_rules( std::string filename );
+void process_decreasing_signals(pugi::xml_node behavior_node, std::string cell_type, std::string behavior);
+void process_increasing_signals(pugi::xml_node behavior_node, std::string cell_type, std::string behavior);
+void process_signals(pugi::xml_node response_node, std::string cell_type, std::string behavior, std::string response, std::string saturation_value);
 void process_signal(std::vector<std::string> input);
 
 void parse_rules_from_pugixml( void );
