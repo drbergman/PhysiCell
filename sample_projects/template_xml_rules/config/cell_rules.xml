@@ -6,7 +6,7 @@
         <behavior name="apoptosis">
             <decreasing_signals />
             <increasing_signals>
-                <max_value>1e-4</max_value>
+                <max_response>1e-4</max_response>
                 <signal name="substrate">
                     <half_max>4</half_max>
                     <hill_power>2</hill_power>
@@ -15,15 +15,14 @@
             </increasing_signals>
         </behavior>
         <behavior name="cycle entry">
-            <decreasing_signals />
-            <increasing_signals>
-                <max_value>1e-2</max_value>
+            <decreasing_signals>
+                <max_response>1e-2</max_response>
                 <signal name="substrate">
                     <half_max>1</half_max>
                     <hill_power>2</hill_power>
                     <applies_to_dead>0</applies_to_dead>
                 </signal>
-            </increasing_signals>
+            </decreasing_signals>
         </behavior>
     </hypothesis_ruleset>
 
