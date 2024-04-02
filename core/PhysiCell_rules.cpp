@@ -1870,7 +1870,7 @@ void process_decreasing_signals(pugi::xml_node behavior_node, std::string cell_t
 	pugi::xml_node response_node = behavior_node.child("decreasing_signals");
 	if (!response_node)
 	{ return; }
-	std::string min_value = response_node.child_value("min_value");
+	std::string min_value = response_node.child_value("max_response");
 	process_signals(response_node, cell_type, behavior, "decreases", min_value);
 	return;
 }
@@ -1880,12 +1880,12 @@ void process_increasing_signals(pugi::xml_node behavior_node, std::string cell_t
 	pugi::xml_node response_node = behavior_node.child("increasing_signals");
 	if (!response_node)
 	{ return; }
-	std::string max_value = response_node.child_value("max_value");
+	std::string max_value = response_node.child_value("max_response");
 	process_signals(response_node, cell_type, behavior, "increases", max_value);
 	return;
 }
 
-void process_signals(pugi::xml_node response_node, std::string cell_type, std::string behavior, std::string response, std::string saturation_value)
+void process_signals(pugi::xml_node response_node, std::string cell_type, std::string behavior, std::string response, std::string saturation_value_string)
 {
 	pugi::xml_node signal_node = response_node.child("signal");
 	if (!signal_node)
@@ -1897,7 +1897,7 @@ void process_signals(pugi::xml_node response_node, std::string cell_type, std::s
 	input[0] = cell_type;
 	input[2] = response;
 	input[3] = behavior;
-	input[4] = saturation_value;
+	input[4] = saturation_value_string;
 
 	while (signal_node)
 	{
@@ -1926,7 +1926,7 @@ void process_signals(pugi::xml_node response_node, std::string cell_type, std::s
 
 	// compare to base behavior value in cell def for discrepancies
 	Cell_Definition *pCD = find_cell_definition(cell_type);
-	double max_response = std::atof(saturation_value.c_str());
+	double max_response = std::atof(saturation_value_string.c_str());
 	double ref_base_value = get_single_base_behavior(pCD, behavior);
 	
 
