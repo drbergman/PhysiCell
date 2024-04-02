@@ -16,7 +16,7 @@
         </behavior>
         <behavior name="cycle entry">
             <decreasing_signals>
-                <max_response>1e-2</max_response>
+                <max_response>1e-4</max_response>
                 <signal name="substrate">
                     <half_max>1</half_max>
                     <hill_power>2</hill_power>
