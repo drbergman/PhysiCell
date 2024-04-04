@@ -1942,11 +1942,11 @@ void process_signals(pugi::xml_node response_node, std::string cell_type, std::s
 	}
 	else
 	{
-		if (max_response >= ref_base_value)
+		if (max_response > ref_base_value)
 		{
 			std::cout << "XML Rules ERROR: Signals decreasing " << behavior << " for " << cell_type << std::endl
-					  << "\thave a min response >= the base value." << std::endl
-					  << "\tSet min_value for " << behavior << " in " << cell_type << " as < " << ref_base_value << "." << std::endl;
+					  << "\thave a min response > the base value." << std::endl
+					  << "\tSet min_value for " << behavior << " in " << cell_type << " as <= " << ref_base_value << "." << std::endl;
 			exit(-1);
 		}
 		set_behavior_min_value(cell_type, behavior, max_response);
