@@ -84,86 +84,89 @@
 using namespace BioFVM;
 using namespace PhysiCell;
 
-void parse_arguments(int argc, char* argv[], std::string& path_to_config_file, bool& config_file_flagged, std::string& path_to_ic_cells_file, bool& ic_cell_file_included, std::string& path_to_rules_file, bool& rules_file_included, std::string& path_to_output_folder, bool& output_folder_included) {
-	// read arguments
-	int opt;
-	static struct option long_options[] = {
-		{"config", required_argument, 0, 'c'},
-		{"ic-cells", required_argument, 0, 'i'},
-		{"rules", required_argument, 0, 'r'},
-		{"output", required_argument, 0, 'o'},
-		{0, 0, 0, 0}
-	};
+class ArgumentParser {
+public:
+	bool config_file_flagged;
+	std::string path_to_config_file = "./config/PhysiCell_settings.xml";
+	std::string path_to_ic_cells_file;
+	std::string path_to_ic_substrate_file;
+	std::string path_to_ic_ecm_file;
+	std::string path_to_rules_file;
+	std::string path_to_output_folder;
 
-	while ((opt = getopt_long(argc, argv, "c:i:r:o:", long_options, NULL)) != -1)
-	{
-		switch (opt)
-		{
-		case 'c':
-			config_file_flagged = true;
-			path_to_config_file = optarg;
-			break;
-		case 'i':
-			path_to_ic_cells_file = optarg;
-			ic_cell_file_included = true;
-			break;
-		case 'r':
-			path_to_rules_file = optarg;
-			rules_file_included = true;
-			break;
-		case 'o':
-			path_to_output_folder = optarg;
-			output_folder_included = true;
-			break;
-		default:
-			std::cerr << "Usage: " << argv[0] << " [-c path_to_config_file] [-i path_to_ic_cells_file] [-o path_to_output_folder]" << std::endl
-					  << "   Or: " << argv[0] << " path_to_config_file [-i path_to_ic_cells_file] [-o path_to_output_folder]" << std::endl;
-			exit(EXIT_FAILURE);
-		}
-	}
+    ArgumentParser(int argc, char* argv[]) {
+        // read arguments
+        int opt;
+        static struct option long_options[] = {
+            {"config", required_argument, 0, 'c'},
+            {"ic-cells", required_argument, 0, 'i'},
+            {"ic-substrates", required_argument, 0, 's'},
+            {"ic-ecm", required_argument, 0, 'e'},
+            {"rules", required_argument, 0, 'r'},
+            {"output", required_argument, 0, 'o'},
+            {0, 0, 0, 0}
+        };
 
-	// backwards compatibility for loading config file
-	std::string usage = "Usage: " + std::string(argv[0]) + " [-c path_to_config_file] [-i path_to_ic_cells_file] [-o path_to_output_folder]\n"
-                      + "   Or: " + std::string(argv[0]) + " path_to_config_file [-i path_to_ic_cells_file] [-o path_to_output_folder]";
+		std::string usage = "Usage: " + std::string(argv[0]) + " [-c path_to_config_file] [-i path_to_ic_cells_file] [-s path_to_ic_substrate_file] [-e path_to_ic_ecm_file] [-o path_to_output_folder]\n"
+									  + "   Or: " + std::string(argv[0]) + " path_to_config_file [-i path_to_ic_cells_file] [-s path_to_ic_substrate_file] [-e path_to_ic_ecm_file] [-o path_to_output_folder]";
 
-	if (optind == argc - 1 && !config_file_flagged) // config file not flagged and passed in as unflagged argument
-	{
-		path_to_config_file = argv[optind];
-	}
-	else if (optind < argc - 1 || (optind == argc - 1 && config_file_flagged)) // too many unflagged arguments OR config file passed in as both flagged and unflagged arguments
-	{
-		std::cerr << usage << std::endl;
-		exit(EXIT_FAILURE);
-	}
-	return;
-}
+		while ((opt = getopt_long(argc, argv, "c:i:s:e:r:o:", long_options, NULL)) != -1) {
+            switch (opt) {
+            case 'c':
+                config_file_flagged = true;
+                path_to_config_file = optarg;
+                break;
+            case 'i':
+                path_to_ic_cells_file = optarg;
+                break;
+			case 's':
+				path_to_ic_substrate_file = optarg;
+				break;
+			case 'e':
+				path_to_ic_ecm_file = optarg;
+				break;
+            case 'r':
+                path_to_rules_file = optarg;
+                break;
+            case 'o':
+                path_to_output_folder = optarg;
+                break;
+            default:
+				std::cerr << usage << std::endl;
+				exit(EXIT_FAILURE);
+            }
+        }
+
+        if (optind == argc - 1 && !config_file_flagged) // config file not flagged and passed in as unflagged argument
+        {
+            path_to_config_file = argv[optind];
+        }
+        else if (optind < argc - 1 || (optind == argc - 1 && config_file_flagged)) // too many unflagged arguments OR config file passed in as both flagged and unflagged arguments
+        {
+            std::cerr << usage << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+};
 
 int main( int argc, char* argv[] )
 {
 	// read arguments
-	std::string path_to_config_file = "./config/PhysiCell_settings.xml";
-	bool config_file_flagged = false;
-	std::string path_to_ic_cells_file;
-	bool ic_cell_file_included = false;
-	std::string path_to_rules_file;
-	bool rules_file_included = false;
-	std::string path_to_output_folder;
-	bool output_folder_included = false;
-
-	parse_arguments(argc, argv, path_to_config_file, config_file_flagged, path_to_ic_cells_file, ic_cell_file_included, path_to_rules_file, rules_file_included, path_to_output_folder, output_folder_included);
+	// ArgumentParser parser(argc, argv);
+	ArgumentParser ap = ArgumentParser(argc, argv);
 
 	// load and parse settings file(s)
-	bool XML_status = load_PhysiCell_config_file( path_to_config_file );
+	bool XML_status = load_PhysiCell_config_file( ap.path_to_config_file );
 	if (!XML_status) {
-		std::cerr << "Error: failed to load settings file " << path_to_config_file << std::endl;
+		std::cerr << "Error: failed to load settings file " << ap.path_to_config_file << std::endl;
 		exit(EXIT_FAILURE);
 	}
-	if (output_folder_included) {
-		PhysiCell_settings.folder = path_to_output_folder; // overwrite output folder if supplied by flag
+	if (ap.path_to_output_folder != "") {
+		PhysiCell_settings.folder = ap.path_to_output_folder; // overwrite output folder if supplied by flag
 	}
 	char copy_command [1024]; 
 
-	sprintf( copy_command , "cp %s %s/PhysiCell_settings.xml" , path_to_config_file.c_str(), PhysiCell_settings.folder.c_str() ); //, PhysiCell_settings.folder.c_str() ); 
+	sprintf( copy_command , "cp %s %s/PhysiCell_settings.xml" , ap.path_to_config_file.c_str(), PhysiCell_settings.folder.c_str() ); //, PhysiCell_settings.folder.c_str() ); 
 	
 	// copy config file to output directry 
 	system( copy_command ); 
@@ -186,16 +189,8 @@ int main( int argc, char* argv[] )
 	
 	/* Users typically start modifying here. START USERMODS */ 
 	
-	if (rules_file_included) {
-		create_cell_types(path_to_rules_file);
-	} else {
-		create_cell_types();
-	}
-	if (ic_cell_file_included) {
-		setup_tissue(path_to_ic_cells_file);
-	} else {
-		setup_tissue();
-	}
+	create_cell_types(ap.path_to_rules_file);
+	setup_tissue(ap.path_to_ic_cells_file);
 
 	/* Users typically stop modifying here. END USERMODS */ 
 	

@@ -67,75 +67,6 @@
 
 #include "./custom.h"
 
-void create_cell_types( void )
-{
-	// set the random seed 
-	SeedRandom( parameters.ints("random_seed") );  
-	
-	/* 
-	   Put any modifications to default cell definition here if you 
-	   want to have "inherited" by other cell types. 
-	   
-	   This is a good place to set default functions. 
-	*/ 
-	
-	initialize_default_cell_definition(); 
-	cell_defaults.phenotype.secretion.sync_to_microenvironment( &microenvironment ); 
-	
-	cell_defaults.functions.volume_update_function = standard_volume_update_function;
-	cell_defaults.functions.update_velocity = standard_update_cell_velocity;
-
-	cell_defaults.functions.update_migration_bias = NULL; 
-	cell_defaults.functions.update_phenotype = NULL; // update_cell_and_death_parameters_O2_based; 
-	cell_defaults.functions.custom_cell_rule = NULL; 
-	cell_defaults.functions.contact_function = NULL; 
-	
-	cell_defaults.functions.add_cell_basement_membrane_interactions = NULL; 
-	cell_defaults.functions.calculate_distance_to_membrane = NULL; 
-	
-	/*
-	   This parses the cell definitions in the XML config file. 
-	*/
-	
-	initialize_cell_definitions_from_pugixml(); 
-
-	/*
-	   This builds the map of cell definitions and summarizes the setup. 
-	*/
-		
-	build_cell_definitions_maps(); 
-
-	/*
-	   This intializes cell signal and response dictionaries 
-	*/
-
-	setup_signal_behavior_dictionaries(); 	
-
-	/*
-       Cell rule definitions 
-	*/
-
-	setup_cell_rules(); 
-
-	/* 
-	   Put any modifications to individual cell definitions here. 
-	   
-	   This is a good place to set custom functions. 
-	*/ 
-	
-	cell_defaults.functions.update_phenotype = phenotype_function; 
-	cell_defaults.functions.custom_cell_rule = custom_function; 
-	cell_defaults.functions.contact_function = contact_function; 
-	
-	/*
-	   This builds the map of cell definitions and summarizes the setup. 
-	*/
-		
-	display_cell_definitions( std::cout ); 
-	
-	return; 
-}
-
 void create_cell_types(std::string path_to_rules_file)
 {
 	// set the random seed
@@ -219,20 +150,11 @@ void setup_microenvironment( void )
 	return; 
 }
 
-void setup_tissue( void )
-{
-	setup_tissue_domain(); 
-	// load cells from your CSV file (if enabled)
-	load_cells_from_pugixml(); 	
-	
-	return; 
-}
-
 void setup_tissue(std::string path_to_ic_cells_file)
 {
 	setup_tissue_domain();
 	// load cells from your CSV file (if enabled)
-	load_cells_from_file(path_to_ic_cells_file);
+	load_initial_cells(path_to_ic_cells_file);
 
 	return;
 }
