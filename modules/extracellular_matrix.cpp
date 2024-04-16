@@ -111,7 +111,6 @@ void setup_extracellular_matrix(void)
 		else if (PhysiCell::parameters.strings("ecm_orientation_setup") == "circular")
 		{
 			std::vector<double> position = ecm.ecm_mesh.voxels[n].center;
-			;
 			normalize(&position);
 			ecm.ecm_voxels[n].ecm_fiber_alignment = {position[1], -position[0], 0}; // oriented in cirlce
 			normalize(&ecm.ecm_voxels[n].ecm_fiber_alignment);
@@ -143,6 +142,10 @@ void setup_extracellular_matrix(void)
 				normalize(&ecm.ecm_voxels[n].ecm_fiber_alignment);
 			}
 		}
+		else if {PhysiCell::parameters.strings("ecm_orientation_setup") == "csv"}
+		{
+			initialize_ecm_from_csv();
+		}
 		else
 		{
 			std::cout << "WARNING: NO ECM ORIENTATION SPECIFIED. FIX THIS!!!" << std::endl;
@@ -152,6 +155,33 @@ void setup_extracellular_matrix(void)
 		}
 
 	}
+}
+
+void initialize_ecm_from_csv(void)
+{
+	pugi::xml_node node;
+
+	node = xml_find_node(physicell_config_root, "microenvironment_setup");
+	node = xml_find_node(node, "ecm_setup");
+
+	bool ecm_setup_enabled = node.attribute("enabled").as_bool();
+	if (!ecm_setup_enabled)
+	{
+		std::cout << "WARNING: ECM setup not enabled. But you are trying to initialize from a csv file. Fix this!!!" << std::endl;
+		return;
+	}
+	std::string format = node.attribute("format").as_string();
+	if (format != "csv")
+	{
+		std::cout << "ERROR: ECM setup format not recognized. Fix this!!!" << std::endl;
+		std::cout << "Halting program!!!" << std::endl;
+		exit(-1);
+	}
+
+	std::string csv_file = xml_get_string(node, "filename");
+	std::string csv_folder = xml_get_string(node, "folder");
+
+	
 }
 
 void copy_ecm_data_to_BioFVM(void)
