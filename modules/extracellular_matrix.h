@@ -68,7 +68,7 @@ void copy_ecm_data_to_BioFVM(void);
 // extern ECM_options default_ecm_options;
 // extern ECM ecm;
 
-void setup_extracellular_matrix(void);
+void setup_extracellular_matrix(std::string path_to_ic_ecm_file = "");
 
 void copy_ecm_data_to_BioFVM(void);
 

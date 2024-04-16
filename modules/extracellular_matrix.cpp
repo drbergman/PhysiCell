@@ -72,7 +72,7 @@ ECM_options::ECM_options()
 {
 }
 
-void setup_extracellular_matrix(void)
+void setup_extracellular_matrix(std::string path_to_ic_ecm_file )
 {
 	if (PhysiCell_settings.ecm_enabled == false)
 	{ return; }
