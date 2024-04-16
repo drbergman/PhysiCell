@@ -74,6 +74,8 @@ ECM_options::ECM_options()
 
 void setup_extracellular_matrix(void)
 {
+	if (PhysiCell_settings.ecm_enabled == false)
+	{ return; }
 	// DEPENDS ON MICROENVIRONMENT - CALL SETUP MICROENVIRONEMNT FIRST!!!!!
 
 	ecm.ecm_mesh.resize(default_microenvironment_options.X_range[0], default_microenvironment_options.X_range[1],
@@ -292,6 +294,8 @@ void initialize_ecm_from_csv(void)
 
 void copy_ecm_data_to_BioFVM(void)
 {
+	if (PhysiCell_settings.ecm_enabled == false)
+	{ return; }
 	// This enables the use of rules to change the cell behaviors as well as aspects of visualization in the Studio
 	// this is ONE WAY!!! DO NOT MODIFY WITHING BIOFVM!!! OR USE CELLS TO CHANGE THIS!!!!!!!!!
 
