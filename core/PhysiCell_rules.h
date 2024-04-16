@@ -224,6 +224,7 @@ void parse_csv_rule_v2( std::string input ); // parse a single string (a single 
 void parse_csv_rules_v2( std::string filename ); // parse all rules in a CSV file 
 
 void parse_rules_from_pugixml( void );
+void parse_rules_from_file(std::string path_to_file, std::string format = "", std::string protocol = "", double version = -1.0);
 
 // needs fixing March 2023 // probably deprecate
 void parse_rules_from_parameters_v0( void ); 
@@ -275,7 +276,8 @@ std::vector<double> linear_response_to_Hill_parameters( double s0, double s1 );
 std::vector<double> Hill_response_to_linear_parameters( double half_max , double Hill_power ); 
 */
 
-void setup_cell_rules( void );
+void setup_cell_rules( std::string path_to_rules_file="" );
+void record_cell_rules( void );
 
 }; 
 
