@@ -78,7 +78,7 @@ void setup_tissue( std::string path_to_ic_cells_file );
 void setup_tissue_domain( void );
 
 // set up the BioFVM microenvironment 
-void setup_microenvironment( void ); 
+void setup_microenvironment( std::string path_to_ic_substrate_file = "" ); 
 
 // custom pathology coloring function 
 

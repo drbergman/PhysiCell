@@ -179,7 +179,7 @@ int main( int argc, char* argv[] )
 
 	/* Microenvironment setup */ 
 	
-	setup_microenvironment(); // modify this in the custom code 
+	setup_microenvironment( ap.path_to_ic_substrate_file ); // modify this in the custom code 
 	
 	/* PhysiCell setup */ 
  	

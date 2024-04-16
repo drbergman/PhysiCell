@@ -136,7 +136,7 @@ void create_cell_types(std::string path_to_rules_file)
 	return;
 }
 
-void setup_microenvironment( void )
+void setup_microenvironment( std::string path_to_ic_substrate_file )
 {
 	// set domain parameters 
 	
@@ -145,7 +145,7 @@ void setup_microenvironment( void )
 	
 	// initialize BioFVM 
 	
-	initialize_microenvironment(); 	
+	initialize_microenvironment( path_to_ic_substrate_file ); 	
 	
 	return; 
 }
