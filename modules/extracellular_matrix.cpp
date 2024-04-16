@@ -142,7 +142,7 @@ void setup_extracellular_matrix(void)
 				normalize(&ecm.ecm_voxels[n].ecm_fiber_alignment);
 			}
 		}
-		else if {PhysiCell::parameters.strings("ecm_orientation_setup") == "csv"}
+		else if (PhysiCell::parameters.strings("ecm_orientation_setup") == "csv")
 		{
 			initialize_ecm_from_csv();
 		}
@@ -178,8 +178,8 @@ void initialize_ecm_from_csv(void)
 		exit(-1);
 	}
 
-	std::string csv_file = xml_get_string(node, "filename");
-	std::string csv_folder = xml_get_string(node, "folder");
+	std::string csv_file = xml_get_string_value(node, "filename");
+	std::string csv_folder = xml_get_string_value(node, "folder");
 
 	// The .csv file needs to contain one row per voxel.
 	// Each row is a vector of values as follows: [x coord, y coord, z coord, ecm_density, ecm_orientation_x, ecm_orientation_y]
