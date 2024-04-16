@@ -158,8 +158,9 @@
 			</dirichlet_nodes>
 		</options>
 
-		<ecm_setup>
-
+		<ecm_setup enabled="false" format="csv">
+			<folder>./config</folder>
+			<filename>ecm.csv</filename>
 		</ecm_setup>
 	</microenvironment_setup>	
 	

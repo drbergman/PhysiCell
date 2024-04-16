@@ -62,6 +62,7 @@ public:
 	ECM_options(); // needs defined!!!
 };
 
+void initialize_ecm_from_csv(void);
 void copy_ecm_data_to_BioFVM(void);
 
 // extern ECM_options default_ecm_options;
