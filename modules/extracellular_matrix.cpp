@@ -83,6 +83,11 @@ void setup_extracellular_matrix(void)
 
 	ecm.ecm_mesh.display_information(std::cout);
 
+	if (PhysiCell::parameters.strings("ecm_orientation_setup") == "csv")
+	{
+		return initialize_ecm_from_csv();
+	}
+
 	// double initial_anisotropy = PhysiCell::parameters.doubles("initial_ecm_anisotropy");
 
 	int density_ind = microenvironment.find_density_index("ecm_density");
@@ -141,10 +146,6 @@ void setup_extracellular_matrix(void)
 				ecm.ecm_voxels[n].ecm_fiber_alignment = {1, 1, 0}; // oriented out (perpindeicular to concentric circles)
 				normalize(&ecm.ecm_voxels[n].ecm_fiber_alignment);
 			}
-		}
-		else if (PhysiCell::parameters.strings("ecm_orientation_setup") == "csv")
-		{
-			initialize_ecm_from_csv();
 		}
 		else
 		{
