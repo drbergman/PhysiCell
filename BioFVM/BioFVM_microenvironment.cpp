@@ -1623,7 +1623,7 @@ void load_initial_conditions_from_csv(std::string filename)
 	std::ifstream file( filename, std::ios::in );
 	if( !file )
 	{ 
-		std::cout << "Error: " << filename << " not found during cell loading. Quitting." << std::endl; 
+		std::cout << "ERROR: " << filename << " not found during cell loading. Quitting." << std::endl; 
 		exit(-1);
 	}
 
@@ -1651,6 +1651,13 @@ void load_initial_conditions_from_csv(std::string filename)
 		}
 		for (int i = 3; i<column_names.size(); i++) // skip x,y,z by starting at 3, not 0
 		{
+			int substrate_index = microenvironment.find_density_index(column_names[i]);
+			if (substrate_index == -1)
+			{
+				std::cout << "ERROR: Substrate " << column_names[i] << " not found in the BioFVM microenvironment. Exiting now." << std::endl;
+				file.close();
+				exit(-1);
+			}
 			substrate_indices.push_back(microenvironment.find_density_index(column_names[i]));
 		}
 	}

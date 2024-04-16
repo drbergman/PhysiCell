@@ -111,7 +111,6 @@ void setup_extracellular_matrix(void)
 		else if (PhysiCell::parameters.strings("ecm_orientation_setup") == "circular")
 		{
 			std::vector<double> position = ecm.ecm_mesh.voxels[n].center;
-			;
 			normalize(&position);
 			ecm.ecm_voxels[n].ecm_fiber_alignment = {position[1], -position[0], 0}; // oriented in cirlce
 			normalize(&ecm.ecm_voxels[n].ecm_fiber_alignment);
@@ -143,6 +142,10 @@ void setup_extracellular_matrix(void)
 				normalize(&ecm.ecm_voxels[n].ecm_fiber_alignment);
 			}
 		}
+		else if {PhysiCell::parameters.strings("ecm_orientation_setup") == "csv"}
+		{
+			initialize_ecm_from_csv();
+		}
 		else
 		{
 			std::cout << "WARNING: NO ECM ORIENTATION SPECIFIED. FIX THIS!!!" << std::endl;
@@ -152,6 +155,138 @@ void setup_extracellular_matrix(void)
 		}
 
 	}
+}
+
+void initialize_ecm_from_csv(void)
+{
+	pugi::xml_node node;
+
+	node = xml_find_node(physicell_config_root, "microenvironment_setup");
+	node = xml_find_node(node, "ecm_setup");
+
+	bool ecm_setup_enabled = node.attribute("enabled").as_bool();
+	if (!ecm_setup_enabled)
+	{
+		std::cout << "WARNING: ECM setup not enabled. But you are trying to initialize from a csv file. Fix this!!!" << std::endl;
+		return;
+	}
+	std::string format = node.attribute("format").as_string();
+	if (format != "csv")
+	{
+		std::cout << "ERROR: ECM setup format not recognized. Fix this!!!" << std::endl;
+		std::cout << "Halting program!!!" << std::endl;
+		exit(-1);
+	}
+
+	std::string csv_file = xml_get_string(node, "filename");
+	std::string csv_folder = xml_get_string(node, "folder");
+
+	// The .csv file needs to contain one row per voxel.
+	// Each row is a vector of values as follows: [x coord, y coord, z coord, ecm_density, ecm_orientation_x, ecm_orientation_y]
+	// Thus, your table should be of size #voxels x 6 (rows x columns)
+
+	std::string filename = csv_folder + "/" + csv_file;
+
+	// open file 
+	std::ifstream file( filename, std::ios::in );
+	if( !file )
+	{ 
+		std::cout << "ERROR: " << filename << " not found during ecm initialization. Quitting." << std::endl; 
+		exit(-1);
+	}
+
+	// determine if header row exists 
+	std::string line; 
+	std::getline( file , line );
+	char c = line.c_str()[0];
+	if( c == 'X' || c == 'x' )
+	{ 
+		// do not support this with a header yet
+		if ((line.c_str()[2] != 'Y' && line.c_str()[2] != 'y') || (line.c_str()[4] != 'Z' && line.c_str()[4] != 'z'))
+		{
+			std::cout << "ERROR: Header row starts with x but then not y,z? What is this? Exiting now." << std::endl;
+			file.close();
+			exit(-1);
+		}
+		std::vector< std::string> column_names; // this will include x,y,z (so make sure to skip those below)
+		std::stringstream stream(line);
+		std::string field;
+
+		while (std::getline(stream, field, ','))
+		{
+			column_names.push_back(field);
+		}
+
+		std::vector<std::string> expected_column_names = {"x", "y", "z", "ecm_density", "ecm_orientation_x", "ecm_orientation_y"};
+		if (column_names.size() != expected_column_names.size())
+		{
+			std::cout << "ERROR: Wrong number of columns in the header row of the .csv file specifying BioFVM initial conditions." << std::endl
+					  << "\tExpected: " << expected_column_names.size() << std::endl
+					  << "\tFound: " << column_names.size() << std::endl
+					  << "\tRemember, your table should have dimensions #voxels x 6." << std::endl
+					  << "\tThe header row (if present) should be: x,y,z,ecm_density,ecm_orientation_x,ecm_orientation_y" << std::endl;
+			exit(-1);
+		}
+		for (int i = 0; i<column_names.size(); i++) // skip x,y,z by starting at 3, not 0
+		{
+			if (column_names[i] != expected_column_names[i])
+			{
+				std::cout << "ERROR: Wrong column name in the header row of the .csv file specifying BioFVM initial conditions." << std::endl
+						  << "\tExpected: " << expected_column_names[i] << std::endl
+						  << "\tFound: " << column_names[i] << std::endl
+						  << "\tRemember, your table should have dimensions #voxels x 6." << std::endl
+						  << "\tThe header row (if present) should be: x,y,z,ecm_density,ecm_orientation_x,ecm_orientation_y" << std::endl;
+				exit(-1);
+			}
+		}
+	}
+
+	std::cout << "Loading ecm initial conditions from CSV file " << filename << " ... " << std::endl;
+	std::vector<int> voxel_set = {}; // set to check that no voxel value is set twice
+
+	while (std::getline(file, line))
+	{
+		std::vector<double> data;
+		csv_to_vector(line.c_str(), data);
+
+		if ((voxel_set.size() == 0) && (data.size() != 6))
+		{
+			std::cout << "WARNING: Wrong number of ecm values supplied in the .csv file specifying ecm initial conditions." << std::endl
+					  << "\tExpected: 6" << std::endl
+					  << "\tFound: " << data.size() << std::endl
+					  << "\tRemember, save your csv with columns as: x, y, z, ecm_density, ecm_orientation_x, ecm_orientation_y" << std::endl;
+		}
+
+		std::vector<double> position = {data[0], data[1], data[2]};
+		int voxel_ind = ecm.ecm_mesh.nearest_voxel_index(position);
+		ecm.ecm_voxels[voxel_ind].density = data[3];
+		ecm.ecm_voxels[voxel_ind].ecm_fiber_alignment = {data[4], data[5], 0.0};
+		ecm.ecm_voxels[voxel_ind].anisotropy = norm(ecm.ecm_voxels[voxel_ind].ecm_fiber_alignment);
+		
+		for (unsigned int j = 0; j < voxel_set.size(); j++)
+		{
+			if (voxel_ind == voxel_set[j])
+			{
+				std::cout << "ERROR : the csv-supplied initial conditions for BioFVM repeat the same voxel. Fix the .csv file and try again." << std::endl
+						  << "\tPosition that was repeated: " << position << std::endl;
+				exit(-1);
+			}
+		}
+		voxel_set.push_back(voxel_ind);
+	}
+
+	if (voxel_set.size() != ecm.ecm_voxels.size())
+	{
+		std::cout << "ERROR : Wrong number of voxels supplied in the .csv file specifying ecm initial conditions." << std::endl
+				  << "\tExpected: " << ecm.ecm_voxels.size() << std::endl
+				  << "\tFound: " << voxel_set.size() << std::endl
+				  << "\tRemember, your table should have dimensions #voxels x 6." << std::endl;
+		exit(-1);
+	}
+
+	file.close();
+
+	return;
 }
 
 void copy_ecm_data_to_BioFVM(void)

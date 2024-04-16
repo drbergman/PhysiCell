@@ -163,6 +163,10 @@
 				<filename>./config/dirichlet.mat</filename>
 			</dirichlet_nodes>
 		</options>
+
+		<ecm_setup>
+
+		</ecm_setup>
 	</microenvironment_setup>	
 	
 	<cell_definitions>
