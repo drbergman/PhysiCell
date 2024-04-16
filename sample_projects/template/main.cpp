@@ -114,6 +114,9 @@ int main( int argc, char* argv[] )
 	/* Microenvironment setup */ 
 	
 	setup_microenvironment(); // modify this in the custom code 
+
+	setup_extracellular_matrix();
+	copy_ecm_data_to_BioFVM();
 	
 	/* PhysiCell setup */ 
  	
@@ -221,6 +224,7 @@ int main( int argc, char* argv[] )
 			/*
 			  Custom add-ons could potentially go here. 
 			*/
+			copy_ecm_data_to_BioFVM();
 			
 			PhysiCell_globals.current_time += diffusion_dt;
 		}

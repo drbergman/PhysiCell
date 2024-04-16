@@ -254,6 +254,11 @@ void PhysiCell_Settings::read_from_pugixml( void )
 
 		// other options can go here, eventually 
 
+		pugi::xml_node node = xml_find_node( physicell_config_root , "microenvironment_setup" );
+		node = xml_find_node(node, "ecm_setup");
+		if (node)
+		{ PhysiCell_settings.ecm_enabled = node.attribute("enabled").as_bool(); } // else default is false
+		
 	}
 	
 	// domain options 
