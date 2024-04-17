@@ -158,10 +158,13 @@
 			</dirichlet_nodes>
 		</options>
 
-		<ecm_setup enabled="false" format="csv">
+		<ecm_setup enabled="false" format="keyword">
+			<keyword>random</keyword>
+		</ecm_setup>
+		<!-- <ecm_setup enabled="false" format="csv">
 			<folder>./config</folder>
 			<filename>ecm.csv</filename>
-		</ecm_setup>
+		</ecm_setup> -->
 	</microenvironment_setup>	
 	
 	<cell_definitions>

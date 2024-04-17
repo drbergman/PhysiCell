@@ -114,10 +114,8 @@ int main( int argc, char* argv[] )
 	/* Microenvironment setup */ 
 	
 	setup_microenvironment(); // modify this in the custom code 
-
 	setup_extracellular_matrix();
-	copy_ecm_data_to_BioFVM();
-	
+
 	/* PhysiCell setup */ 
  	
 	// set mechanics voxel size, and match the data structure to BioFVM

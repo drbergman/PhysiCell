@@ -74,9 +74,17 @@ ECM_options::ECM_options()
 
 void setup_extracellular_matrix(void)
 {
-	if (PhysiCell_settings.ecm_enabled == false)
-	{ return; }
-	// DEPENDS ON MICROENVIRONMENT - CALL SETUP MICROENVIRONEMNT FIRST!!!!!
+	pugi::xml_node ecm_setup_node;
+
+	ecm_setup_node = xml_find_node(physicell_config_root, "microenvironment_setup");
+	ecm_setup_node = xml_find_node(ecm_setup_node, "ecm_setup");
+	if (!ecm_setup_node || !ecm_setup_node.attribute("enabled").as_bool())
+	{
+		PhysiCell_settings.ecm_enabled = false;
+		return;
+	}
+	PhysiCell_settings.ecm_enabled = true;
+
 
 	ecm.ecm_mesh.resize(default_microenvironment_options.X_range[0], default_microenvironment_options.X_range[1],
 						default_microenvironment_options.Y_range[0], default_microenvironment_options.Y_range[1], default_microenvironment_options.Z_range[0], default_microenvironment_options.Z_range[1],
@@ -84,12 +92,26 @@ void setup_extracellular_matrix(void)
 	ecm.resize_ecm_units_from_ecm_mesh();
 
 	ecm.ecm_mesh.display_information(std::cout);
-
-	if (PhysiCell::parameters.strings("ecm_orientation_setup") == "csv")
+	std::string format = ecm_setup_node.attribute("format").as_string();
+	if (format == "keyword")
 	{
-		return initialize_ecm_from_csv();
+		std::string keyword = xml_get_string_value(ecm_setup_node, "keyword");
+		initialize_ecm_by_keyword(keyword);
 	}
+	else
+	{
+		std::string csv_file = xml_get_string_value(ecm_setup_node, "filename");
+		std::string csv_folder = xml_get_string_value(ecm_setup_node, "folder");
 
+		std::string path_to_ic_ecm_file = csv_folder + "/" + csv_file;
+		initialize_ecm_from_file(path_to_ic_ecm_file, format);
+	}
+	check_ecm_in_substrates();
+	copy_ecm_data_to_BioFVM();
+}
+
+void initialize_ecm_by_keyword(std::string keyword)
+{
 	// double initial_anisotropy = PhysiCell::parameters.doubles("initial_ecm_anisotropy");
 
 	int density_ind = microenvironment.find_density_index("ecm_density");
@@ -100,40 +122,36 @@ void setup_extracellular_matrix(void)
 		ecm.ecm_voxels[n].density = microenvironment.density_vector(n)[density_ind];
 		ecm.ecm_voxels[n].anisotropy = microenvironment.density_vector(n)[anisotropy_ind];
 
-		// For random 2-D initalization
-		if (PhysiCell::parameters.strings("ecm_orientation_setup") == "random")
+		if (keyword == "random")
 		{
 			double theta = 6.2831853071795864769252867665590 * uniform_random();
 			ecm.ecm_voxels[n].ecm_fiber_alignment = {ecm.ecm_voxels[n].anisotropy * cos(theta), ecm.ecm_voxels[n].anisotropy * sin(theta), 0.0};
 		}
-		// for starburst initialization
-		else if (PhysiCell::parameters.strings("ecm_orientation_setup") == "starburst")
+		else if (keyword == "starburst")
 		{
 			std::vector<double> position = ecm.ecm_mesh.voxels[n].center;
 			normalize(&position);
 			ecm.ecm_voxels[n].ecm_fiber_alignment = {position[0], position[1], 0}; // oriented out (perpindeicular to concentric circles)
 			normalize(&ecm.ecm_voxels[n].ecm_fiber_alignment);
 		}
-		// for circular initialization
-		else if (PhysiCell::parameters.strings("ecm_orientation_setup") == "circular")
+		else if (keyword == "circular")
 		{
 			std::vector<double> position = ecm.ecm_mesh.voxels[n].center;
 			normalize(&position);
-			ecm.ecm_voxels[n].ecm_fiber_alignment = {position[1], -position[0], 0}; // oriented in cirlce
+			ecm.ecm_voxels[n].ecm_fiber_alignment = {position[1], -position[0], 0}; // oriented in circle
 			normalize(&ecm.ecm_voxels[n].ecm_fiber_alignment);
 		}
-
-		else if (PhysiCell::parameters.strings("ecm_orientation_setup") == "horizontal")
+		else if (keyword == "horizontal")
 		{
 			ecm.ecm_voxels[n].ecm_fiber_alignment = {1.0, 0.0, 0.0};
 			normalize(&ecm.ecm_voxels[n].ecm_fiber_alignment);
 		}
-		else if (PhysiCell::parameters.strings("ecm_orientation_setup") == "vertical")
+		else if (keyword == "vertical")
 		{
 			ecm.ecm_voxels[n].ecm_fiber_alignment = {0.0, 1.0, 0.0};
 			normalize(&ecm.ecm_voxels[n].ecm_fiber_alignment);
 		}
-		else if (PhysiCell::parameters.strings("ecm_orientation_setup") == "split")
+		else if (keyword == "split")
 		{
 			std::vector<double> position = ecm.ecm_mesh.voxels[n].center;
 			normalize(&position);
@@ -151,50 +169,39 @@ void setup_extracellular_matrix(void)
 		}
 		else
 		{
-			std::cout << "WARNING: NO ECM ORIENTATION SPECIFIED. FIX THIS!!!" << std::endl;
+			std::cout << "ERROR: Invalid keyword for initializing ECM. Fix this!!!" << std::endl;
 			std::cout << "Halting program!!!" << std::endl;
 			abort();
-			return;
 		}
-
 	}
 }
 
-void initialize_ecm_from_csv(void)
+void initialize_ecm_from_file(std::string path_to_ic_ecm_file, std::string format)
 {
-	pugi::xml_node node;
-
-	node = xml_find_node(physicell_config_root, "microenvironment_setup");
-	node = xml_find_node(node, "ecm_setup");
-
-	bool ecm_setup_enabled = node.attribute("enabled").as_bool();
-	if (!ecm_setup_enabled)
+	if (format == "")
 	{
-		std::cout << "WARNING: ECM setup not enabled. But you are trying to initialize from a csv file. Fix this!!!" << std::endl;
-		return;
+		// get format from file extension
+		format = path_to_ic_ecm_file.substr(path_to_ic_ecm_file.find_last_of(".") + 1);
 	}
-	std::string format = node.attribute("format").as_string();
-	if (format != "csv")
+
+	if (format == "csv")
 	{
+		initialize_ecm_from_csv( path_to_ic_ecm_file );
+	}
+	else{
 		std::cout << "ERROR: ECM setup format not recognized. Fix this!!!" << std::endl;
-		std::cout << "Halting program!!!" << std::endl;
-		exit(-1);
+		exit(EXIT_FAILURE);
 	}
+	std::cout << "Exiting initialize_ecm_from_file" << std::endl;
+}
 
-	std::string csv_file = xml_get_string_value(node, "filename");
-	std::string csv_folder = xml_get_string_value(node, "folder");
-
-	// The .csv file needs to contain one row per voxel.
-	// Each row is a vector of values as follows: [x coord, y coord, z coord, ecm_density, ecm_orientation_x, ecm_orientation_y]
-	// Thus, your table should be of size #voxels x 6 (rows x columns)
-
-	std::string filename = csv_folder + "/" + csv_file;
-
+void initialize_ecm_from_csv(std::string path_to_ic_ecm_file)
+{
 	// open file 
-	std::ifstream file( filename, std::ios::in );
+	std::ifstream file( path_to_ic_ecm_file, std::ios::in );
 	if( !file )
 	{ 
-		std::cout << "ERROR: " << filename << " not found during ecm initialization. Quitting." << std::endl; 
+		std::cout << "ERROR: " << path_to_ic_ecm_file << " not found during ecm initialization. Quitting." << std::endl; 
 		exit(-1);
 	}
 
@@ -244,7 +251,7 @@ void initialize_ecm_from_csv(void)
 		}
 	}
 
-	std::cout << "Loading ecm initial conditions from CSV file " << filename << " ... " << std::endl;
+	std::cout << "Loading ecm initial conditions from CSV file " << path_to_ic_ecm_file << " ... " << std::endl;
 	std::vector<int> voxel_set = {}; // set to check that no voxel value is set twice
 
 	while (std::getline(file, line))
@@ -270,7 +277,7 @@ void initialize_ecm_from_csv(void)
 		{
 			if (voxel_ind == voxel_set[j])
 			{
-				std::cout << "ERROR : the csv-supplied initial conditions for BioFVM repeat the same voxel. Fix the .csv file and try again." << std::endl
+				std::cout << "ERROR : the csv-supplied initial conditions for ecm repeat the same voxel. Fix the .csv file and try again." << std::endl
 						  << "\tPosition that was repeated: " << position << std::endl;
 				exit(-1);
 			}
@@ -308,38 +315,12 @@ void copy_ecm_data_to_BioFVM(void)
 	{
 		return;
 	}
-	int number_of_voxels = ecm.ecm_mesh.voxels.size();
+	static int number_of_voxels = ecm.ecm_mesh.voxels.size();
 
 	static int ecm_anisotropy_index = microenvironment.find_density_index("ecm_anisotropy");
-	if (ecm_anisotropy_index == -1)
-	{
-	    std::cout << "        static int ecm_anisotropy_index = " <<ecm_anisotropy_index << std::endl;
-	    std::exit(-1);
-	}
 	static int ecm_density_index = microenvironment.find_density_index("ecm_density");
-	if (ecm_density_index == -1)
-	{
-	    std::cout << "        static int ecm_density_index = " <<ecm_density_index << std::endl;
-	    std::exit(-1);
-	}
 	static int ecm_orientation_x_index = microenvironment.find_density_index("ecm_orientation_x");
-	if (ecm_orientation_x_index == -1)
-	{
-	    std::cout << "        static int ecm_orientation_x_index = " <<ecm_orientation_x_index << std::endl;
-	    std::exit(-1);
-	}
 	static int ecm_orientation_y_index = microenvironment.find_density_index("ecm_orientation_y");
-	if (ecm_orientation_y_index == -1)
-	{
-	    std::cout << "        static int ecm_orientation_y_index = " <<ecm_orientation_y_index << std::endl;
-	    std::exit(-1);
-	}
-	// static int ecm_radial_index = microenvironment.find_density_index("ecm_radial");
-	// if (ecm_radial_index == -1)
-	// {
-	//     std::cout << "        static int ecm_radial_index = " <<ecm_radial_index << std::endl;
-	//     std::exit(-1);
-	// }
 
 	for (int n = 0; n < number_of_voxels; n++)
 	{
@@ -347,35 +328,37 @@ void copy_ecm_data_to_BioFVM(void)
 		microenvironment.density_vector(n)[ecm_anisotropy_index] = ecm.ecm_voxels[n].anisotropy;
 		microenvironment.density_vector(n)[ecm_orientation_x_index] = ecm.ecm_voxels[n].ecm_fiber_alignment[0];
 		microenvironment.density_vector(n)[ecm_orientation_y_index] = ecm.ecm_voxels[n].ecm_fiber_alignment[1];
-		// if (ecm_density_index != -1)
-		// {
-		// 	microenvironment.density_vector(n)[ecm_density_index] = ecm.ecm_voxels[n].density;
-		// }
-		// if (ecm_anisotropy_index != -1)
-		// {
-		// 	microenvironment.density_vector(n)[ecm_anisotropy_index] = ecm.ecm_voxels[n].anisotropy;
-		// }
-		// if (ecm_orientation_x_index != -1)
-		// {
-		// 	microenvironment.density_vector(n)[ecm_orientation_x_index] = ecm.ecm_voxels[n].ecm_fiber_alignment[0];
-		// }
-		// if (ecm_orientation_y_index != -1)
-		// {
-		// 	microenvironment.density_vector(n)[ecm_orientation_y_index] = ecm.ecm_voxels[n].ecm_fiber_alignment[1];
-		// }
-
-		// std::vector<unsigned int> cart_inds = microenvironment.cartesian_indices(n);
-		// std::vector<double> voxel_position = {microenvironment.mesh.x_coordinates[cart_inds[0]], microenvironment.mesh.y_coordinates[cart_inds[1]], microenvironment.mesh.z_coordinates[cart_inds[2]]};
-		// if ((voxel_position[0] != 0 || voxel_position[1] != 0 || voxel_position[2] != 0) && ecm.ecm_voxels[n].anisotropy != 0)
-		// {
-		// 	microenvironment.density_vector(n)[ecm_radial_index] = fabs(dot_product(ecm.ecm_voxels[n].ecm_fiber_alignment, voxel_position)) / (ecm.ecm_voxels[n].anisotropy * norm(voxel_position));
-		// }
-		// else
-		// {
-		// 	microenvironment.density_vector(n)[ecm_radial_index] = 0;
-		// }
 	}
 
 	next_copy_time = PhysiCell_globals.current_time + mechanics_dt; // mechanics_dt is the shortest time step at which the ecm is updated (movement==>update)
+	return;
+}
+
+void check_ecm_in_substrates(void)
+{
+	int ecm_anisotropy_index = microenvironment.find_density_index("ecm_anisotropy");
+	if (ecm_anisotropy_index == -1)
+	{
+	    std::cout << "        int ecm_anisotropy_index = " <<ecm_anisotropy_index << std::endl;
+	    std::exit(-1);
+	}
+	int ecm_density_index = microenvironment.find_density_index("ecm_density");
+	if (ecm_density_index == -1)
+	{
+	    std::cout << "        int ecm_density_index = " <<ecm_density_index << std::endl;
+	    std::exit(-1);
+	}
+	int ecm_orientation_x_index = microenvironment.find_density_index("ecm_orientation_x");
+	if (ecm_orientation_x_index == -1)
+	{
+	    std::cout << "        int ecm_orientation_x_index = " <<ecm_orientation_x_index << std::endl;
+	    std::exit(-1);
+	}
+	int ecm_orientation_y_index = microenvironment.find_density_index("ecm_orientation_y");
+	if (ecm_orientation_y_index == -1)
+	{
+	    std::cout << "        int ecm_orientation_y_index = " <<ecm_orientation_y_index << std::endl;
+	    std::exit(-1);
+	}
 	return;
 }

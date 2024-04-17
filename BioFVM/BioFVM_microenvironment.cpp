@@ -1558,6 +1558,7 @@ void initialize_microenvironment( void )
 	// }
 
 	microenvironment.display_information(std::cout);
+
 	return;
 }
 
