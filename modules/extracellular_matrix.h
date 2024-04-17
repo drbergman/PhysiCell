@@ -71,6 +71,7 @@ void copy_ecm_data_to_BioFVM(void);
 // extern ECM ecm;
 
 void setup_extracellular_matrix(std::string path_to_ic_ecm_file = "");
+void resize_ecm_to_microenvironment(void);
 
 void check_ecm_in_substrates(void);
 void copy_ecm_data_to_BioFVM(void);

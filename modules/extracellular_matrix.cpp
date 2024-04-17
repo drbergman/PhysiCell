@@ -74,40 +74,53 @@ ECM_options::ECM_options()
 
 void setup_extracellular_matrix(std::string path_to_ic_ecm_file )
 {
-	pugi::xml_node ecm_setup_node;
-
-	ecm_setup_node = xml_find_node(physicell_config_root, "microenvironment_setup");
-	ecm_setup_node = xml_find_node(ecm_setup_node, "ecm_setup");
-	if (!ecm_setup_node || !ecm_setup_node.attribute("enabled").as_bool())
+	if (path_to_ic_ecm_file != "")
 	{
-		PhysiCell_settings.ecm_enabled = false;
-		return;
+		PhysiCell_settings.ecm_enabled = true;
+		resize_ecm_to_microenvironment();
+		initialize_ecm_from_file(path_to_ic_ecm_file);
 	}
-	PhysiCell_settings.ecm_enabled = true;
+	else
+	{
+		pugi::xml_node ecm_setup_node;
 
+		ecm_setup_node = xml_find_node(physicell_config_root, "microenvironment_setup");
+		ecm_setup_node = xml_find_node(ecm_setup_node, "ecm_setup");
+		if (!ecm_setup_node || !ecm_setup_node.attribute("enabled").as_bool())
+		{
+			PhysiCell_settings.ecm_enabled = false;
+			return;
+		}
+		PhysiCell_settings.ecm_enabled = true;
 
+		resize_ecm_to_microenvironment();
+
+		std::string format = ecm_setup_node.attribute("format").as_string();
+		if (format == "keyword")
+		{
+			std::string keyword = xml_get_string_value(ecm_setup_node, "keyword");
+			initialize_ecm_by_keyword(keyword);
+		}
+		else
+		{
+			std::string csv_file = xml_get_string_value(ecm_setup_node, "filename");
+			std::string csv_folder = xml_get_string_value(ecm_setup_node, "folder");
+
+			std::string path_to_ic_ecm_file = csv_folder + "/" + csv_file;
+			initialize_ecm_from_file(path_to_ic_ecm_file, format);
+		}
+	}
+	check_ecm_in_substrates();
+	copy_ecm_data_to_BioFVM();
+}
+
+void resize_ecm_to_microenvironment(void)
+{
 	ecm.ecm_mesh.resize(default_microenvironment_options.X_range[0], default_microenvironment_options.X_range[1],
 						default_microenvironment_options.Y_range[0], default_microenvironment_options.Y_range[1], default_microenvironment_options.Z_range[0], default_microenvironment_options.Z_range[1],
 						default_microenvironment_options.dx, default_microenvironment_options.dy, default_microenvironment_options.dz);
 	ecm.resize_ecm_units_from_ecm_mesh();
-
 	ecm.ecm_mesh.display_information(std::cout);
-	std::string format = ecm_setup_node.attribute("format").as_string();
-	if (format == "keyword")
-	{
-		std::string keyword = xml_get_string_value(ecm_setup_node, "keyword");
-		initialize_ecm_by_keyword(keyword);
-	}
-	else
-	{
-		std::string csv_file = xml_get_string_value(ecm_setup_node, "filename");
-		std::string csv_folder = xml_get_string_value(ecm_setup_node, "folder");
-
-		std::string path_to_ic_ecm_file = csv_folder + "/" + csv_file;
-		initialize_ecm_from_file(path_to_ic_ecm_file, format);
-	}
-	check_ecm_in_substrates();
-	copy_ecm_data_to_BioFVM();
 }
 
 void initialize_ecm_by_keyword(std::string keyword)
