@@ -1573,6 +1573,7 @@ void initialize_microenvironment( std::string path_to_ic_substrate_file )
 	// }
 
 	microenvironment.display_information(std::cout);
+
 	return;
 }
 

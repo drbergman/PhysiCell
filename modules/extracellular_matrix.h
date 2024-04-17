@@ -62,7 +62,9 @@ public:
 	ECM_options(); // needs defined!!!
 };
 
-void initialize_ecm_from_csv(void);
+void initialize_ecm_by_keyword(std::string keyword);
+void initialize_ecm_from_file( std::string path_to_ic_ecm_file, std::string format = "" );
+void initialize_ecm_from_csv( std::string path_to_ic_ecm_file );
 void copy_ecm_data_to_BioFVM(void);
 
 // extern ECM_options default_ecm_options;
@@ -70,6 +72,7 @@ void copy_ecm_data_to_BioFVM(void);
 
 void setup_extracellular_matrix(std::string path_to_ic_ecm_file = "");
 
+void check_ecm_in_substrates(void);
 void copy_ecm_data_to_BioFVM(void);
 
 #endif
