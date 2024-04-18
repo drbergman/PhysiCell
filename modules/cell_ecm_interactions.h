@@ -8,16 +8,17 @@
 using namespace BioFVM; 
 using namespace PhysiCell;
 
-double sign_function(double number);
+double sign_function(const double number);
 
-void custom_update_cell_velocity(Cell *pCell, Phenotype &phenotype, double dt);
+void ecm_based_update_cell_velocity(Cell *pCell, Phenotype &phenotype, double dt);
 
-void ecm_to_cell_interactions(Cell *pCell, Phenotype &phenotype, double dt);
+void ecm_to_cell_interactions_v1(Cell *pCell, Phenotype &phenotype, double dt);
+void ecm_to_cell_interactions_v2(Cell *pCell, Phenotype &phenotype, double dt);
 
 // uses cell motility vector for realigning ECM.
 void ecm_remodeling_function(Cell *pCell, Phenotype &phenotype, double dt);
 
-void custom_update_motility_vector(Cell *pCell, Phenotype &phenotype, double dt_);
+void ecm_based_update_motility_vector(Cell *pCell, Phenotype &phenotype, double dt_);
 
 void create_default_ecm_compatible_agent(void);
 
