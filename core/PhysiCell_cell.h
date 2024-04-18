@@ -75,7 +75,7 @@
 #include "./PhysiCell_cell_container.h"
 #include "./PhysiCell_constants.h"
 
-#include "../modules/PhysiCell_settings.h" 
+#include "../modules/PhysiCell_standard_modules.h" 
 
 #include "./PhysiCell_standard_models.h" 
 #include "./PhysiCell_rules.h"
@@ -285,6 +285,10 @@ Cell_Definition& get_cell_definition( int search_type );
 Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node ); 
 void initialize_cell_definitions_from_pugixml( pugi::xml_node root ); 
 void initialize_cell_definitions_from_pugixml( void );
+
+void check_ecm_remodel_parameters_provided(pugi::xml_node node, Cell_Definition* pCD);
+void initialize_ecm_interactions_v1(pugi::xml_node node, Cell_Definition* pCD);
+void initialize_ecm_interactions_v2(pugi::xml_node node, Cell_Definition* pCD);
 
 extern std::vector<double> (*cell_division_orientation)(void);
 
