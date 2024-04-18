@@ -168,6 +168,8 @@ Cell_Definition::Cell_Definition()
 	// bug fix July 31 2023
 	
 	functions.set_orientation = NULL;
+
+	functions.response_to_ecm = NULL;
 	
 	// new March 2022 : make sure Cell_Interactions and Cell_Transformations 
 	// 					are appropriately sized. Same on motiltiy. 
@@ -3077,8 +3079,128 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 		
 		node1 = node1.next_sibling(); 
 	}
+
+	node = cd_node.child( "ecm_interactions" );
+	if (node && node.attribute("enabled").as_bool())
+	{
+		std::string model_type = node.attribute("type").value();
+		if (model_type == "v1")
+		{
+			initialize_ecm_interactions_v1(node, pCD);
+		}
+		else if (model_type == "v2")
+		{
+			initialize_ecm_interactions_v2(node, pCD);
+		}
+		else
+		{
+			std::cout << "ERROR: ECM interactions type " << model_type << " is not supported." << std::endl;
+			exit(-1);
+		}
+		pCD->functions.update_velocity = ecm_based_update_cell_velocity;
+		check_ecm_remodel_parameters_provided(node, pCD);
+	}
 	
 	return pCD;
+}
+
+void initialize_ecm_interactions_v1(pugi::xml_node node, Cell_Definition* pCD)
+{
+	pCD->functions.response_to_ecm = ecm_to_cell_interactions_v1;
+	int ecm_sensitivity_index = pCD->custom_data.find_variable_index("ecm_sensitivity");
+	if (ecm_sensitivity_index < 0)
+	{
+		std::cout << "ecm_sensitivity not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+
+	int min_ecm_mot_den_index = pCD->custom_data.find_variable_index("min_ecm_motility_density");
+	if (min_ecm_mot_den_index < 0)
+	{
+		std::cout << "min_ecm_motility_density not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+	int max_ecm_mot_den_index = pCD->custom_data.find_variable_index("max_ecm_motility_density");
+	if (max_ecm_mot_den_index < 0)
+	{
+		std::cout << "max_ecm_motility_density not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+
+	int ideal_ecm_mot_den_index = pCD->custom_data.find_variable_index("ideal_ecm_motility_density");
+	if (ideal_ecm_mot_den_index < 0)
+	{
+		std::cout << "ideal_ecm_motility_density not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+	int normalize_motility_vector_bool_index = pCD->custom_data.find_variable_index("normalize_motility_vector_bool");
+	if (normalize_motility_vector_bool_index < 0)
+	{
+		std::cout << "normalize_motility_vector_bool not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+}
+
+void initialize_ecm_interactions_v2(pugi::xml_node node, Cell_Definition* pCD)
+{
+	int ecm_sensitivity_density_ec50_index = pCD->custom_data.find_variable_index("ecm_sensitivity_density_ec50");
+	if (ecm_sensitivity_density_ec50_index < 0)
+	{
+		std::cout << "ecm_sensitivity_density_ec50 not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+
+	int ecm_speed_increase_density_ec50_index = pCD->custom_data.find_variable_index("ecm_speed_increase_density_ec50");
+	if (ecm_speed_increase_density_ec50_index < 0)
+	{
+		std::cout << "ecm_speed_increase_density_ec50 not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+
+	int ecm_speed_decrease_density_ec50_index = pCD->custom_data.find_variable_index("ecm_speed_decrease_density_ec50");
+	if (ecm_speed_decrease_density_ec50_index < 0)
+	{
+		std::cout << "ecm_speed_decrease_density_ec50 not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+
+	int ecm_speed_increase_by_density_index = pCD->custom_data.find_variable_index("ecm_speed_increase_by_density");
+	if (ecm_speed_increase_by_density_index < 0)
+	{
+		std::cout << "ecm_speed_increase_by_density not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+	int ecm_speed_increase_by_alignment_index = pCD->custom_data.find_variable_index("ecm_speed_increase_by_alignment");
+	if (ecm_speed_increase_by_alignment_index < 0)
+	{
+		std::cout << "ecm_speed_increase_by_alignment not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+	pCD->functions.response_to_ecm = ecm_to_cell_interactions_v2;
+}
+
+void check_ecm_remodel_parameters_provided(pugi::xml_node node, Cell_Definition* pCD)
+{
+	int cell_ecm_production_rate_index = pCD->custom_data.find_variable_index( "ecm_production_rate");
+	if (cell_ecm_production_rate_index < 0) 
+    {
+		std::cout << "ecm_production_rate not found in custom data for cell definition " << pCD->name << std::endl;
+        std::exit(-1);   
+    }
+
+	int cell_ecm_degradation_rate_index = pCD->custom_data.find_variable_index( "ecm_degradation_rate");
+	if (cell_ecm_degradation_rate_index < 0) 
+    {
+		std::cout << "ecm_degradation_rate not found in custom data for cell definition " << pCD->name << std::endl;
+        std::exit(-1);   
+    }
+
+	int cell_fiber_realignment_rate_index = pCD->custom_data.find_variable_index( "fiber_realignment_rate");
+	if (cell_fiber_realignment_rate_index < 0) 
+    {
+		std::cout << "fiber_realignment_rate not found in custom data for cell definition " << pCD->name << std::endl;
+        std::exit(-1);
+	}
 }
 
 void initialize_cell_definitions_from_pugixml( pugi::xml_node root )

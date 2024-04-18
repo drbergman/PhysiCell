@@ -65,23 +65,28 @@
 ###############################################################################
 */
 
-#ifndef __PhysiCell_standard_modules_h__
-#define __PhysiCell_standard_modules_h__
+#include "../core/PhysiCell.h"
+#include "../modules/PhysiCell_standard_modules.h" 
 
-#include <iostream>
-#include <fstream>
+using namespace BioFVM; 
+using namespace PhysiCell;
 
-#include "./PhysiCell_SVG.h"
-#include "./PhysiCell_pathology.h"
-#include "./PhysiCell_MultiCellDS.h"
-#include "./PhysiCell_various_outputs.h"
+// setup functions to help us along 
 
-#include "./PhysiCell_pugixml.h"
-#include "./PhysiCell_settings.h" 
+void create_cell_types( void );
+void setup_tissue( void ); 
 
-#include "./PhysiCell_geometry.h" 
+// set up the BioFVM microenvironment 
+void setup_microenvironment( void ); 
 
-#include "./extracellular_matrix.h"
-#include "./cell_ecm_interactions.h"
+// custom pathology coloring function 
 
-#endif
+std::vector<std::string> my_coloring_function( Cell* );
+
+// custom functions can go here 
+
+void phenotype_function( Cell* pCell, Phenotype& phenotype, double dt );
+void custom_function( Cell* pCell, Phenotype& phenotype , double dt );
+
+void contact_function( Cell* pMe, Phenotype& phenoMe , Cell* pOther, Phenotype& phenoOther , double dt ); 
+

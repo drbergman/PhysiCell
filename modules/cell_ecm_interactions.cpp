@@ -3,7 +3,7 @@
 
 extern ECM ecm;
 
-double sign_function (double number)
+double sign_function (const double number)
 {
 	// double sign = 0.0
 	if (number<0)
@@ -11,7 +11,7 @@ double sign_function (double number)
 	return 1.0;
 }
 
-void custom_update_motility_vector(Cell* pCell, Phenotype& phenotype, double dt_ )
+void ecm_based_update_motility_vector(Cell* pCell, Phenotype& phenotype, double dt_ )
 {
 	// Modified version of standard update_motility_vector function in PhysiCell. Search "update_motility_vector" to find original
 	// Takes into account ECM anisotropy for anisotropy linked chemotactic migration
@@ -47,196 +47,132 @@ void custom_update_motility_vector(Cell* pCell, Phenotype& phenotype, double dt_
 	return;
 }
 
-void ecm_to_cell_interactions( Cell* pCell, Phenotype& phenotype, double dt )
+void ecm_to_cell_interactions_v1(Cell *pCell, Phenotype &phenotype, double dt)
 {
-	static bool use_simple_fn = parameters.ints("ecm_model_id") == 1;
-	if (use_simple_fn == true)
-	{
-		// Get cell level values
-		static int ecm_sensitivity_index = pCell->custom_data.find_variable_index("ecm_sensitivity");
-		if (ecm_sensitivity_index < 0)
-		{
-			std::cout << "        static int ecm_sensitivity_index = " << ecm_sensitivity_index << std::endl;
-			std::exit(-1);
-		}
-
-		static int min_ecm_mot_den_index = pCell->custom_data.find_variable_index("min_ecm_motility_density");
-		if (min_ecm_mot_den_index < 0)
-		{
-			std::cout << "        static int min_ecm_mot_den_index = " << min_ecm_mot_den_index << std::endl;
-			std::exit(-1);
-		}
-		static int max_ecm_mot_den_index = pCell->custom_data.find_variable_index("max_ecm_motility_density");
-		if (max_ecm_mot_den_index < 0)
-		{
-			std::cout << "        static int max_ecm_mot_den_index = " << max_ecm_mot_den_index << std::endl;
-			std::exit(-1);
-		}
-
-		static int ideal_ecm_mot_den_index = pCell->custom_data.find_variable_index("ideal_ecm_motility_density");
-		if (ideal_ecm_mot_den_index < 0)
-		{
-			std::cout << "        static int ideal_ecm_mot_den_index = " << ideal_ecm_mot_den_index << std::endl;
-			std::exit(-1);
-		}
-
-		// sample ECM
-		int nearest_ecm_voxel_index = ecm.ecm_mesh.nearest_voxel_index(pCell->position);
-		double ecm_density = ecm.ecm_voxels[nearest_ecm_voxel_index].density;
-
-		if (ecm_density <= pCell->custom_data[min_ecm_mot_den_index] || ecm_density >= pCell->custom_data[max_ecm_mot_den_index])
-		{
-			phenotype.motility.motility_vector = {0.0, 0.0, 0.0};
-			return;
-		}
-
-		// Function calculates takes chemotaxis direction and combines with fiber following to produce combined random biased motility and
-		// fiber following vector. Then calculates agent speed based on ECM density.
-
-		std::vector<double> f = ecm.ecm_voxels[nearest_ecm_voxel_index].ecm_fiber_alignment;
-		normalize(&f);
-
-		// ******************************************************************************************************
-		// ****** Make linear combination of random biased migration (motility_vector) and ECM orientation following. ********
-		// ******************************************************************************************************
-
-		std::vector<double> d_motility = phenotype.motility.migration_bias_direction;
-		// normalize( &d_motility ); // not necessary since it is normalized at the end of custom_update_motility_vector
-
-		// to determine direction along f, find part of d_choice that is perpendicular to f;
-		std::vector<double> d_perp = d_motility - dot_product(d_motility, f) * f;
-
-		normalize(&d_perp);
-
-		// find constants to span d_choice with d_perp and f
-		// double c_1 = dot_product(d_motility, d_perp);
-		// double c_2 = dot_product(d_motility, f);
-
-		// calculate bias away from directed motitility - combination of sensitity to ECM and anisotropy
-		double gamma = pCell->custom_data[ecm_sensitivity_index] * ecm.ecm_voxels[nearest_ecm_voxel_index].anisotropy; // at low values, directed motility vector is recoved. At high values, fiber direction vector is recovered.
-
-		phenotype.motility.motility_vector = (1.0 - gamma) * dot_product(d_motility, d_perp) * d_perp + dot_product(d_motility, f) * f;
-
-		double directed_speed; // use this to set length of motility vector rather than phenotype.motility.migration_bias so that phenotype.motility.migration_bias can be saved between steps based on rules, etc. This will mean that the saved value of migration_speed will not account for the ecm effects
-
-		if (parameters.bools("normalize_ecm_influenced_motility_vector") == true)
-		{
-			// if the vector is to be normalized, we, by definition, already know the magnitude will be 1.0
-			directed_speed = 1.0;
-		}
-		else
-		{
-			directed_speed = norm(phenotype.motility.motility_vector);
-		}
-		normalize(&(phenotype.motility.motility_vector));
-
-		/****************************************END new migration direction update****************************************/
-
-		/*********************************************Begin speed update***************************************************/
-		directed_speed *= pCell->phenotype.motility.migration_speed;
-		double temp;
-		// At this point, we have checked above that ecm_density \in [min,max] ecm motility density for this cell above
-		if (ecm_density <= pCell->custom_data[ideal_ecm_mot_den_index])
-		{
-			temp = pCell->custom_data[min_ecm_mot_den_index];
-		}
-		else
-		{
-			temp = pCell->custom_data[max_ecm_mot_den_index];
-		}
-		directed_speed *= (ecm_density - temp) / (pCell->custom_data[ideal_ecm_mot_den_index] - temp);
-
-		phenotype.motility.motility_vector *= directed_speed;
-		/*********************************************END speed update***************************************************/
-		return;
-	}
-
-	// else using more complicated function
+	// this is the version Metzcar et all developed
 	// Get cell level values
-	static int ecm_sensitivity_density_ec50_at_anisotropy_0_index = pCell->custom_data.find_variable_index("ecm_sensitivity_density_ec50_at_anisotropy_0");
-	static int ecm_sensitivity_density_ec50_at_anisotropy_1_index = pCell->custom_data.find_variable_index("ecm_sensitivity_density_ec50_at_anisotropy_1");
-	if (pCell->custom_data[ecm_sensitivity_density_ec50_at_anisotropy_0_index] < pCell->custom_data[ecm_sensitivity_density_ec50_at_anisotropy_1_index] 
-		|| pCell->custom_data[ecm_sensitivity_density_ec50_at_anisotropy_1_index] <= 0)
-	{
-		std::cout << "ERROR: The constraint 0 <= ecm_sensitivity_density_ec50_at_anisotropy_1 <= ecm_sensitivity_density_ec50_at_anisotropy_0 <= 1" << std::endl
-				  << "\thas been violated." << std::endl;
-		exit(-1);
-	}
-	else if (pCell->custom_data[ecm_sensitivity_density_ec50_at_anisotropy_0_index] > 1.0)
-	{
-		std::cout << "WARNING: The ecm_sensitivity_density_ec50_at_anisotropy_0 is greater than 1." << std::endl
-				  << "\tDensity is expected to be on [0,1], so an EC50 beyond this range might not be what you want." << std::endl;
-	}
-	static int ecm_sensitivity_anisotropy_hill_coefficient_index = pCell->custom_data.find_variable_index("ecm_sensitivity_anisotropy_hill_coefficient");
-	static int ecm_speed_increase_anisotropy_slope_index = pCell->custom_data.find_variable_index("ecm_speed_increase_anisotropy_slope");
-	static int ecm_speed_increase_anisotropy_intercept_index = pCell->custom_data.find_variable_index("ecm_speed_increase_anisotropy_intercept");
-	static int ecm_speed_increase_density_ec50_index = pCell->custom_data.find_variable_index("ecm_speed_increase_density_ec50");
-	static int ecm_speed_increase_density_hill_coefficient_index = pCell->custom_data.find_variable_index("ecm_speed_increase_density_hill_coefficient");
-	static int ecm_speed_decrease_anisotropy_slope_index = pCell->custom_data.find_variable_index("ecm_speed_decrease_anisotropy_slope");
-	static int ecm_speed_decrease_anisotropy_intercept_index = pCell->custom_data.find_variable_index("ecm_speed_decrease_anisotropy_intercept");
-	static int ecm_speed_decrease_density_hill_coefficient_index = pCell->custom_data.find_variable_index("ecm_speed_decrease_density_hill_coefficient");
-	
-	static int ecm_speed_factor_at_anisotropy_1_index = pCell->custom_data.find_variable_index("ecm_speed_factor_at_anisotropy_1");
-	static int ecm_speed_factor_at_anisotropy_0_index = pCell->custom_data.find_variable_index("ecm_speed_factor_at_anisotropy_0");
-	if (pCell->custom_data[ecm_speed_factor_at_anisotropy_1_index] < 0.0 || pCell->custom_data[ecm_speed_factor_at_anisotropy_1_index] > pCell->custom_data[ecm_speed_factor_at_anisotropy_0_index] || pCell->custom_data[ecm_speed_factor_at_anisotropy_0_index] > 1.0)
-	{
-		std::cout << " ERROR: The constraint 0 <= ecm_speed_factor_at_anisotropy_1 <= ecm_speed_factor_at_anisotropy_0 <= 1" << std::endl
-				  << "\thas been violated." << std::endl;
-		exit(-1);
-	}
+	static int ecm_sensitivity_index = pCell->custom_data.find_variable_index("ecm_sensitivity");
+	static int min_ecm_mot_den_index = pCell->custom_data.find_variable_index("min_ecm_motility_density");
+	static int max_ecm_mot_den_index = pCell->custom_data.find_variable_index("max_ecm_motility_density");
+	static int ideal_ecm_mot_den_index = pCell->custom_data.find_variable_index("ideal_ecm_motility_density");
+	static int normalize_motility_vector_bool_index = pCell->custom_data.find_variable_index("normalize_motility_vector_bool");
 
-	static int ecm_min_speed_complex_ecm_model_index = pCell->custom_data.find_variable_index("ecm_min_speed_complex_ecm_model");
 	// sample ECM
 	int nearest_ecm_voxel_index = ecm.ecm_mesh.nearest_voxel_index(pCell->position);
-	double ecm_density = ecm.ecm_voxels[nearest_ecm_voxel_index].density;
+	double d = ecm.ecm_voxels[nearest_ecm_voxel_index].density;
 
-	// Function calculates takes chemotaxis direction and combines with fiber following to produce combined random biased motility and
-	// fiber following vector. Then calculates agent speed based on ECM density.
+	if (d <= pCell->custom_data[min_ecm_mot_den_index] || d >= pCell->custom_data[max_ecm_mot_den_index])
+	{
+		phenotype.motility.motility_vector = {0.0, 0.0, 0.0};
+		return;
+	}
 
 	std::vector<double> f = ecm.ecm_voxels[nearest_ecm_voxel_index].ecm_fiber_alignment;
 	normalize(&f);
 
-	// ******************************************************************************************************
-	// ****** Make linear combination of random biased migration (motility_vector) and ECM orientation following. ********
-	// ******************************************************************************************************
-
+	// sensitivity update
 	std::vector<double> d_motility = phenotype.motility.migration_bias_direction;
-	// normalize( &d_motility ); // not necessary since it is normalized at the end of custom_update_motility_vector
+	// normalize( &d_motility ); // not necessary since it is normalized at the end of ecm_based_update_motility_vector
 
 	// to determine direction along f, find part of d_choice that is perpendicular to f;
+	std::vector<double> d_perp = d_motility - dot_product(d_motility, f) * f;
+
+	normalize(&d_perp);
+
+	// calculate bias away from directed motitility - combination of sensitity to ECM and anisotropy
+	double gamma = pCell->custom_data[ecm_sensitivity_index] * ecm.ecm_voxels[nearest_ecm_voxel_index].anisotropy; // at low values, directed motility vector is recoved. At high values, fiber direction vector is recovered.
+
+	phenotype.motility.motility_vector = (1.0 - gamma) * dot_product(d_motility, d_perp) * d_perp + dot_product(d_motility, f) * f;
+
+	double directed_speed; // use this to set length of motility vector rather than phenotype.motility.migration_bias so that phenotype.motility.migration_bias can be saved between steps based on rules, etc. This will mean that the saved value of migration_speed will not account for the ecm effects
+
+	if (pCell->custom_data["normalize_motility_vector_bool_index"] > 0.5)
+	{
+		// if the vector is to be normalized, we, by definition, already know the magnitude will be 1.0
+		directed_speed = 1.0;
+	}
+	else
+	{
+		directed_speed = norm(phenotype.motility.motility_vector);
+	}
+	normalize(&(phenotype.motility.motility_vector));
+
+	// speed update
+	directed_speed *= pCell->phenotype.motility.migration_speed;
+	double temp;
+	// At this point, we have checked above that ecm_density \in [min,max] ecm motility density for this cell above
+	if (d <= pCell->custom_data[ideal_ecm_mot_den_index])
+	{
+		temp = pCell->custom_data[min_ecm_mot_den_index];
+	}
+	else
+	{
+		temp = pCell->custom_data[max_ecm_mot_den_index];
+	}
+	directed_speed *= (d - temp) / (pCell->custom_data[ideal_ecm_mot_den_index] - temp);
+
+	phenotype.motility.motility_vector *= directed_speed;
+	/*********************************************END speed update***************************************************/
+	return;
+}
+
+void ecm_to_cell_interactions_v2( Cell* pCell, Phenotype& phenotype, double dt )
+{
+	// this is my version, that adheres to certain guiding principles
+	// Get cell level values
+	static int ecm_sensitivity_density_ec50_index = pCell->custom_data.find_variable_index("ecm_sensitivity_density_ec50");
+
+	static int ecm_speed_increase_density_ec50_index = pCell->custom_data.find_variable_index("ecm_speed_increase_density_ec50");
+	static int ecm_speed_decrease_density_ec50_index = pCell->custom_data.find_variable_index("ecm_speed_decrease_density_ec50");
+
+	static int ecm_speed_increase_by_density_index = pCell->custom_data.find_variable_index("ecm_speed_increase_by_density");
+	static int ecm_speed_increase_by_alignment_index = pCell->custom_data.find_variable_index("ecm_speed_increase_by_alignment");
+
+	int nearest_ecm_voxel_index = ecm.ecm_mesh.nearest_voxel_index(pCell->position);
+	double d = ecm.ecm_voxels[nearest_ecm_voxel_index].density;
+	double a = ecm.ecm_voxels[nearest_ecm_voxel_index].anisotropy;
+
+	std::vector<double> f = ecm.ecm_voxels[nearest_ecm_voxel_index].ecm_fiber_alignment;
+	normalize(&f);
+
+	std::vector<double> d_motility = phenotype.motility.migration_bias_direction;
+
+	// sensitivity update
 	double cos_angle = dot_product(d_motility, f);
 	std::vector<double> d_perp = d_motility - cos_angle * f;
 
 	normalize(&d_perp);
 
-	// find constants to span d_choice with d_perp and f
-	// double c_1 = dot_product(d_motility, d_perp);
-	// double c_2 = dot_product(d_motility, f);
-
-	// calculate bias away from directed motitility - combination of sensitity to ECM and anisotropy
-	double a = ecm.ecm_voxels[nearest_ecm_voxel_index].anisotropy;
-	double ec50 = (1 - a) * pCell->custom_data[ecm_sensitivity_density_ec50_at_anisotropy_0_index] + a * pCell->custom_data[ecm_sensitivity_density_ec50_at_anisotropy_1_index];
-	double n = pCell->custom_data[ecm_sensitivity_anisotropy_hill_coefficient_index];
-	double sensitivity = a / (1 + pow(ecm_density/ec50,-n));
+	double sensitivity = 0;
+	if (d != 0)
+	{
+		double temp = pCell->custom_data[ecm_sensitivity_density_ec50_index] / d;
+		sensitivity = a / (1 + temp * temp);
+	}
 
 	phenotype.motility.motility_vector = (1.0 - sensitivity) * dot_product(d_motility, d_perp) * d_perp + dot_product(d_motility, f) * f;
 	normalize(&(phenotype.motility.motility_vector));
+	cos_angle = dot_product(phenotype.motility.motility_vector, f); // update cos_angle after accounting for sensitivity
 
-	/****************************************END new migration direction update****************************************/
-
-	/*********************************************Begin speed update***************************************************/
-	// double directed_speed = pCell->phenotype.motility.migration_speed; // s_0
-	double directed_speed = pCell->custom_data[ecm_min_speed_complex_ecm_model_index]; // s_0
-	double ds = pCell->custom_data[ecm_speed_increase_anisotropy_slope_index] * a + pCell->custom_data[ecm_speed_increase_anisotropy_intercept_index];
-	directed_speed += ds / (1 + pow(ecm_density / pCell->custom_data[ecm_speed_increase_density_ec50_index], -pCell->custom_data[ecm_speed_increase_density_hill_coefficient_index]));
-	double gamma_2 = pCell->custom_data[ecm_speed_decrease_anisotropy_slope_index] * a + pCell->custom_data[ecm_speed_decrease_anisotropy_intercept_index];
-	directed_speed /= 1 + pow(ecm_density / gamma_2, pCell->custom_data[ecm_speed_decrease_density_hill_coefficient_index]);
-	// double f0 = pCell->custom_data[ecm_speed_factor_at_anisotropy_0_index] - (pCell->custom_data[ecm_speed_factor_at_anisotropy_0_index] - pCell->custom_data[ecm_speed_factor_at_anisotropy_1_index])*a;
-	double f0 = pCell->custom_data[ecm_speed_factor_at_anisotropy_0_index] * (1 - a) + pCell->custom_data[ecm_speed_factor_at_anisotropy_1_index] * a;
-	directed_speed *= f0 + (1 - f0) * fabs(cos_angle);
+	// speed update
+	double directed_speed = pCell->phenotype.motility.migration_speed; // s_0
+	if (d!=0)
+	{
+		double ds = pCell->custom_data[ecm_speed_increase_by_density_index] + pCell->custom_data[ecm_speed_increase_by_alignment_index] * (2 * cos_angle - 1) * a;
+		double temp = pCell->custom_data[ecm_speed_increase_density_ec50_index] / d;
+		directed_speed += ds / (1 + temp * temp);
+		if (directed_speed <= 0)
+		{
+			directed_speed = 0;
+		}
+		else
+		{
+			temp = d / pCell->custom_data[ecm_speed_decrease_density_ec50_index];
+			directed_speed /= 1 + temp * temp;
+		}
+	}
 
 	phenotype.motility.motility_vector *= directed_speed;
-	/*********************************************END speed update***************************************************/
 	return;
 }
 
@@ -245,40 +181,26 @@ void ecm_remodeling_function( Cell* pCell, Phenotype& phenotype, double dt )
 	// Find attributes needed for updating ECM
 
 	int nearest_ecm_voxel_index = ecm.ecm_mesh.nearest_voxel_index( pCell->position );   
-	static int Cell_ecm_production_rate_index = pCell->custom_data.find_variable_index( "ecm_production_rate");
-	if (Cell_ecm_production_rate_index < 0) 
-    {
-        std::cout << "        static int Cell_ecm_production_rate_index = " <<Cell_ecm_production_rate_index << std::endl;
-        std::exit(-1);   
-    }
+
+	static int cell_ecm_production_rate_index = pCell->custom_data.find_variable_index( "ecm_production_rate");
 	static int cell_ecm_degradation_rate_index = pCell->custom_data.find_variable_index( "ecm_degradation_rate");
-	if (cell_ecm_degradation_rate_index < 0) 
-    {
-        std::cout << "        static int cell_ecm_degradation_rate_index = " <<cell_ecm_degradation_rate_index << std::endl;
-        std::exit(-1);   
-    }
 	static int cell_fiber_realignment_rate_index = pCell->custom_data.find_variable_index( "fiber_realignment_rate");
-	if (cell_fiber_realignment_rate_index < 0) 
-    {
-        std::cout << "        static int cell_fiber_realignment_rate_index = " <<cell_fiber_realignment_rate_index << std::endl;
-        std::exit(-1);
-	}
 
 	// Cell-ECM density interaction
 
-    double ecm_density = ecm.ecm_voxels[nearest_ecm_voxel_index].density;
-    double r = pCell->custom_data[Cell_ecm_production_rate_index];
-    double d = pCell->custom_data[cell_ecm_degradation_rate_index];
+    double d = ecm.ecm_voxels[nearest_ecm_voxel_index].density;
+    double ecm_production_rate = pCell->custom_data[cell_ecm_production_rate_index];
+    double ecm_degradation_rate = pCell->custom_data[cell_ecm_degradation_rate_index];
 
-	// ecm.ecm_voxels[nearest_ecm_voxel_index].density += dt * (r - d * ecm_density);
-	if (d > 0)
+	// ecm.ecm_voxels[nearest_ecm_voxel_index].density += dt * (ecm_production_rate - ecm_degradation_rate * d);
+	if (ecm_degradation_rate > 0)
 	{
-		double density_saturation = r / d;
-		ecm.ecm_voxels[nearest_ecm_voxel_index].density = density_saturation + (ecm_density - density_saturation) * exp(-d * dt);
+		double density_saturation = ecm_production_rate / ecm_degradation_rate;
+		ecm.ecm_voxels[nearest_ecm_voxel_index].density = density_saturation + (d - density_saturation) * exp(-ecm_degradation_rate * dt);
 	}
 	else
 	{
-		ecm.ecm_voxels[nearest_ecm_voxel_index].density += r*dt;
+		ecm.ecm_voxels[nearest_ecm_voxel_index].density += ecm_production_rate*dt;
 	}
 	// End Cell-ECM density interaction
 
@@ -304,22 +226,22 @@ void ecm_remodeling_function( Cell* pCell, Phenotype& phenotype, double dt )
 			norm_cell_velocity[i] *= -1.0;
 		}
 	}
-	double r_0 = pCell->custom_data[cell_fiber_realignment_rate_index] * speed;
+	double ecm_realignment_rate = pCell->custom_data[cell_fiber_realignment_rate_index] * speed;
 
 	// normalize(&norm_cell_velocity);
 
-	if (r_0 != 0 || r != 0)
+	if (ecm_realignment_rate != 0 || ecm_production_rate != 0)
 	{ // only bother making these changes if the cell is actually changing the ECM structure
 		for (int i = 0; i < 2; i++)
 		{
-			ecm.ecm_voxels[nearest_ecm_voxel_index].ecm_fiber_alignment[i] = norm_cell_velocity[i] - (norm_cell_velocity[i] - ecm_orientation[i]) * exp(-(r_0 + r / ecm_density) * dt);
+			ecm.ecm_voxels[nearest_ecm_voxel_index].ecm_fiber_alignment[i] = norm_cell_velocity[i] - (norm_cell_velocity[i] - ecm_orientation[i]) * exp(-(ecm_realignment_rate + ecm_production_rate / d) * dt);
 		}
 		ecm.ecm_voxels[nearest_ecm_voxel_index].anisotropy = norm(ecm.ecm_voxels[nearest_ecm_voxel_index].ecm_fiber_alignment);
 	}
 	// END Cell-ECM Anisotropy Modification
 }
 
-void custom_update_cell_velocity( Cell* pCell, Phenotype& phenotype, double dt)
+void ecm_based_update_cell_velocity( Cell* pCell, Phenotype& phenotype, double dt)
 {
 	// Replaces the standard_update_cell_velocity in fiber following/senstive agents. 
 	// Assign this to update_cell_velocity function pointer to get fiber following and density based speed changes
@@ -359,10 +281,10 @@ void custom_update_cell_velocity( Cell* pCell, Phenotype& phenotype, double dt)
 	}
 
 	// non-standard motility update - part of ECM package
-	custom_update_motility_vector(pCell, phenotype, dt);
+	ecm_based_update_motility_vector(pCell, phenotype, dt);
 
 	// ECM following and speed update
-	ecm_to_cell_interactions(pCell, phenotype, dt); 
+	pCell->functions.response_to_ecm(pCell, phenotype, dt);
 
 	// standard update cell velocity - after this update proceeds as "conventional" PhysiCell
 	pCell->velocity += phenotype.motility.motility_vector;
@@ -375,23 +297,8 @@ void custom_update_cell_velocity( Cell* pCell, Phenotype& phenotype, double dt)
 void create_default_ecm_compatible_agent( void )
 {
 	initialize_default_cell_definition(); 
-	// cell_defaults.phenotype.secretion.sync_to_microenvironment( &microenvironment ); 
 	
-	cell_defaults.functions.update_velocity = custom_update_cell_velocity;
-
-	// cell_defaults.functions.custom_cell_rule = ecm_remodeling_function; 
-
-	// 	cell_defaults.functions.cycle_model = Ki67_advanced; 
-	
-	// cell_defaults.functions.volume_update_function = standard_volume_update_function;
-	// cell_defaults.functions.update_migration_bias = NULL; 
-	
-	// cell_defaults.functions.update_phenotype = update_cell_and_death_parameters_O2_based; // NULL; 
-	// cell_defaults.functions.custom_cell_rule = NULL; 
-	
-	// cell_defaults.functions.update_velocity = standard_update_cell_velocity;
-	// cell_defaults.functions.add_cell_basement_membrane_interactions = NULL; 
-	// cell_defaults.functions.calculate_distance_to_membrane = NULL; 
+	cell_defaults.functions.update_velocity = ecm_based_update_cell_velocity;
 	
 }
 
