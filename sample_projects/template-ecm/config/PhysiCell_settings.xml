@@ -222,7 +222,7 @@
 			</dirichlet_nodes>
 		</options>
 
-		<ecm_setup enabled="false" format="keyword">
+		<ecm_setup enabled="true" format="keyword">
 			<keyword>random</keyword>
 		</ecm_setup>
 		<!-- <ecm_setup enabled="false" format="csv">
@@ -402,6 +402,7 @@
 				<ecm_speed_decrease_density_ec50 conserved="false" units="dimensionless" description="">0.75</ecm_speed_decrease_density_ec50>
 				<ecm_speed_increase_by_density conserved="false" units="micron/min" description="">0.1</ecm_speed_increase_by_density>
 				<ecm_speed_increase_by_alignment conserved="false" units="micron/min" description="">0.1</ecm_speed_increase_by_alignment>
+				
 			<!-- ecm remodel parameters -->
 				<ecm_production_rate conserved="false" units="ecm/min" description="">0.1</ecm_production_rate>
 				<ecm_degradation_rate conserved="false" units="1/min" description="">0.1</ecm_degradation_rate>

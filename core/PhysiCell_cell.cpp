@@ -3081,7 +3081,7 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 	}
 
 	node = cd_node.child( "ecm_interactions" );
-	if (node && node.attribute("enabled").as_bool())
+	if (PhysiCell_settings.ecm_enabled && node.attribute("enabled").as_bool())
 	{
 		std::string model_type = node.attribute("type").value();
 		if (model_type == "v1")
