@@ -131,6 +131,9 @@ class PhysiCell_Settings
 	bool rules_enabled = false; 
 	std::string rules_protocol = "Cell Behavior Hypothesis Grammar (CBHG)"; 
 	std::string rules_protocol_version = "1.0"; 
+
+	// ecm option
+	bool ecm_enabled = false;
 	
 	PhysiCell_Settings();
 	

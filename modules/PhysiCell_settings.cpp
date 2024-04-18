@@ -629,13 +629,13 @@ template std::ostream& operator<<(std::ostream& os, const Parameter<std::string>
 
 bool setup_microenvironment_from_XML( pugi::xml_node root_node )
 {
-	pugi::xml_node node; 
+	pugi::xml_node microenvironment_node; 
 
-	// First, look for the correct XML node. 
+	// First, look for the correct XML microenvironment_node. 
 	// If it isn't there, return false. 
 	
-	node = xml_find_node( root_node , "microenvironment_setup" );
-	if( !node )
+	microenvironment_node = xml_find_node( root_node , "microenvironment_setup" );
+	if( !microenvironment_node )
 	{ return false; }
 
 	// now that we're using the XML to specify the microenvironment, don't 
@@ -670,8 +670,8 @@ bool setup_microenvironment_from_XML( pugi::xml_node root_node )
 	// build the initial conditions and Dirichlet conditions as we go 
 
 	// find the first substrate 
-	pugi::xml_node node1 = node.child( "variable" ); // xml_find_node( node , "variable" ); 
-	node = node1; 
+	pugi::xml_node node1 = microenvironment_node.child( "variable" ); // xml_find_node( microenvironment_node , "variable" ); 
+	pugi::xml_node node = node1; 
 	int i = 0; 
 	
 	bool activated_Dirichlet_boundary_detected = false; 
@@ -910,8 +910,7 @@ bool setup_microenvironment_from_XML( pugi::xml_node root_node )
 	std::cout << "dc? " << default_microenvironment_options.outer_Dirichlet_conditions << std::endl; 
 	
 	// now, get the options 
-	node = xml_find_node( root_node , "microenvironment_setup" );
-	node = xml_find_node( node , "options" ); 
+	node = xml_find_node( microenvironment_node , "options" ); 
 	
 	// calculate gradients? 
 	default_microenvironment_options.calculate_gradients = xml_get_bool_value( node, "calculate_gradients" ); 
@@ -952,8 +951,8 @@ bool setup_microenvironment_from_XML( pugi::xml_node root_node )
 			<dirichlet_nodes type="matlab" enabled="false">
 				<filename>./config/dirichlet.mat</filename>
 			</dirichlet_nodes>
-	*/	
-	
+	*/
+
 	return true;  
 }
 

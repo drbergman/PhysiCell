@@ -338,6 +338,14 @@ bool load_cells_from_file(std::string path_to_file, std::string filetype)
 	return false;
 }
 
+bool load_initial_cells(std::string path_to_ic_cells_file)
+{
+	if (path_to_ic_cells_file == "")
+	{ return load_cells_from_pugixml(); }
+	else
+	{ return load_cells_from_file(path_to_ic_cells_file); }
+}
+
 bool load_cells_from_file(std::string path_to_file)
 {
 	std::string filetype = path_to_file.substr(path_to_file.find_last_of(".") + 1);

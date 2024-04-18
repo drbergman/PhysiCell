@@ -282,8 +282,7 @@ std::vector<double> linear_response_to_Hill_parameters( double s0, double s1 );
 std::vector<double> Hill_response_to_linear_parameters( double half_max , double Hill_power ); 
 */
 
-void setup_cell_rules( void );
-void setup_cell_rules( std::string filename );
+void setup_cell_rules( std::string path_to_rules_file="" );
 void record_cell_rules( void );
 
 }; 

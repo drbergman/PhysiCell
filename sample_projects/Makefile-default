@@ -71,7 +71,7 @@ name:
 
 # sample projects 	
 list-projects:
-	@echo "Sample projects: template biorobots-sample cancer-biorobots-sample cancer-immune-sample"
+	@echo "Sample projects: template template-ecm biorobots-sample cancer-biorobots-sample cancer-immune-sample"
 	@echo "                 celltypes3-sample heterogeneity-sample pred-prey-farmer virus-macrophage-sample"
 	@echo "                 worm-sample interaction-sample mechano-sample rules-sample physimess-sample template-xml-rules"
 	@echo ""
@@ -96,6 +96,15 @@ template-xml-rules:
 	cp ./config/PhysiCell_settings.xml ./config/PhysiCell_settings-backup.xml 
 	cp ./sample_projects/template_xml_rules/config/* ./config/
 
+template-ecm:
+	cp ./sample_projects/template-ecm/custom_modules/* ./custom_modules/
+	touch main.cpp && cp main.cpp main-backup.cpp
+	cp ./sample_projects/template-ecm/main.cpp ./main.cpp 
+	cp Makefile Makefile-backup
+	cp ./sample_projects/template-ecm/Makefile .
+	cp ./config/PhysiCell_settings.xml ./config/PhysiCell_settings-backup.xml 
+	cp ./sample_projects/template-ecm/config/* ./config/
+	
 # sample projects 
 
 # ---- non-intracellular projects 
