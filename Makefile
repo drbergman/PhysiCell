@@ -63,13 +63,6 @@ EXAMPLES := ./examples/PhysiCell_test_mechanics_1.cpp ./examples/PhysiCell_test_
 all: 
 	make heterogeneity-sample
 	make 
-EXAMPLES := ./examples/PhysiCell_test_mechanics_1.cpp ./examples/PhysiCell_test_mechanics_2.cpp \
- ./examples/PhysiCell_test_DCIS.cpp ./examples/PhysiCell_test_HDS.cpp \
- ./examples/PhysiCell_test_cell_cycle.cpp ./examples/PhysiCell_test_volume.cpp 
-
-all: 
-	make heterogeneity-sample
-	make 
 
 name:
 	@echo ""
@@ -78,7 +71,7 @@ name:
 
 # sample projects 	
 list-projects:
-	@echo "Sample projects: template template-ecm biorobots-sample cancer-biorobots-sample cancer-immune-sample"
+	@echo "Sample projects: template template-ecm template-xml-rules biorobots-sample cancer-biorobots-sample cancer-immune-sample"
 	@echo "                 celltypes3-sample heterogeneity-sample pred-prey-farmer virus-macrophage-sample"
 	@echo "                 worm-sample interaction-sample mechano-sample rules-sample physimess-sample"
 	@echo ""
@@ -102,6 +95,15 @@ template-ecm:
 	cp ./sample_projects/template-ecm/Makefile .
 	cp ./config/PhysiCell_settings.xml ./config/PhysiCell_settings-backup.xml 
 	cp ./sample_projects/template-ecm/config/* ./config/
+	
+template-xml-rules:
+	cp ./sample_projects/template_xml_rules/custom_modules/* ./custom_modules/
+	touch main.cpp && cp main.cpp main-backup.cpp
+	cp ./sample_projects/template_xml_rules/main.cpp ./main.cpp 
+	cp Makefile Makefile-backup
+	cp ./sample_projects/template_xml_rules/Makefile .
+	cp ./config/PhysiCell_settings.xml ./config/PhysiCell_settings-backup.xml 
+	cp ./sample_projects/template_xml_rules/config/* ./config/
 	
 # sample projects 
 
