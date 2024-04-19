@@ -30,7 +30,7 @@ ARCH := native # best auto-tuning
 # ARCH := nocona #64-bit pentium 4 or later 
 
 # CFLAGS := -march=$(ARCH) -Ofast -s -fomit-frame-pointer -mfpmath=both -fopenmp -m64 -std=c++11
-CFLAGS := -march=$(ARCH) -O3 -fomit-frame-pointer -mfpmath=both -fopenmp -m64 -std=c++11
+CFLAGS := -march=$(ARCH) -O3 -fomit-frame-pointer -mfpmath=both -fopenmp -m64 -std=c++11 -D ADDON_PHYSIECM
 
 ifeq ($(OS),Windows_NT)
 else
@@ -39,7 +39,7 @@ else
 		UNAME_P := $(shell uname -p)
 		var := $(shell which $(CC) | xargs file)
 		ifeq ($(lastword $(var)),arm64)
-		  CFLAGS := -march=$(ARCH) -O3 -fomit-frame-pointer -fopenmp -m64 -std=c++11
+		  CFLAGS := -march=$(ARCH) -O3 -fomit-frame-pointer -fopenmp -m64 -std=c++11 -D ADDON_PHYSIECM
 		endif
 	endif
 endif
@@ -166,11 +166,12 @@ PhysiCell_basic_signaling.o: ./core/PhysiCell_basic_signaling.cpp
 PhysiCell_geometry.o: ./modules/PhysiCell_geometry.cpp
 	$(COMPILE_COMMAND) -c ./modules/PhysiCell_geometry.cpp 
 
-cell_ecm_interactions.o: ./modules/cell_ecm_interactions.cpp 
-	$(COMPILE_COMMAND) -c ./modules/cell_ecm_interactions.cpp
+# PhysiECM addon modules
+cell_ecm_interactions.o: ./addons/PhysiECM/cell_ecm_interactions.cpp 
+	$(COMPILE_COMMAND) -c ./addons/PhysiECM/cell_ecm_interactions.cpp
 
-extracellular_matrix.o: ./modules/extracellular_matrix.cpp 
-	$(COMPILE_COMMAND) -c ./modules/extracellular_matrix.cpp
+extracellular_matrix.o: ./addons/PhysiECM/extracellular_matrix.cpp 
+	$(COMPILE_COMMAND) -c ./addons/PhysiECM/extracellular_matrix.cpp
 	
 # user-defined PhysiCell modules
 
