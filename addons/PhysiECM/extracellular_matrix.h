@@ -1,8 +1,8 @@
 #ifndef _extracellular_matrix_
 #define _extracellular_matrix_
 
-#include "../core/PhysiCell.h"
-#include "../modules/PhysiCell_standard_modules.h" 
+#include "../../core/PhysiCell.h"
+#include "../../modules/PhysiCell_standard_modules.h" 
 
 using namespace BioFVM; 
 using namespace PhysiCell;

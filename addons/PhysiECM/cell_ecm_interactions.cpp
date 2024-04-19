@@ -11,6 +11,30 @@ double sign_function (const double number)
 	return 1.0;
 }
 
+void check_ecm_remodel_parameters_provided(pugi::xml_node node, Cell_Definition* pCD)
+{
+	int cell_ecm_production_rate_index = pCD->custom_data.find_variable_index( "ecm_production_rate");
+	if (cell_ecm_production_rate_index < 0) 
+    {
+		std::cout << "ecm_production_rate not found in custom data for cell definition " << pCD->name << std::endl;
+        std::exit(-1);   
+    }
+
+	int cell_ecm_degradation_rate_index = pCD->custom_data.find_variable_index( "ecm_degradation_rate");
+	if (cell_ecm_degradation_rate_index < 0) 
+    {
+		std::cout << "ecm_degradation_rate not found in custom data for cell definition " << pCD->name << std::endl;
+        std::exit(-1);   
+    }
+
+	int cell_fiber_realignment_rate_index = pCD->custom_data.find_variable_index( "fiber_realignment_rate");
+	if (cell_fiber_realignment_rate_index < 0) 
+    {
+		std::cout << "fiber_realignment_rate not found in custom data for cell definition " << pCD->name << std::endl;
+        std::exit(-1);
+	}
+}
+
 void ecm_based_update_motility_vector(Cell* pCell, Phenotype& phenotype, double dt_ )
 {
 	// Modified version of standard update_motility_vector function in PhysiCell. Search "update_motility_vector" to find original
@@ -116,6 +140,43 @@ void ecm_to_cell_interactions_v1(Cell *pCell, Phenotype &phenotype, double dt)
 	return;
 }
 
+void initialize_ecm_interactions_v1(pugi::xml_node node, Cell_Definition* pCD)
+{
+	pCD->functions.response_to_ecm = ecm_to_cell_interactions_v1;
+	int ecm_sensitivity_index = pCD->custom_data.find_variable_index("ecm_sensitivity");
+	if (ecm_sensitivity_index < 0)
+	{
+		std::cout << "ecm_sensitivity not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+
+	int min_ecm_mot_den_index = pCD->custom_data.find_variable_index("min_ecm_motility_density");
+	if (min_ecm_mot_den_index < 0)
+	{
+		std::cout << "min_ecm_motility_density not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+	int max_ecm_mot_den_index = pCD->custom_data.find_variable_index("max_ecm_motility_density");
+	if (max_ecm_mot_den_index < 0)
+	{
+		std::cout << "max_ecm_motility_density not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+
+	int ideal_ecm_mot_den_index = pCD->custom_data.find_variable_index("ideal_ecm_motility_density");
+	if (ideal_ecm_mot_den_index < 0)
+	{
+		std::cout << "ideal_ecm_motility_density not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+	int normalize_motility_vector_bool_index = pCD->custom_data.find_variable_index("normalize_motility_vector_bool");
+	if (normalize_motility_vector_bool_index < 0)
+	{
+		std::cout << "normalize_motility_vector_bool not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+}
+
 void ecm_to_cell_interactions_v2( Cell* pCell, Phenotype& phenotype, double dt )
 {
 	// this is my version, that adheres to certain guiding principles
@@ -174,6 +235,44 @@ void ecm_to_cell_interactions_v2( Cell* pCell, Phenotype& phenotype, double dt )
 
 	phenotype.motility.motility_vector *= directed_speed;
 	return;
+}
+
+void initialize_ecm_interactions_v2(pugi::xml_node node, Cell_Definition* pCD)
+{
+	int ecm_sensitivity_density_ec50_index = pCD->custom_data.find_variable_index("ecm_sensitivity_density_ec50");
+	if (ecm_sensitivity_density_ec50_index < 0)
+	{
+		std::cout << "ecm_sensitivity_density_ec50 not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+
+	int ecm_speed_increase_density_ec50_index = pCD->custom_data.find_variable_index("ecm_speed_increase_density_ec50");
+	if (ecm_speed_increase_density_ec50_index < 0)
+	{
+		std::cout << "ecm_speed_increase_density_ec50 not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+
+	int ecm_speed_decrease_density_ec50_index = pCD->custom_data.find_variable_index("ecm_speed_decrease_density_ec50");
+	if (ecm_speed_decrease_density_ec50_index < 0)
+	{
+		std::cout << "ecm_speed_decrease_density_ec50 not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+
+	int ecm_speed_increase_by_density_index = pCD->custom_data.find_variable_index("ecm_speed_increase_by_density");
+	if (ecm_speed_increase_by_density_index < 0)
+	{
+		std::cout << "ecm_speed_increase_by_density not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+	int ecm_speed_increase_by_alignment_index = pCD->custom_data.find_variable_index("ecm_speed_increase_by_alignment");
+	if (ecm_speed_increase_by_alignment_index < 0)
+	{
+		std::cout << "ecm_speed_increase_by_alignment not found in custom data for cell definition " << pCD->name << std::endl;
+		exit(-1);
+	}
+	pCD->functions.response_to_ecm = ecm_to_cell_interactions_v2;
 }
 
 void ecm_remodeling_function( Cell* pCell, Phenotype& phenotype, double dt )
@@ -292,14 +391,6 @@ void ecm_based_update_cell_velocity( Cell* pCell, Phenotype& phenotype, double d
 	ecm_remodeling_function(pCell, phenotype, dt);
 
 	return; 
-}
-
-void create_default_ecm_compatible_agent( void )
-{
-	initialize_default_cell_definition(); 
-	
-	cell_defaults.functions.update_velocity = ecm_based_update_cell_velocity;
-	
 }
 
 void SVG_plot_custom( std::string filename , Microenvironment& M, double z_slice , double time, std::vector<std::string> (*cell_coloring_function)(Cell*), std::string line_pattern )
