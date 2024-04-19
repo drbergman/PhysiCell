@@ -67,6 +67,7 @@
 
 #include "../core/PhysiCell.h"
 #include "../modules/PhysiCell_standard_modules.h" 
+#include "../addons/PhysiECM/PhysiECM.h"
 
 using namespace BioFVM; 
 using namespace PhysiCell;
