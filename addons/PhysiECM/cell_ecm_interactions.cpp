@@ -43,7 +43,7 @@ void ecm_based_update_motility_vector(Cell* pCell, Phenotype& phenotype, double 
 
 	if( phenotype.motility.is_motile == false )
 	{
-		phenotype.motility.motility_vector.assign( 3, 0.0 ); 
+		phenotype.motility.migration_bias_direction.assign( 3, 0.0 ); 
 		return; 
 	}
 
@@ -73,6 +73,11 @@ void ecm_based_update_motility_vector(Cell* pCell, Phenotype& phenotype, double 
 
 void ecm_to_cell_interactions_v1(Cell *pCell, Phenotype &phenotype, double dt)
 {
+	if( phenotype.motility.is_motile == false )
+	{
+		phenotype.motility.motility_vector.assign( 3, 0.0 ); 
+		return; 
+	}
 	// this is the version Metzcar et all developed
 	// Get cell level values
 	static int ecm_sensitivity_index = pCell->custom_data.find_variable_index("ecm_sensitivity");
@@ -179,6 +184,11 @@ void initialize_ecm_interactions_v1(pugi::xml_node node, Cell_Definition* pCD)
 
 void ecm_to_cell_interactions_v2( Cell* pCell, Phenotype& phenotype, double dt )
 {
+	if( phenotype.motility.is_motile == false )
+	{
+		phenotype.motility.motility_vector.assign( 3, 0.0 ); 
+		return; 
+	}
 	// this is my version, that adheres to certain guiding principles
 	// Get cell level values
 	static int ecm_sensitivity_density_ec50_index = pCell->custom_data.find_variable_index("ecm_sensitivity_density_ec50");
@@ -380,13 +390,13 @@ void ecm_based_update_cell_velocity( Cell* pCell, Phenotype& phenotype, double d
 	}
 
 	// non-standard motility update - part of ECM package
-	ecm_based_update_motility_vector(pCell, phenotype, dt);
+	ecm_based_update_motility_vector(pCell, phenotype, dt); // setting migration_bias_direction: if dead, 0; otherwise if time, random direction. no response to ecm encoded here
 
 	// ECM following and speed update
-	pCell->functions.response_to_ecm(pCell, phenotype, dt);
+	pCell->functions.response_to_ecm(pCell, phenotype, dt); // setting motility_vector: currently either ecm_to_cell_interactions_v1 or ecm_to_cell_interactions_v2
 
 	// standard update cell velocity - after this update proceeds as "conventional" PhysiCell
-	pCell->velocity += phenotype.motility.motility_vector;
+	pCell->velocity += phenotype.motility.motility_vector; // the velocity has already been updated by calls to add_potentials above
 
 	ecm_remodeling_function(pCell, phenotype, dt);
 
