@@ -1573,7 +1573,6 @@ void initialize_microenvironment( std::string path_to_ic_substrate_file )
 	// }
 
 	microenvironment.display_information(std::cout);
-
 	return;
 }
 
@@ -1648,6 +1647,7 @@ void load_initial_conditions_from_csv(std::string filename)
 	std::getline( file , line );
 	char c = line.c_str()[0];
 	std::vector<int> substrate_indices;
+	bool header_provided = false;
 	if( c == 'X' || c == 'x' )
 	{ 
 		// do not support this with a header yet
@@ -1676,6 +1676,7 @@ void load_initial_conditions_from_csv(std::string filename)
 			}
 			substrate_indices.push_back(microenvironment.find_density_index(column_names[i]));
 		}
+		header_provided = true;
 	}
 	else // no column labels given; just assume that the first n substrates are supplied (n = # columns after x,y,z)
 	{
@@ -1699,7 +1700,7 @@ void load_initial_conditions_from_csv(std::string filename)
 	
 	while (std::getline(file, line))
 	{
-		get_row_from_substrate_initial_condition_csv(voxel_set, line, substrate_indices);
+		get_row_from_substrate_initial_condition_csv(voxel_set, line, substrate_indices, header_provided);
 	}
 	
 	if (voxel_set.size() != microenvironment.number_of_voxels())
@@ -1716,19 +1717,20 @@ void load_initial_conditions_from_csv(std::string filename)
 	return;
 }
 
-void get_row_from_substrate_initial_condition_csv(std::vector<int> &voxel_set, const std::string line, const std::vector<int> substrate_indices)
+void get_row_from_substrate_initial_condition_csv(std::vector<int> &voxel_set, const std::string line, const std::vector<int> substrate_indices, const bool header_provided)
 {
-	std::cout << "Number found so far = " << voxel_set.size() << std::endl;
+	static bool warning_issued = false;
 	std::vector<double> data;
 	csv_to_vector(line.c_str(), data);
 
-	if ((voxel_set.size()==0) && (data.size() != (microenvironment.number_of_densities() + 3)))
+	if (!(warning_issued) && !(header_provided) && (data.size() != (microenvironment.number_of_densities() + 3)))
 	{
 		std::cout << "WARNING: Wrong number of density values supplied in the .csv file specifying BioFVM initial conditions." << std::endl
 				  << "\tExpected: " << microenvironment.number_of_voxels() << std::endl
 				  << "\tFound: " << data.size() - 3 << std::endl
 				  << "\tRemember, save your csv with columns as: x, y, z, substrate_0, substrate_1,...." << std::endl
-				  << "\tThough the order does not matter if you include a header row \"x,y,z,[substrate_i0,substrate_i1]\"" << std::endl;
+				  << "\tThis could also be resolved by including a header row \"x,y,z,[substrate_i0,substrate_i1]\"" << std::endl;
+		warning_issued = true;
 	}
 
 	std::vector<double> position = {data[0], data[1], data[2]};
