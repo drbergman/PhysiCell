@@ -155,6 +155,7 @@ void setup_tissue(std::string path_to_ic_cells_file)
 	setup_tissue_domain();
 	// load cells from your CSV file (if enabled)
 	load_initial_cells(path_to_ic_cells_file);
+	set_parameters_from_distributions();
 
 	return;
 }
@@ -198,7 +199,9 @@ void setup_tissue_domain(void)
 			pC->assign_position(position);
 		}
 	}
-	std::cout << std::endl;
+	std::cout << std::endl; 
+	
+	return; 
 }
 
 std::vector<std::string> my_coloring_function( Cell* pCell )

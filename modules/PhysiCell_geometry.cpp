@@ -364,48 +364,56 @@ void set_parameters_from_distributions( const pugi::xml_node root )
 	// find the first cell definition 
 	node = node.child( "cell_definition" ); 
 
+	std::string celltype;
+	Cell_Definition *pCD;
 	while (node)
 	{
 		pugi::xml_node node_ipd = node.child("initial_parameter_distributions");
-		if (node_ipd && node_ipd.attribute("enabled").as_bool())
-		{ set_parameters_from_distributions_for_celltype(node_ipd);	}
+		if (node_ipd && (node_ipd.attribute("enabled").empty() || node_ipd.attribute("enabled").as_bool()))
+		{
+			celltype = node.attribute("name").as_string();
+			pCD = find_cell_definition(celltype);
+			set_distributed_parameters(node_ipd, pCD);
+		}
 		node = node.next_sibling("cell_definition");
 	}
 	return;
 }
 
-void set_parameters_from_distributions_for_celltype(const pugi::xml_node node_ipd)
+void set_distributed_parameters(const pugi::xml_node node_ipd, Cell_Definition *pCD)
 {
 	pugi::xml_node node_dist = node_ipd.child("distribution");
 	while (node_dist)
 	{
-		set_parameter_from_distribution_for_celltype(node_dist);
+		if (node_dist.attribute("enabled").empty() || node_dist.attribute("enabled").as_bool()) // if enabled attribute is missing or true, set the distribution (I put this here rather than in the function because the logic is clearer this way without negations)
+		{
+			set_distributed_parameter(node_dist, pCD);
+		}
 		node_dist = node_dist.next_sibling("distribution");
 	}
 	return;
 }
 
-void set_parameter_from_distribution_for_celltype(pugi::xml_node node_dist)
+void set_distributed_parameter(pugi::xml_node node_dist, Cell_Definition *pCD)
 {
 	static std::vector<std::string> supported_distributions = {"Uniform","LogUniform","Normal","LogNormal","Log10Normal"};
-	std::string celltype = node_dist.parent().parent().attribute("name").as_string();
-	Cell_Definition *pCD = find_cell_definition(celltype);
+	std::string type = node_dist.attribute("type").as_string();
 	std::string behavior = xml_get_string_value(node_dist, "behavior");
-	if (!strcmpi(behavior,"volume") && find_behavior_index(behavior) == -1)
-	{
-		std::cout << "\tWarning: I don't know how to process " << behavior
-				  << " so I skipped it." << std::endl;
-		return;
-	}
-	std::string type = xml_get_string_value(node_dist, "type");
 	if (!is_in(type, supported_distributions))
 	{
-		std::cout << "WARNING : Only supporting these distributions:" << std::endl
-				  << "\t" << supported_distributions
-				  << "\t Skipping the distribution for " << behavior << " for " << celltype << std::endl;
-		return;
+		std::cout << "ERROR: Only supporting these distributions:" << std::endl
+				  << "\t\t" << supported_distributions << std::endl
+				  << "\tBut" << behavior << " for " << pCD->name << " using " << type << "." << std::endl;
+		exit(-1);
 	}
-	set_parameter_from_distribution_for_celltype(pCD, behavior, type, node_dist);
+
+	if (!strcmpi(behavior,"volume") && find_behavior_index(behavior) == -1)
+	{
+		std::cout << "ERROR: Initial parameter distributions can only be set for volume and cell behaviors." << std::endl
+				  << "\t" << behavior << " is not among these." << std::endl;
+		exit(-1);
+	}
+	set_distributed_parameter(pCD, behavior, type, node_dist);
 	return;
 }
 
@@ -420,17 +428,35 @@ bool is_in(const std::string x, const std::vector<std::string> A)
 	return false;
 }
 
-void set_parameter_from_distribution_for_celltype(Cell_Definition *pCD, std::string behavior, std::string type, pugi::xml_node node_dist)
+void set_distributed_parameter(Cell_Definition *pCD, std::string behavior, std::string type, pugi::xml_node node_dist)
 {
+	double base_value;
+	if (strcmpi(behavior, "volume"))
+	{
+		base_value = pCD->phenotype.volume.total;
+	}
+	else
+	{
+		base_value = get_single_base_behavior(pCD, behavior);
+	}
+	bool check_base = node_dist.attribute("check_base").empty() || node_dist.attribute("check_base").as_bool(); // if check_base not provided, default to true
 	if (strcmpi(type,"uniform"))
 	{
 		double min = xml_get_double_value(node_dist, "min");
 		double max = xml_get_double_value(node_dist, "max");
+		if (check_base && (base_value < min || base_value > max))
+		{
+			std::cout << "ERROR: The base value for " << behavior << " in " << pCD->name << " is " << base_value << std::endl
+					  << "\tThis value is outside the range of the uniform distribution." << std::endl
+					  << "\tmin = " << min << ", max = " << max << "." << std::endl
+					  << "\tIf you want to allow the base value to be outside the range, set check_base to false." << std::endl;
+			exit(-1);
+		}
 		double dv = max - min;
 		if (dv < 0)
 		{
-			std::cout << "ERROR : The min and max values for " << behavior << " in " << pCD->name
-					  << "\tdo not satisfy min <= max" << std::endl;
+			std::cout << "ERROR: The min and max values for " << behavior << " in " << pCD->name << " do not satisfy min <= max." << std::endl
+					  << "\tmin = " << min << ", max = " << max << std::endl;
 			exit(-1);
 		}
 		for (unsigned int i = 0; i < (*all_cells).size(); i++)
@@ -440,14 +466,7 @@ void set_parameter_from_distribution_for_celltype(Cell_Definition *pCD, std::str
 				continue;
 			}
 			double val = min + dv * UniformRandom();
-			if (strcmpi(behavior,"volume"))
-			{
-				(*all_cells)[i]->set_total_volume(val);
-			}
-			else
-			{
-				set_single_behavior((*all_cells)[i], behavior, val);
-			}
+			set_distributed_parameter((*all_cells)[i], behavior, val);
 		}
 	}
 	else if (strcmpi(type,"loguniform"))
@@ -455,17 +474,28 @@ void set_parameter_from_distribution_for_celltype(Cell_Definition *pCD, std::str
 		double min = xml_get_double_value(node_dist, "min");
 		if (min <= 0)
 		{
-			std::cout << "ERROR : The log uniform distirbution must be defined on a positive interval."
-					  << "\tSet the min and max as the bounds on the value you want, not the bounds on the exponent." << std::endl;
+			std::cout << "ERROR: The log uniform distirbution must be defined on a positive interval." << std::endl
+					  << "\tThe min value for " << behavior << " in " << pCD->name << " is " << min << std::endl
+					  << "\tSet the min and max as the bounds on the value you want, not the bounds on the exponent." << std::endl
+					  << "\tFor example, if you want a value between 0.1 and 10, set min=0.1 and max=10, not min=-1 and max=1." << std::endl;
+			exit(-1);
+		}
+		double max = xml_get_double_value(node_dist, "max");
+		if (check_base && (base_value < min || base_value > max))
+		{
+			std::cout << "ERROR: The base value for " << behavior << " in " << pCD->name << " is " << base_value << std::endl
+					  << "\tThis value is outside the range of the loguniform distribution." << std::endl
+					  << "\tmin = " << min << ", max = " << max << "." << std::endl
+					  << "\tIf you want to allow the base value to be outside the range, set check_base to false." << std::endl;
 			exit(-1);
 		}
 		min = log(min);
-		double max = log(xml_get_double_value(node_dist, "max"));
+		max = log(max);
 		double dv = max - min;
 		if (dv < 0)
 		{
-			std::cout << "ERROR : The min and max values for " << behavior << " in " << pCD->name
-					  << "\tdo not satisfy min <= max" << std::endl;
+			std::cout << "ERROR: The min and max values for " << behavior << " in " << pCD->name << " do not satisfy min <= max." << std::endl
+					  << "\tmin = " << min << ", max = " << max << std::endl;
 			exit(-1);
 		}
 		for (unsigned int i = 0; i < (*all_cells).size(); i++)
@@ -475,14 +505,7 @@ void set_parameter_from_distribution_for_celltype(Cell_Definition *pCD, std::str
 				continue;
 			}
 			double val = exp(min + dv * UniformRandom());
-			if (strcmpi(behavior,"volume"))
-			{
-				(*all_cells)[i]->set_total_volume(val);
-			}
-			else
-			{
-				set_single_behavior((*all_cells)[i], behavior, val);
-			}
+			set_distributed_parameter((*all_cells)[i], behavior, val);
 		}
 	}
 	else if (strcmpi(type,"normal"))
@@ -495,7 +518,21 @@ void set_parameter_from_distribution_for_celltype(Cell_Definition *pCD, std::str
 		{ lb = xml_get_double_value(node_dist, "lower_bound"); }
 		if (node_dist.child("upper_bound"))
 		{ ub = xml_get_double_value(node_dist, "upper_bound"); }
-		std::cout << "lb = " << lb << ". ub = " << ub << std::endl;
+		if (lb > ub)
+		{
+			std::cout << "ERROR: The lower and upper bounds for " << behavior << " in " << pCD->name << " do not satisfy lb <= ub." << std::endl
+					  << "\tlb = " << lb << ", ub = " << ub << std::endl;
+			exit(-1);
+		}
+		if (check_base && (base_value < lb || base_value > ub))
+		{
+			std::cout << "ERROR: The base value for " << behavior << " in " << pCD->name << " is " << base_value << std::endl
+					  << "\tThis value is outside the range of the truncated normal distribution." << std::endl
+					  << "\tExpecting values between " << lb << " and " << ub << "." << std::endl
+					  << "\tIf you want to allow the base value to be outside the range, set check_base to false." << std::endl;
+			exit(-1);
+		}
+		print_drawing_expectations(mu, sigma, lb, ub, (*all_cells).size());
 		for (unsigned int i = 0; i < (*all_cells).size(); i++)
 		{
 			if ((*all_cells)[i]->type_name != pCD->name)
@@ -505,26 +542,17 @@ void set_parameter_from_distribution_for_celltype(Cell_Definition *pCD, std::str
 			double val=lb;
 			while (val<=lb || val>=ub)
 			{ val = NormalRandom(mu, sigma); }
-			if (strcmpi(behavior,"volume"))
-			{
-				(*all_cells)[i]->set_total_volume(val);
-			}
-			else
-			{
-				set_single_behavior((*all_cells)[i], behavior, val);
-			}
+			set_distributed_parameter((*all_cells)[i], behavior, val);
 		}
 	}
 	else if (strcmpi(type,"lognormal"))
 	{
 		double mu = xml_get_double_value(node_dist, "mu");
 		double sigma = xml_get_double_value(node_dist, "sigma");
-		double lb = -9e99;
+		double lb = 0;
 		double ub = 9e99;
-		if (node_dist.child("lower_bound"))
-		{ lb = xml_get_double_value(node_dist, "lower_bound"); }
-		if (node_dist.child("upper_bound"))
-		{ ub = xml_get_double_value(node_dist, "upper_bound"); }
+		get_log_normal_bounds(node_dist, behavior, pCD, lb, ub, base_value, check_base);
+		print_drawing_expectations(mu, sigma, log(lb), log(ub), (*all_cells).size());
 		for (unsigned int i = 0; i < (*all_cells).size(); i++)
 		{
 			if ((*all_cells)[i]->type_name != pCD->name)
@@ -534,14 +562,7 @@ void set_parameter_from_distribution_for_celltype(Cell_Definition *pCD, std::str
 			double val=lb;
 			while (val<=lb || val>=ub)
 			{ val = exp(NormalRandom(mu, sigma)); }
-			if (strcmpi(behavior,"volume"))
-			{
-				(*all_cells)[i]->set_total_volume(val);
-			}
-			else
-			{
-				set_single_behavior((*all_cells)[i], behavior, val);
-			}
+			set_distributed_parameter((*all_cells)[i], behavior, val);
 		}
 	}
 	else if (strcmpi(type,"log10normal"))
@@ -551,10 +572,8 @@ void set_parameter_from_distribution_for_celltype(Cell_Definition *pCD, std::str
 		double sigma = xml_get_double_value(node_dist, "sigma");
 		double lb = -9e99;
 		double ub = 9e99;
-		if (node_dist.child("lower_bound"))
-		{ lb = xml_get_double_value(node_dist, "lower_bound"); }
-		if (node_dist.child("upper_bound"))
-		{ ub = xml_get_double_value(node_dist, "upper_bound"); }
+		get_log_normal_bounds(node_dist, behavior, pCD, lb, ub, base_value, check_base);
+		print_drawing_expectations(mu, sigma, log(lb), log(ub), (*all_cells).size());
 		for (unsigned int i = 0; i < (*all_cells).size(); i++)
 		{
 			if ((*all_cells)[i]->type_name != pCD->name)
@@ -564,17 +583,76 @@ void set_parameter_from_distribution_for_celltype(Cell_Definition *pCD, std::str
 			double val=lb;
 			while (val<=lb || val>=ub)
 			{ val = exp(log10_ * NormalRandom(mu, sigma)); }
-			if (strcmpi(behavior,"volume"))
-			{
-				(*all_cells)[i]->set_total_volume(val);
-			}
-			else
-			{
-				set_single_behavior((*all_cells)[i], behavior, val);
-			}
+			set_distributed_parameter((*all_cells)[i], behavior, val);
 		}
 	}
 	return;
+}
+
+void get_log_normal_bounds(pugi::xml_node node_dist, std::string behavior, Cell_Definition *pCD, double &lb, double &ub, double base_value, bool check_base)
+{
+	if (node_dist.child("lower_bound"))
+	{
+		lb = xml_get_double_value(node_dist, "lower_bound");
+		if (lb < 0)
+		{
+			std::cout << "ERROR: The lower bound for a lognormal/log10normal distribution only matters if it is non-negative." << std::endl
+					  << "\tThe lower bound for " << behavior << " in " << pCD->name << " is " << lb << "." << std::endl
+					  << "\tThe lower bound is for the actual assigned value while the mean and standard deviation are for the log/log10 of the value." << std::endl
+					  << "\tSince this seems to imply (understandable!) confusion about the lognormal/log10normal distribution, I'm going to exit." << std::endl;
+			exit(-1);
+		}
+	}
+	if (node_dist.child("upper_bound"))
+	{
+		ub = xml_get_double_value(node_dist, "upper_bound");
+	}
+	if (lb > ub)
+	{
+		std::cout << "ERROR: The lower and upper bounds for " << behavior << " in " << pCD->name << " do not satisfy lb <= ub." << std::endl
+				  << "\tlb = " << lb << ", ub = " << ub << std::endl;
+		exit(-1);
+	}
+	if (check_base && (base_value < lb || base_value > ub))
+	{
+		std::cout << "ERROR: The base value for " << behavior << " in " << pCD->name << " is " << base_value << std::endl
+				  << "\tThis value is outside the range of the lognormal/log10normal distribution." << std::endl
+				  << "\tExpecting values between " << lb << " and " << ub << "." << std::endl
+				  << "\tIf you want to allow the base value to be outside the range, set check_base to false." << std::endl;
+		exit(-1);
+	}
+}
+
+void print_drawing_expectations(double mu, double sigma, double lb, double ub, int n)
+{
+	// calculate the z-scores for lb and ub
+    double z_lb = (lb - mu) / sigma;
+    double z_ub = (ub - mu) / sigma;
+
+    // calculate the probabilities for lb and ub
+    double p_lb = 0.5 * (1 + std::erf(z_lb / std::sqrt(2)));
+    double p_ub = 0.5 * (1 + std::erf(z_ub / std::sqrt(2)));
+
+    // the probability of finding a value between lb and ub is the difference between the probabilities for ub and lb
+    double success_probability = p_ub - p_lb;
+	double num_expected = n / success_probability;
+	
+	std::cout << "Drawing up to " << n << " values from a normal distribution with mu=" << mu << " and sigma=" << sigma << std::endl
+			  << "\tExpecting values between " << lb << " and " << ub << std::endl
+			  << "\tIt will take about " << num_expected << " draws to get " << n << " values in the range." << std::endl
+			  << "\tIf one draw takes 1 microsecond, this will take about " << num_expected * 1e-6 / 60 << " minutes." << std::endl;
+}
+
+void set_distributed_parameter(Cell* pCell, std::string behavior, double val)
+{
+	if (strcmpi(behavior, "volume"))
+	{
+		pCell->set_total_volume(val);
+	}
+	else
+	{
+		set_single_behavior(pCell, behavior, val);
+	}
 }
 
 bool strcmpi(std::string x, std::string y)
