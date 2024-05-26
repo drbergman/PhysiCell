@@ -229,7 +229,7 @@ void ecm_to_cell_interactions_v2( Cell* pCell, Phenotype& phenotype, double dt )
 	double directed_speed = pCell->phenotype.motility.migration_speed; // s_0
 	if (d!=0)
 	{
-		double ds = pCell->custom_data[ecm_speed_increase_by_density_index] + pCell->custom_data[ecm_speed_increase_by_alignment_index] * (2 * cos_angle - 1) * a;
+		double ds = pCell->custom_data[ecm_speed_increase_by_density_index] + pCell->custom_data[ecm_speed_increase_by_alignment_index] * (2 * cos_angle * cos_angle - 1) * a;
 		double temp = pCell->custom_data[ecm_speed_increase_density_ec50_index] / d;
 		directed_speed += ds / (1 + temp * temp);
 		if (directed_speed <= 0)
