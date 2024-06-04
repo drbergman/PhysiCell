@@ -198,7 +198,12 @@ void setup_tissue_domain(void)
 			pC->assign_position(position);
 		}
 	}
-	std::cout << std::endl;
+	std::cout << std::endl; 
+	
+	// load cells from your CSV file (if enabled)
+	set_parameters_from_distributions();
+	
+	return; 
 }
 
 std::vector<std::string> my_coloring_function( Cell* pCell )
