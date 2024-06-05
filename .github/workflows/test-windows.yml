@@ -78,4 +78,6 @@ jobs:
 
     - name: Run arg_parse project
       run: |
+        .\\project.exe .\\config\\PhysiCell_settings.xml
+        .\\project.exe .\\config\\PhysiCell_settings.xml -o output\\test\\the\\arg\\parser
         .\\project.exe -c .\\config\\PhysiCell_settings.xml -o output\\test\\the\\arg\\parser
