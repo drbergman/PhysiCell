@@ -302,6 +302,10 @@ public:
             }
         }
 
+		std::cout << "optind: " << optind << std::endl;
+		std::cout << "config_file_flagged: " << config_file_flagged << std::endl;
+		std::cout << "argc: " << argc << std::endl;
+
         if (optind == argc - 1 && !config_file_flagged) // config file not flagged and passed in as unflagged argument
         {
             path_to_config_file = argv[optind];
