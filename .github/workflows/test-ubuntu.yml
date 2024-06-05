@@ -75,14 +75,14 @@ jobs:
       run: |
         ./project -c ./config/PhysiCell_settings.xml
 
-    -name: Run ArgParse project with flagged output directory
+    - name: Run ArgParse project with flagged output directory
       run: |
         ./project -o output/test/the/arg/parser
 
-    -name: Run ArgParse project with unflagged config file and output directory
+    - name: Run ArgParse project with unflagged config file and output directory
       run: |
         ./project ./config/PhysiCell_settings.xml -o output/test/the/arg/parser
 
-    -name: Run ArgParse project with flagged config file and output directory
+    - name: Run ArgParse project with flagged config file and output directory
       run: |
         ./project -c ./config/PhysiCell_settings.xml -o output/test/the/arg/parser
