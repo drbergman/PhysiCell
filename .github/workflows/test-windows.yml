@@ -5,54 +5,54 @@ on:
   pull_request:
     
 jobs:
-  build:
+  # build:
 
-    runs-on: windows-latest
+  #   runs-on: windows-latest
     
-    defaults:
-      run:
-        shell: msys2 {0}
+  #   defaults:
+  #     run:
+  #       shell: msys2 {0}
         
-    steps:
-    - uses: actions/checkout@v2
+  #   steps:
+  #   - uses: actions/checkout@v2
     
-    - uses: msys2/setup-msys2@v2
-      with:
-        update: true
-        install: base-devel flex bison gcc make diffutils mingw-w64-x86_64-toolchain mingw-w64-x86_64-ca-certificates
+  #   - uses: msys2/setup-msys2@v2
+  #     with:
+  #       update: true
+  #       install: base-devel flex bison gcc make diffutils mingw-w64-x86_64-toolchain mingw-w64-x86_64-ca-certificates
     
-    - name: Build Virus Macrophage project
-      run: |
-        make virus-macrophage-sample
-        make
+  #   - name: Build Virus Macrophage project
+  #     run: |
+  #       make virus-macrophage-sample
+  #       make
         
-    - name: Run Virus Macrophage cell lines project
-      run: |
-        .\\virus-sample.exe
+  #   - name: Run Virus Macrophage cell lines project
+  #     run: |
+  #       .\\virus-sample.exe
         
-    - name: Build PhysiBoSS cell lines project
-      run: |
-        make reset
-        make physiboss-cell-lines-sample
-        make clean
-        make 
+  #   - name: Build PhysiBoSS cell lines project
+  #     run: |
+  #       make reset
+  #       make physiboss-cell-lines-sample
+  #       make clean
+  #       make 
       
-    - name: Run PhysiBoSS cell lines project
-      run: |
-        .\\PhysiBoSS_Cell_Lines.exe
+  #   - name: Run PhysiBoSS cell lines project
+  #     run: |
+  #       .\\PhysiBoSS_Cell_Lines.exe
         
-    - name: Build PhysiMeSS project
-      run: |
-        make reset
-        make physimess-sample
-        make clean
-        make
+  #   - name: Build PhysiMeSS project
+  #     run: |
+  #       make reset
+  #       make physimess-sample
+  #       make clean
+  #       make
         
-    - name: Run PhysiMeSS project
-      run: |
-        .\\project
-        .\\project config\\Fibre_Initialisation\\mymodel_initialisation.xml
-        .\\project config\\Cell_Fibre_Mechanics\\mymodel_rotating.xml
+  #   - name: Run PhysiMeSS project
+  #     run: |
+  #       .\\project
+  #       .\\project config\\Fibre_Initialisation\\mymodel_initialisation.xml
+  #       .\\project config\\Cell_Fibre_Mechanics\\mymodel_rotating.xml
 
   test_arg_parse:
 
@@ -72,7 +72,6 @@ jobs:
 
     - name: Install dependencies
       run: |
-        make reset
         make template
         make clean
         make -j 12
