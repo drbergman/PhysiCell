@@ -76,8 +76,26 @@ jobs:
         make clean
         make -j 12
 
-    - name: Run arg_parse project
+    - name: Run project with no arguments
+      run: |
+        .\\project.exe
+    
+    - name: Run project with unflagged config file
       run: |
         .\\project.exe .\\config\\PhysiCell_settings.xml
+
+    - name: Run project with flagged config file
+      run: |
+        .\\project.exe -c .\\config\\PhysiCell_settings.xml
+
+    - name: Run project with output directory
+      run: |
+        .\\project.exe -o output\\test\\the\\arg\\parser
+
+    - name: Run project with unflagged config file and output directory
+      run: |
         .\\project.exe .\\config\\PhysiCell_settings.xml -o output\\test\\the\\arg\\parser
+
+    - name: Run project with flagged config file and output directory
+      run: |
         .\\project.exe -c .\\config\\PhysiCell_settings.xml -o output\\test\\the\\arg\\parser
