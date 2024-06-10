@@ -2814,5 +2814,4 @@ std::vector<double> get_base_behaviors( Cell* pCell , std::vector<std::string> n
 	{ parameters[n] = get_single_base_behavior(pCell,names[n]); }
 	return parameters; 
 }
-
 };

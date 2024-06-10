@@ -69,12 +69,6 @@
 
 void create_cell_types( void )
 {
-	// set the random seed 
-	if (parameters.ints.find_index("random_seed") != -1)
-	{
-		SeedRandom(parameters.ints("random_seed"));
-	}
-
 	/* 
 	   Put any modifications to default cell definition here if you 
 	   want to have "inherited" by other cell types. 
@@ -125,6 +119,23 @@ void create_cell_types( void )
 	   
 	   This is a good place to set custom functions. 
 	*/ 
+
+	// Usage
+	set_custom_mediator("custom_mediator", "custom:sample", custom_mediator);
+	set_custom_mediator("custom_mediator_with_values", "custom:sample", custom_mediator_with_values);
+	set_custom_aggregator("custom_aggregator", "custom:sample", "increases", custom_aggregator);
+
+	// pCD = find_cell_definition( "increasing_partial_hill" );
+	// auto abstract_aggregator_signal = dynamic_cast<MediatorSignal*>(find_behavior_ruleset(pCD)->find_behavior("custom:sample")->signal.get())->get_increasing_signal();
+	// auto aggregator_signal = dynamic_cast<AggregatorSignal*>(abstract_aggregator_signal);
+	// if (aggregator_signal)
+	// {
+	// 	aggregator_signal->aggregator = custom_aggregator;
+	// }
+	// else
+	// {
+	// 	std::cerr << "Error: Signal is not of type AggregatorSignal." << std::endl;
+	// }
 	
 	cell_defaults.functions.update_phenotype = phenotype_function; 
 	cell_defaults.functions.custom_cell_rule = custom_function; 
@@ -194,8 +205,10 @@ void setup_tissue( void )
 	}
 	std::cout << std::endl; 
 	
-	// load cells from your CSV file
+	// load cells from your CSV file (if enabled)
 	load_cells_from_pugixml(); 	
+	
+	return; 
 }
 
 std::vector<std::string> my_coloring_function( Cell* pCell )
@@ -210,35 +223,68 @@ void custom_function( Cell* pCell, Phenotype& phenotype , double dt )
 void contact_function( Cell* pMe, Phenotype& phenoMe , Cell* pOther, Phenotype& phenoOther , double dt )
 { return; } 
 
-void treatment_function () 
+double custom_aggregator( std::vector<double> signals_in )
 {
-	if (PhysiCell::parameters.bools.find_index("treatment") != -1) 
+	// custom aggregator function 
+	// this is a placeholder for a custom aggregator function
+	// it should be replaced with the actual implementation
+	static bool first_time = true;
+	if (first_time)
 	{
-		int treatment_substrate_index = BioFVM::microenvironment.find_density_index(PhysiCell::parameters.strings("treatment_substrate"));
-
-		if (PhysiCell::parameters.bools("treatment")){
-		
-			if (
-				(((int)PhysiCell::PhysiCell_globals.current_time) % PhysiCell::parameters.ints("treatment_period")) == 0 
-				&& !BioFVM::microenvironment.get_substrate_dirichlet_activation(treatment_substrate_index)
-			)
-			{
-				std::cout << PhysiCell::parameters.strings("treatment_substrate") << " activation at t=" << PhysiCell::PhysiCell_globals.current_time << std::endl;
-				BioFVM::microenvironment.set_substrate_dirichlet_activation(treatment_substrate_index, true);	
-			}
-
-			if (
-				(((int)PhysiCell::PhysiCell_globals.current_time) % PhysiCell::parameters.ints("treatment_period")) == PhysiCell::parameters.ints("treatment_duration") 
-				&& BioFVM::microenvironment.get_substrate_dirichlet_activation(treatment_substrate_index)
-			)
-			{
-				std::cout << PhysiCell::parameters.strings("treatment_substrate") << " inactivation at t=" << PhysiCell::PhysiCell_globals.current_time << std::endl;
-				BioFVM::microenvironment.set_substrate_dirichlet_activation(treatment_substrate_index, false);	
-			}
-			
-		} else if ( BioFVM::microenvironment.get_substrate_dirichlet_activation(treatment_substrate_index) ){
-			std::cout << PhysiCell::parameters.strings("treatment_substrate") << " inactivation (NO TREATMENT) at t=" << PhysiCell::PhysiCell_globals.current_time << std::endl;
-			BioFVM::microenvironment.set_substrate_dirichlet_activation(treatment_substrate_index, false);	
-		}
+		std::cout << "Custom aggregator function called!" << std::endl;
+		first_time = false;
 	}
+	double out = 0.0;
+	for ( int i = 0; i < signals_in.size(); i++ )
+	{
+		out += (i + 1) * signals_in[i];
+	}
+	double f = signals_in.size();
+	f *= f+1;
+	f /= 2.0;
+	
+	return out / f; // weighted average
+}
+
+double custom_mediator( std::vector<double> signals_in )
+{
+	// custom mediator function 
+	// this is a placeholder for a custom mediator function
+	// it should be replaced with the actual implementation
+	static bool first_time = true;
+	if (first_time)
+	{
+		std::cout << "Custom mediator function called!" << std::endl;
+		first_time = false;
+	}
+
+	return signals_in[1] / (1 + signals_in[0]); // ratio of increasing to decreasing signal
+}
+
+double custom_mediator_with_values(MediatorSignal *pMS, std::vector<double> signals_in)
+{
+	// custom mediator function 
+	// this is a placeholder for a custom mediator function
+	// it should be replaced with the actual implementation
+	static bool first_time = true;
+	if (first_time)
+	{
+		std::cout << "Custom mediator function called that can use the mediator values!" << std::endl;
+		std::cout << "min, base, max = " << pMS->get_min_value() << ", " << pMS->get_base_value() << ", " << pMS->get_max_value() << std::endl;
+		first_time = false;
+	}
+	if (signals_in[0] > signals_in[1])
+	{
+		return pMS->get_min_value();
+	}
+	else if (signals_in[0] < signals_in[1])
+	{
+		return pMS->get_max_value();
+	}
+	else
+	{
+		return pMS->get_base_value();
+	}
+
+	return 0.0;
 }

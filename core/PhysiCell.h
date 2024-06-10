@@ -86,6 +86,6 @@ static std::string PhysiCell_DOI = "10.1371/journal.pcbi.1005991";
 #include "PhysiCell_utilities.h"
 #include "PhysiCell_constants.h"
 
-#include "PhysiCell_rules.h"
+#include "PhysiCell_rules_extended.h"
 
 #endif
