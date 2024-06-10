@@ -1906,7 +1906,7 @@ void process_signals(pugi::xml_node response_node, std::string cell_type, std::s
 	std::vector<std::string> signals_set;
 
 	std::vector<std::string> input;
-	input.resize(8);
+	input.resize(9);
 	input[0] = cell_type;
 	input[2] = response;
 	input[3] = behavior;
@@ -1932,6 +1932,7 @@ void process_signals(pugi::xml_node response_node, std::string cell_type, std::s
 		input[5] = signal_node.child_value("half_max");
 		input[6] = signal_node.child_value("hill_power");
 		input[7] = signal_node.child_value("applies_to_dead");
+		input[8] = signal_node.attribute("type").value();
 		process_signal(input);
 
 		signal_node = signal_node.next_sibling("signal");
@@ -1980,6 +1981,7 @@ void process_signal(std::vector<std::string> input)
 	std::string signal = input[1]; 
 	std::string response = input[2]; 
 	std::string behavior = input[3]; 
+	std::string signal_type = input[8];
 
 	// numeric portions of the rule 
 	// double min_value  = std::atof( input[2].c_str() );
@@ -1990,8 +1992,15 @@ void process_signal(std::vector<std::string> input)
 	// hmm from here 
 	// double max_value  = std::atof( input[4].c_str() ); 
 
+	switch (signal_type)
+	{
+		case "Hill"
+		{
+
 	double half_max  = std::atof( input[5].c_str() );
 	double hill_power = std::atof( input[6].c_str() );
+		}
+	}
 	bool use_for_dead = (bool) std::atof( input[7].c_str() ); 
 
 	std::cout << "Adding rule for " << cell_type << " cells:\n\t"; 

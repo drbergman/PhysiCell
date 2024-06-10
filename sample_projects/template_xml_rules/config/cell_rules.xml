@@ -7,7 +7,7 @@
             <decreasing_signals />
             <increasing_signals>
                 <max_response>1e-4</max_response>
-                <signal name="substrate">
+                <signal name="substrate" type="Hill">
                     <half_max>4</half_max>
                     <hill_power>2</hill_power>
                     <applies_to_dead>0</applies_to_dead>
@@ -17,9 +17,14 @@
         <behavior name="cycle entry">
             <decreasing_signals>
                 <max_response>1e-4</max_response>
-                <signal name="substrate">
+                <signal name="substrate" type="Hill">
                     <half_max>1</half_max>
                     <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+                <signal name="pressue" type="Linear">
+                    <signal_min>0.25</signal_min>
+                    <signal_max>1.0</signal_max>
                     <applies_to_dead>0</applies_to_dead>
                 </signal>
             </decreasing_signals>
