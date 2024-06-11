@@ -19,24 +19,24 @@ double diff_fn( std::vector<double> signals_in )
     return signals_in[1] - signals_in[0];
 }
 
-double default_mediator_aggregator(std::vector<double> signals_in, double min_value, double base_value, double max_value)
-{
-    std::cout << "Default mediator aggregator" << std::endl;
-    std::cout << "\tSignal 1: " << signals_in[0] << ", Signal 2: " << signals_in[1] << ", Min: " << min_value << ", Base: " << base_value << ", Max: " << max_value << std::endl;
-    double out = base_value;
-    std::cout << "\tBase value: " << out << std::endl;
-    out += (max_value - base_value) * signals_in[1];
-    std::cout << "\tAfter adding signal 2: " << out << std::endl;
-    out *= 1-signals_in[0];
-    std::cout << "\tAfter multiplying by signal 1: " << out << std::endl;
-    out += min_value * signals_in[0];
-    std::cout << "\tAfter adding signal 1: " << out << std::endl;
-    return out;
-    // std::cout << "Mediating signals" << std::endl;
-    // std::cout << "\tSignal 1: " << signals_in[0] << std::endl;
-    // std::cout << "\tSignal 2: " << signals_in[1] << std::endl << std::endl;
-    // return min_value * signals_in[0] + (base_value + (max_value - base_value) * signals_in[1]) * (1 - signals_in[0]);
-}
+// double SignalMediator::default_mediator_aggregator(std::vector<double> signals_in)
+// {
+//     std::cout << "Default mediator aggregator" << std::endl;
+//     std::cout << "\tSignal 1: " << signals_in[0] << ", Signal 2: " << signals_in[1] << ", Min: " << min_value << ", Base: " << base_value << ", Max: " << max_value << std::endl;
+//     double out = base_value;
+//     std::cout << "\tBase value: " << out << std::endl;
+//     out += (max_value - base_value) * signals_in[1];
+//     std::cout << "\tAfter adding signal 2: " << out << std::endl;
+//     out *= 1-signals_in[0];
+//     std::cout << "\tAfter multiplying by signal 1: " << out << std::endl;
+//     out += min_value * signals_in[0];
+//     std::cout << "\tAfter adding signal 1: " << out << std::endl;
+//     return out;
+//     // std::cout << "Mediating signals" << std::endl;
+//     // std::cout << "\tSignal 1: " << signals_in[0] << std::endl;
+//     // std::cout << "\tSignal 2: " << signals_in[1] << std::endl << std::endl;
+//     // return min_value * signals_in[0] + (base_value + (max_value - base_value) * signals_in[1]) * (1 - signals_in[0]);
+// }
 
 int main (int argc, char* argv[])
 {
@@ -62,12 +62,13 @@ int main (int argc, char* argv[])
     signal3.half_max = 0.5;
     signal3.hill_power = 2.0;
 
-    SignalMediator mediator(&signal, &signal2);
+    SignalMediator mediator(&signal, &signal2, rule.min_value, rule.base_value, rule.max_value);
     // use lambda function to set the aggregator
-    mediator.aggregator = [](std::vector<double> signals_in) -> double {
-        return default_mediator_aggregator(signals_in, 0.3, 0.5, 0.9);
-    };
+    // mediator.aggregator = [](std::vector<double> signals_in) -> double {
+    //     return default_mediator_aggregator(signals_in, 0.3, 0.5, 0.9);
+    // };
     // aggregator.signals.push_back(&signal2);
+    // mediator
 
     SignalAggregator aggregator;
     aggregator.add_signal(&mediator);

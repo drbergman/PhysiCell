@@ -1992,23 +1992,22 @@ void process_signal(std::vector<std::string> input)
 	// hmm from here 
 	// double max_value  = std::atof( input[4].c_str() ); 
 
-	switch (signal_type)
-	{
-		case "Hill"
-		{
-
-	double half_max  = std::atof( input[5].c_str() );
-	double hill_power = std::atof( input[6].c_str() );
-		}
-	}
-	bool use_for_dead = (bool) std::atof( input[7].c_str() ); 
-
 	std::cout << "Adding rule for " << cell_type << " cells:\n\t"; 
 	std::cout << temp << std::endl; 
 
 	// add_rule(cell_type,signal,behavior,response);  
+	bool use_for_dead = (bool)std::atof(input[7].c_str());
 	add_rule(cell_type,signal,behavior,response,use_for_dead);  
-	set_hypothesis_parameters(cell_type,signal,behavior,half_max,hill_power);  
+	switch (0)
+	{
+	case 0: // Hill type
+	{
+		double half_max = std::atof(input[5].c_str());
+		double hill_power = std::atof(input[6].c_str());
+		set_hypothesis_parameters(cell_type, signal, behavior, half_max, hill_power);
+	}
+	}
+
 
 	return;
 }

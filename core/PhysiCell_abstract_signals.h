@@ -1,10 +1,12 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <functional>
+
 
 double sum_fn( std::vector<double> signals_in );
 double diff_fn( std::vector<double> signals_in );
-double default_mediator_aggregator(std::vector<double> signals_in, double min_value, double base_value, double max_value);
+// double default_mediator_aggregator(std::vector<double> signals_in, double min_value, double base_value, double max_value);
 
 class Cell
 {
@@ -25,7 +27,7 @@ class AbstractSignalAggregator : public AbstractSignal
 {
 public:
     virtual std::vector<double> get_signals( Cell* pCell ) = 0;
-    double (*aggregator)(std::vector<double> signals_in) = 0;
+    std::function<double(std::vector<double>)> aggregator;
 
     double evaluate( Cell* pCell ) {
         return aggregator(get_signals(pCell));
@@ -67,9 +69,33 @@ private:
     AbstractSignal *increasing_signal;
 
 public:
+    // values that the aggregator can use to calculate the output
+    double min_value = 0.1;
+    double base_value = 1;
+    double max_value = 10;
+
     std::vector<double> get_signals( Cell* pCell ) {
         return {increasing_signal->evaluate(pCell), decreasing_signal->evaluate(pCell)};
     }
+
+    double default_mediator_aggregator(std::vector<double> signals_in)
+    {
+    std::cout << "Default mediator aggregator" << std::endl;
+    std::cout << "\tSignal 1: " << signals_in[0] << ", Signal 2: " << signals_in[1] << ", Min: " << min_value << ", Base: " << base_value << ", Max: " << max_value << std::endl;
+    double out = base_value;
+    std::cout << "\tBase value: " << out << std::endl;
+    out += (max_value - base_value) * signals_in[1];
+    std::cout << "\tAfter adding signal 2: " << out << std::endl;
+    out *= 1-signals_in[0];
+    std::cout << "\tAfter multiplying by signal 1: " << out << std::endl;
+    out += min_value * signals_in[0];
+    std::cout << "\tAfter adding signal 1: " << out << std::endl;
+    return out;
+    // std::cout << "Mediating signals" << std::endl;
+    // std::cout << "\tSignal 1: " << signals_in[0] << std::endl;
+    // std::cout << "\tSignal 2: " << signals_in[1] << std::endl << std::endl;
+    // return min_value * signals_in[0] + (base_value + (max_value - base_value) * signals_in[1]) * (1 - signals_in[0]);
+    };
 
     double aggregate_signals( Cell* pCell ) {
         std::vector<double> signal_values = get_signals(pCell);
@@ -77,7 +103,9 @@ public:
     }
 
     SignalMediator() {
-        aggregator = diff_fn;
+        aggregator = [this](std::vector<double> signals_in) {
+            return this->default_mediator_aggregator(signals_in);
+        };
     }
     SignalMediator(AbstractSignal *pIncreasingSignal, AbstractSignal *pDecreasingSignal)
     {
@@ -88,7 +116,23 @@ public:
         std::cout << "Creating mediator" << std::endl;
         increasing_signal = pIncreasingSignal;
         decreasing_signal = pDecreasingSignal;
-        aggregator = diff_fn;
+        aggregator = [this](std::vector<double> signals_in)
+        { return this->default_mediator_aggregator(signals_in); };
+    }
+    SignalMediator(AbstractSignal *pIncreasingSignal, AbstractSignal *pDecreasingSignal, double min, double base, double max)
+    {
+        if (pIncreasingSignal == nullptr || pDecreasingSignal == nullptr)
+        {
+            throw std::invalid_argument("Null pointer passed to SignalMediator constructor");
+        }
+        std::cout << "Creating mediator" << std::endl;
+        increasing_signal = pIncreasingSignal;
+        decreasing_signal = pDecreasingSignal;
+        min_value = min;
+        base_value = base;
+        max_value = max;
+        aggregator = [this](std::vector<double> signals_in)
+        { return this->default_mediator_aggregator(signals_in); };
     }
 };
 
@@ -179,17 +223,20 @@ public:
     AbstractSignal* signal;
 
     void apply(Cell* pCell) {
-        double signal_value = signal->evaluate(pCell);
-        double return_value;
-        if (signal_value < 0) {
-            return_value = min_value * signal_value + base_value * (1 - signal_value);
-        }
-        else if (signal_value > 0) {
-            return_value = max_value * signal_value + base_value * (1 - signal_value);
-        }
-        else {
-            return_value = base_value;
-        }
+        double return_value = signal->evaluate(pCell);
         std::cout << "Cell behavior set to " << return_value << std::endl;
+        return;
+        // double signal_value = signal->evaluate(pCell);
+        // double return_value;
+        // if (signal_value < 0) {
+        //     return_value = min_value * signal_value + base_value * (1 - signal_value);
+        // }
+        // else if (signal_value > 0) {
+        //     return_value = max_value * signal_value + base_value * (1 - signal_value);
+        // }
+        // else {
+        //     return_value = base_value;
+        // }
+        // std::cout << "Cell behavior set to " << return_value << std::endl;
     }
 };
