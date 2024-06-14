@@ -2399,13 +2399,4 @@ std::vector<double> get_base_behaviors( Cell* pCell , std::vector<std::string> n
 	{ parameters[n] = get_single_base_behavior(pCell,names[n]); }
 	return parameters; 
 }
-
-double ElementarySignal::evaluate(Cell *pCell)
-{
-	if (!applies_to_dead_cells && pCell->phenotype.death.dead)
-	{
-		return 0;
-	}
-	return transformer(get_single_signal(pCell, signal));
-}
 };

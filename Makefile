@@ -97,6 +97,15 @@ template-xml-rules:
 	cp ./config/PhysiCell_settings.xml ./config/PhysiCell_settings-backup.xml 
 	cp ./sample_projects/template_xml_rules/config/* ./config/
 
+template-xml-rules-extended:
+	cp ./sample_projects/template_xml_rules_extended/custom_modules/* ./custom_modules/
+	touch main.cpp && cp main.cpp main-backup.cpp
+	cp ./sample_projects/template_xml_rules_extended/main.cpp ./main.cpp 
+	cp Makefile Makefile-backup
+	cp ./sample_projects/template_xml_rules_extended/Makefile .
+	cp ./config/PhysiCell_settings.xml ./config/PhysiCell_settings-backup.xml 
+	cp ./sample_projects/template_xml_rules_extended/config/* ./config/
+
 # sample projects 
 
 # ---- non-intracellular projects 

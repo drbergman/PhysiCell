@@ -1,18 +1,21 @@
 #include <vector>
 #include <string>
-#include <iostream>
 #include <functional>
 
 
-double sum_fn( std::vector<double> signals_in );
-double diff_fn( std::vector<double> signals_in );
-// double default_mediator_aggregator(std::vector<double> signals_in, double min_value, double base_value, double max_value);
+#ifndef __PhysiCell_rules_extended__
+#define __PhysiCell_rules_extended__
 
-class Cell
-{
-public:
-    double signal = 0.6;
-    bool is_dead = false;
+#include "./PhysiCell.h"
+
+namespace PhysiCell{
+
+double default_aggregator( std::vector<double> signals_in ) {
+    double signal_sum = 0;
+    for (auto& signal : signals_in) {
+        signal_sum += signal;
+    }
+    return signal_sum;
 };
 
 class AbstractSignal
@@ -32,6 +35,8 @@ public:
     double evaluate( Cell* pCell ) {
         return aggregator(get_signals(pCell));
     }
+
+    virtual ~AbstractAggregatorSignal() {}
 };
 
 class AggregatorSignal : public AbstractAggregatorSignal
@@ -58,7 +63,7 @@ public:
     }
 
     AggregatorSignal() {
-        aggregator = sum_fn;
+        aggregator = default_aggregator;
     }
 };
 
@@ -78,7 +83,7 @@ public:
         return {increasing_signal->evaluate(pCell), decreasing_signal->evaluate(pCell)};
     }
 
-    double default_mediator_aggregator(std::vector<double> signals_in)
+    double default_mediator(std::vector<double> signals_in)
     {
     std::cout << "Default mediator aggregator" << std::endl;
     std::cout << "\tSignal 1: " << signals_in[0] << ", Signal 2: " << signals_in[1] << ", Min: " << min_value << ", Base: " << base_value << ", Max: " << max_value << std::endl;
@@ -91,10 +96,6 @@ public:
     out += min_value * signals_in[0];
     std::cout << "\tAfter adding signal 1: " << out << std::endl;
     return out;
-    // std::cout << "Mediating signals" << std::endl;
-    // std::cout << "\tSignal 1: " << signals_in[0] << std::endl;
-    // std::cout << "\tSignal 2: " << signals_in[1] << std::endl << std::endl;
-    // return min_value * signals_in[0] + (base_value + (max_value - base_value) * signals_in[1]) * (1 - signals_in[0]);
     };
 
     double aggregate_signals( Cell* pCell ) {
@@ -104,60 +105,73 @@ public:
 
     MediatorSignal() {
         aggregator = [this](std::vector<double> signals_in) {
-            return this->default_mediator_aggregator(signals_in);
+            return this->default_mediator(signals_in);
         };
     }
-    MediatorSignal(AbstractSignal *pIncreasingSignal, AbstractSignal *pDecreasingSignal)
+    MediatorSignal(AbstractSignal *pDecreasingSignal, AbstractSignal *pIncreasingSignal) : MediatorSignal()
     {
-        if (pIncreasingSignal == nullptr || pDecreasingSignal == nullptr)
+        if (pDecreasingSignal == nullptr || pIncreasingSignal == nullptr)
         {
             throw std::invalid_argument("Null pointer passed to MediatorSignal constructor");
         }
-        std::cout << "Creating mediator" << std::endl;
-        increasing_signal = pIncreasingSignal;
         decreasing_signal = pDecreasingSignal;
-        aggregator = [this](std::vector<double> signals_in)
-        { return this->default_mediator_aggregator(signals_in); };
+        increasing_signal = pIncreasingSignal;
     }
-    MediatorSignal(AbstractSignal *pIncreasingSignal, AbstractSignal *pDecreasingSignal, double min, double base, double max)
+    MediatorSignal(AbstractSignal *pDecreasingSignal, AbstractSignal *pIncreasingSignal, double min, double base, double max) : MediatorSignal(pDecreasingSignal, pIncreasingSignal)
     {
-        if (pIncreasingSignal == nullptr || pDecreasingSignal == nullptr)
-        {
-            throw std::invalid_argument("Null pointer passed to MediatorSignal constructor");
-        }
-        std::cout << "Creating mediator" << std::endl;
-        increasing_signal = pIncreasingSignal;
-        decreasing_signal = pDecreasingSignal;
         min_value = min;
         base_value = base;
         max_value = max;
-        aggregator = [this](std::vector<double> signals_in)
-        { return this->default_mediator_aggregator(signals_in); };
     }
 };
 
 class ElementarySignal : public AbstractSignal
 {
 public:
-    std::string signal;
+    std::string signal_name;
     bool applies_to_dead_cells;
 
     virtual double transformer( double signal ) {
         return signal;
     }
 
-    double evaluate( Cell* pCell ) {
-        if (!applies_to_dead_cells && pCell->is_dead)
-        {
-            return 0;
-        }
-        return transformer(pCell->signal);
-    }
+    double evaluate( Cell* pCell );
 
     virtual ~ElementarySignal() {}
 };
 
-class HillSignal : public ElementarySignal
+class AbstractHillSignal : public ElementarySignal
+{
+public:
+    double half_max;
+    double hill_power;
+
+    double rescale(double signal)
+    {
+        signal /= half_max;
+        return pow(signal, hill_power);
+    }
+};
+
+class PartialHillSignal : public AbstractHillSignal
+{
+public:
+    double half_max;
+    double hill_power;
+
+    double transformer(double signal)
+    {
+        std::cout << "Evaluating Partial Hill signal" << std::endl;
+        signal = rescale(signal);
+        std::cout << "\tReturning " << signal << "\n" << std::endl;
+        return signal;
+        // signal /= half_max;
+        // signal = pow(signal, hill_power);
+        // return signal;
+    }
+};
+
+class HillSignal : public AbstractHillSignal
 {
 public:
     double half_max;
@@ -166,10 +180,10 @@ public:
     double transformer(double signal)
     {
         std::cout << "Evaluating Hill signal" << std::endl;
-        signal /= half_max;
-        signal = pow(signal, hill_power);
-        std::cout << "\tReturning " << signal / (1 + signal) << "\n" << std::endl;
-        return signal / (1 + signal);
+        signal = rescale(signal);
+        signal /= 1+signal;
+        std::cout << "\tReturning " << signal << "\n" << std::endl;
+        return signal;
     }
 };
 
@@ -213,30 +227,96 @@ public:
     }
 };
 
+
 class BehaviorRule
 {
 public:
-    double min_value;
-    double base_value;
-    double max_value;
+    std::string cell_type;
+    Cell_Definition *pCell_Definition;
+
+    std::string behavior;
+    double min_value = 0.1;
+    double base_value = 1.0;
+    double max_value = 10.0;
+
+    BehaviorRule();
+    BehaviorRule(std::string cell_type, std::string behavior, double min_behavior, double max_behavior);
+
+
+    void sync_to_cell_definition(Cell_Definition *pCD);
 
     AbstractSignal* signal;
 
-    void apply(Cell* pCell) {
+    void add_signal(std::string, std::string response);
+
+    double evaluate(Cell* pCell) {
         double return_value = signal->evaluate(pCell);
         std::cout << "Cell behavior set to " << return_value << std::endl;
-        return;
-        // double signal_value = signal->evaluate(pCell);
-        // double return_value;
-        // if (signal_value < 0) {
-        //     return_value = min_value * signal_value + base_value * (1 - signal_value);
-        // }
-        // else if (signal_value > 0) {
-        //     return_value = max_value * signal_value + base_value * (1 - signal_value);
-        // }
-        // else {
-        //     return_value = base_value;
-        // }
-        // std::cout << "Cell behavior set to " << return_value << std::endl;
+        return return_value;
     }
+
+    void apply(Cell* pCell);
+
+    /* to do
+    void reduced_display(std::ostream &os);  // done
+    void display(std::ostream &os);          // done
+    void detailed_display(std::ostream &os); // done
+
+    void English_display(std::ostream &os);
+    void English_display_HTML(std::ostream &os);
+    void English_detailed_display(std::ostream &os);
+    void English_detailed_display_HTML(std::ostream &os);
+    */
 };
+
+class BehaviorRuleset
+{
+private:
+
+public:
+    std::vector<BehaviorRule *> rules;
+    std::string cell_type;
+    Cell_Definition *pCell_Definition;
+
+    BehaviorRuleset();
+
+    void add_behavior(BehaviorRule *pRule) {
+        rules.push_back(pRule);
+    }
+
+    void add_behavior(std::string behavior, double min_behavior, double max_behavior);
+
+    void apply(Cell* pCell) {
+        for (auto& rule : rules) {
+            rule->apply(pCell);
+        }
+    }
+
+    void sync_to_cell_definition(Cell_Definition *pCD) {
+        pCell_Definition = pCD;
+        sync_to_cell_definition_finish(pCD->name);
+    }
+
+    void sync_to_cell_definition(std::string cell_type);
+
+    void sync_to_cell_definition_finish(std::string name)
+    {
+        cell_type = name;
+        for (auto &rule : rules)
+        {
+            rule->sync_to_cell_definition(pCell_Definition);
+        }
+    };
+};
+
+void parse_xml_rules_extended(std::string filename);
+BehaviorRule *parse_abstract_signal(const pugi::xml_node parent_node);
+BehaviorRule *parse_mediator_signal(const pugi::xml_node parent_node);
+BehaviorRule *parse_aggregator_signal(const pugi::xml_node parent_node);
+BehaviorRule *parse_elementary_signal(const pugi::xml_node parent_node);
+bool signal_is_mediator(pugi::xml_node parent_node);
+bool signal_is_aggregator(pugi::xml_node parent_node);
+bool signal_is_elementary(pugi::xml_node parent_node);
+}; 
+
+#endif 

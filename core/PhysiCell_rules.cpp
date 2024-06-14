@@ -402,6 +402,7 @@ void Hypothesis_Rule::sync_to_cell_definition( Cell_Definition* pCD )
 	return; 
 }
 
+
 void Hypothesis_Rule::sync_to_cell_definition( std::string cell_name )
 { return sync_to_cell_definition( find_cell_definition(cell_name) ); }
 
@@ -718,6 +719,7 @@ Hypothesis_Ruleset::Hypothesis_Ruleset()
 	return; 
 }
 
+
 void Hypothesis_Ruleset::display( std::ostream& os )
 {
 	os << "Behavioral rules for cell type " << cell_type << ":" << std::endl; 
@@ -737,7 +739,6 @@ void Hypothesis_Ruleset::detailed_display( std::ostream& os )
 	os << std::endl; 
 	return; 
 }
-
 
 void Hypothesis_Ruleset::sync_to_cell_definition( Cell_Definition* pCD )
 {
@@ -794,12 +795,17 @@ Hypothesis_Rule* Hypothesis_Ruleset::add_behavior( std::string behavior , double
 	return pHR; 
 }
 
+
+
+
 Hypothesis_Rule* Hypothesis_Ruleset::add_behavior( std::string behavior )
 { 
 	double min_behavior = 9e99; // Min behaviour high value
 	double max_behavior = -9e99; // Max behaviour low value
 	return Hypothesis_Ruleset::add_behavior( behavior, min_behavior, max_behavior );
 }
+
+
 
 void Hypothesis_Ruleset::sync_to_cell_definition( std::string cell_name )
 { return sync_to_cell_definition( find_cell_definition(cell_name) ); }
@@ -2173,7 +2179,6 @@ int Parameters<T>::find_index( std::string search_name )
 }
 
 */
-
 void stream_annotated_English_rules( std::ostream& os )
 {
 	os << "Cell Hypothesis Rules" << std::endl << std::endl; 
