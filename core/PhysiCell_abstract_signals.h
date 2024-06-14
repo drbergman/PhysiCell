@@ -53,7 +53,7 @@ public:
         return aggregator(signal_values);
     }
 
-    void add_signal(AbstractSignal *pSignal) {
+    void append_signal(AbstractSignal *pSignal) {
         signals.push_back(pSignal);
     }
 

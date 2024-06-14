@@ -71,8 +71,8 @@ int main (int argc, char* argv[])
     // mediator
 
     AggregatorSignal aggregator;
-    aggregator.add_signal(&mediator);
-    aggregator.add_signal(&signal3); 
+    aggregator.append_signal(&mediator);
+    aggregator.append_signal(&signal3); 
 
     rule.signal = &mediator;
 

@@ -58,12 +58,17 @@ public:
         return aggregator(signal_values);
     }
 
-    void add_signal(AbstractSignal *pSignal) {
+    void append_signal(AbstractSignal *pSignal) {
         signals.push_back(pSignal);
     }
 
     AggregatorSignal() {
         aggregator = default_aggregator;
+    }
+
+    AggregatorSignal(std::vector<AbstractSignal *> pSignals) : AggregatorSignal()
+    {
+        signals = pSignals;
     }
 };
 
@@ -247,7 +252,7 @@ public:
 
     AbstractSignal* signal;
 
-    void add_signal(std::string, std::string response);
+    void append_signal(std::string, std::string response);
 
     double evaluate(Cell* pCell) {
         double return_value = signal->evaluate(pCell);
@@ -309,11 +314,11 @@ public:
     };
 };
 
-void parse_xml_rules_extended(std::string filename);
-BehaviorRule *parse_abstract_signal(const pugi::xml_node parent_node);
-BehaviorRule *parse_mediator_signal(const pugi::xml_node parent_node);
-BehaviorRule *parse_aggregator_signal(const pugi::xml_node parent_node);
-BehaviorRule *parse_elementary_signal(const pugi::xml_node parent_node);
+void parse_xml_rules_extended(const std::string filename);
+AbstractSignal *parse_abstract_signal(const pugi::xml_node parent_node, const double base_value = 1.0);
+AbstractSignal *parse_mediator_signal(pugi::xml_node mediator_node, double base_value = 1.0);
+AbstractSignal *parse_aggregator_signal(pugi::xml_node aggregator_node);
+AbstractSignal *parse_elementary_signal(pugi::xml_node elementary_node);
 bool signal_is_mediator(pugi::xml_node parent_node);
 bool signal_is_aggregator(pugi::xml_node parent_node);
 bool signal_is_elementary(pugi::xml_node parent_node);

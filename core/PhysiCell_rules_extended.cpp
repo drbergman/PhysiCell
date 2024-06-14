@@ -22,7 +22,7 @@ BehaviorRule::BehaviorRule(std::string cell_type, std::string behavior_name, dou
     base_value = get_single_base_behavior(pCell_Definition, behavior_name);
 }
 
-void BehaviorRule::add_signal(std::string, std::string response)
+void BehaviorRule::append_signal(std::string, std::string response)
 {
 	PartialHillSignal *pDecreasingSignal = new PartialHillSignal();
 	PartialHillSignal *pIncreasingSignal = new PartialHillSignal();
@@ -152,7 +152,7 @@ void BehaviorRuleset::sync_to_cell_definition(std::string cell_type)
 // 	return *pBR; 
 // } 
 
-void parse_xml_rules_extended(std::string filename)
+void parse_xml_rules_extended(const std::string filename)
 {
 	bool physicell_rules_dom_initialized = false;
 	pugi::xml_document physicell_rules_doc;
@@ -205,7 +205,8 @@ void parse_xml_rules_extended(std::string filename)
 				}
 			}
 			behaviors_ruled.push_back(behavior);
-			AbstractSignal *pAS = parse_abstract_signal(behavior_node);
+			double base_behavior = get_single_base_behavior(find_cell_definition(cell_type), behavior);
+			AbstractSignal *pAS = parse_abstract_signal(behavior_node, base_behavior);
 			behavior_node = behavior_node.next_sibling("behavior");
 		}
 		ruleset_node = ruleset_node.next_sibling("hypothesis_ruleset");
@@ -213,13 +214,13 @@ void parse_xml_rules_extended(std::string filename)
 	return;
 }
 
-AbstractSignal *parse_abstract_signal(const pugi::xml_node node)
+AbstractSignal *parse_abstract_signal(const pugi::xml_node node, double base_value)
 {
 	// idea: also start with mediator. if only one of increasing or decreasing provided, then can scrap the mediator and use either an elementary signal or an aggregator
 	AbstractSignal* pAS;
 	if (signal_is_mediator(node))
 	{
-		pAS = parse_mediator_signal(node);
+		pAS = parse_mediator_signal(node, base_value);
 	}
 	else if (signal_is_aggregator(node))
 	{
@@ -237,39 +238,60 @@ AbstractSignal *parse_abstract_signal(const pugi::xml_node node)
 	return pAS;
 }
 
-AbstractSignal *parse_mediator_signal(const pugi::xml_node mediator_node)
+AbstractSignal *parse_mediator_signal(pugi::xml_node mediator_node, double base_value)
 {
+	if (mediator_node.child("base_value"))
+	{
+		base_value = xml_get_double_value(mediator_node, "base_value");
+	}
 	pugi::xml_node decreasing_signals_node = mediator_node.child("decreasing_signals");
 	pugi::xml_node increasing_signals_node = mediator_node.child("increasing_signals");
+
+	double min_value = 0.1;
+	double max_value = 10.0;
 
 	AbstractSignal *pDecreasingSignal;
 	AbstractSignal *pIncreasingSignal;
 	if (decreasing_signals_node)
 	{
 		pDecreasingSignal = parse_aggregator_signal(decreasing_signals_node);
+		if (mediator_node.child("min_value"))
+		{
+			min_value = xml_get_double_value(mediator_node, "min_value");
+		}
+		min_value = xml_get_double_value(decreasing_signals_node, "max_response");
 		// process_decreasing_signals(behavior_node, cell_type, behavior);
 	}
 	if (increasing_signals_node)
 	{
 		pIncreasingSignal = parse_aggregator_signal(increasing_signals_node);
+		if (mediator_node.child("max_value"))
+		{
+			max_value = xml_get_double_value(mediator_node, "max_value");
+		}
 		// process_increasing_signals(behavior_node, cell_type, behavior);
 	}
-	MediatorSignal *pSM = new MediatorSignal();
-	return;
+	MediatorSignal *pSM = new MediatorSignal(pDecreasingSignal, pIncreasingSignal, min_value, base_value, max_value);
+	return pSM;
 }
 
-AbstractSignal *parse_aggregator_signal(const pugi::xml_node aggregator_node)
+AbstractSignal *parse_aggregator_signal(pugi::xml_node aggregator_node)
 {
 	pugi::xml_node signal_node = xml_find_node(aggregator_node, "signal");
+	std::vector<AbstractSignal *> signals;
 	while(signal_node)
 	{
-		parse_abstract_signal(signal_node);
+		signals.push_back(parse_abstract_signal(signal_node));
 		signal_node = signal_node.next_sibling("signal");
 	}
+	AggregatorSignal *pAS = new AggregatorSignal(signals);	
+	return pAS;
 }
 
 AbstractSignal *parse_elementary_signal(const pugi::xml_node elementary_node)
 {
+	ElementarySignal *pES = new ElementarySignal();
+	return pES;
 	// parse the signal
 	// add the signal to the signal dictionary
 	// return;
@@ -279,8 +301,8 @@ bool signal_is_mediator(pugi::xml_node node)
 {
 	bool is_mediator = node.name() == "behavior"; // by default, assume that the top-level signal is a mediator
 	is_mediator |= (node.attribute("type")) && node.attribute("type").value() == "mediator";
-	is_mediator |= xml_find_node(node, "decreasing_signals"); // if the type was not declared but there are decreasing signals, then it is a mediator
-	is_mediator |= xml_find_node(node, "increasing_signals"); // if the type was not declared but there are increasing signals, then it is a mediator
+	is_mediator |= xml_find_node(node, "decreasing_signals") == pugi::xml_node(); // if the type was not declared but there are decreasing signals, then it is a mediator
+	is_mediator |= xml_find_node(node, "increasing_signals") == pugi::xml_node(); // if the type was not declared but there are increasing signals, then it is a mediator
 	return is_mediator;
 }
 
