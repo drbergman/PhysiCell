@@ -98,13 +98,13 @@ template-xml-rules:
 	cp -r ./sample_projects/template_xml_rules/config/* ./config/
 
 template-ecm:
-	cp ./sample_projects/template-ecm/custom_modules/* ./custom_modules/
+	cp -r ./sample_projects/template-ecm/custom_modules/* ./custom_modules/
 	touch main.cpp && cp main.cpp main-backup.cpp
 	cp ./sample_projects/template-ecm/main.cpp ./main.cpp 
 	cp Makefile Makefile-backup
 	cp ./sample_projects/template-ecm/Makefile .
 	cp ./config/PhysiCell_settings.xml ./config/PhysiCell_settings-backup.xml 
-	cp ./sample_projects/template-ecm/config/* ./config/
+	cp -r ./sample_projects/template-ecm/config/* ./config/
 	
 # sample projects 
 
