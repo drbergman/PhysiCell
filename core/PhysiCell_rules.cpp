@@ -1979,7 +1979,7 @@ void process_signals(pugi::xml_node response_node, std::string cell_type, std::s
 
 void process_signal(std::vector<std::string> input)
 {
-	std::string temp = csv_strings_to_English_v2( input , false ); // need a v1 version of this
+	std::string temp = csv_strings_to_English_v3( input , false ); // need a v1 version of this
 
 	// string portions of the rule
 	std::string cell_type = input[0]; 
@@ -2096,7 +2096,7 @@ void parse_rules_from_file(std::string path_to_file, std::string format, std::st
 			exit(-1);
 		}
 
-		parse_csv_rules_v3(input_filename); // parse all rules in a CSV file
+		parse_csv_rules_v3(path_to_file); // parse all rules in a CSV file
 		PhysiCell_settings.rules_enabled = true;
 	}
 	else if (format == "XML" || format == "xml")
