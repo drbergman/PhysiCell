@@ -1225,6 +1225,8 @@ Phenotype& Phenotype::operator=(const Phenotype &p ) {
 	secretion = p.secretion;
 	
 	molecular = p.molecular;
+
+	cell_integrity = p.cell_integrity; 
 	
 	delete intracellular;
 	
@@ -1277,11 +1279,23 @@ void Phenotype::sync_to_microenvironment( Microenvironment* pMicroenvironment )
 
 Cell_Interactions::Cell_Interactions()
 {
-	dead_phagocytosis_rate = 0.0; 
+	// dead_phagocytosis_rate = 0.0; 
+
+	apoptotic_phagocytosis_rate = 0.0; 
+	necrotic_phagocytosis_rate = 0.0; 
+	other_dead_phagocytosis_rate = 0.0; 
+
 	live_phagocytosis_rates = {0.0}; 
-	damage_rate = 1.0; 
+
+	attack_damage_rate = 1.0; 
 	attack_rates = {0.0}; 
 	immunogenicities = {1}; 
+
+	pAttackTarget = NULL; 
+	total_damage_delivered = 0.0; 
+
+	attack_duration = 120.0; // 0.1; // get from cell constants instead?? 
+
 	fusion_rates = {0.0}; 
 	
 	return; 
@@ -1360,12 +1374,13 @@ double& Cell_Transformations::transformation_rate( std::string type_name )
 }
 
 // beta functionality in 1.10.3 
-Integrity::Integrity()
+Cell_Integrity::Cell_Integrity()
 {
- 	damage = 0.0; 
+ 	damage = 0;  
 	damage_rate = 0.0; 
 	damage_repair_rate = 0.0; 
 
+/*
 	lipid_damage = 0.0; 
 	lipid_damage_rate = 0.0; 
 	lipid_damage_repair_rate = 0.0; 
@@ -1374,11 +1389,12 @@ Integrity::Integrity()
 	DNA_damage = 0.0; 
 	DNA_damage_rate = 0.0; 
 	DNA_damage_repair_rate = 0.0; 
+*/
 
 	return; 
 }
 
-void Integrity::advance_damage_models( double dt )
+void Cell_Integrity::advance_damage( double dt )
 {
 	double temp1;
 	double temp2; 
@@ -1396,7 +1412,7 @@ void Integrity::advance_damage_models( double dt )
 		damage += temp1; 
 		damage /= temp2; 
 	}
-
+/*
 	// lipid damage 
 	if( lipid_damage_rate > tol || lipid_damage_repair_rate > tol )
 	{
@@ -1422,6 +1438,9 @@ void Integrity::advance_damage_models( double dt )
 		DNA_damage += temp1; 
 		DNA_damage /= temp2; 
 	}
+*/	
+
+//	std::cout << "damage: " << damage << std::endl; 
 
 	return; 
 }

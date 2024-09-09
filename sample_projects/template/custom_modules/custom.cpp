@@ -69,19 +69,22 @@
 
 void create_cell_types(std::string path_to_rules_file)
 {
-	// set the random seed
-	SeedRandom(parameters.ints("random_seed"));
-
-	/*
-	   Put any modifications to default cell definition here if you
-	   want to have "inherited" by other cell types.
-
-	   This is a good place to set default functions.
-	*/
-
-	initialize_default_cell_definition();
-	cell_defaults.phenotype.secretion.sync_to_microenvironment(&microenvironment);
-
+	// set the random seed 
+	if (parameters.ints.find_index("random_seed") != -1)
+	{
+		SeedRandom(parameters.ints("random_seed"));
+	}
+	
+	/* 
+	   Put any modifications to default cell definition here if you 
+	   want to have "inherited" by other cell types. 
+	   
+	   This is a good place to set default functions. 
+	*/ 
+	
+	initialize_default_cell_definition(); 
+	cell_defaults.phenotype.secretion.sync_to_microenvironment( &microenvironment ); 
+	
 	cell_defaults.functions.volume_update_function = standard_volume_update_function;
 	cell_defaults.functions.update_velocity = standard_update_cell_velocity;
 
