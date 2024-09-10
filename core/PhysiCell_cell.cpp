@@ -248,6 +248,7 @@ Cell_State::Cell_State()
 	
 	// damage = 0.0; 
 	// total_attack_time = 0.0; 
+	time_alive = 0.0;
 	
 	contact_with_basement_membrane = false; 
 
@@ -313,14 +314,16 @@ void Cell::update_motility_vector( double dt_ )
 
 void Cell::advance_bundled_phenotype_functions( double dt_ )
 {
-	// New March 2022
-	// perform transformations 
-	standard_cell_transformations( this,this->phenotype,dt_ ); 
 
 	// New March 2023 in Version 1.12.0 
 	// call the rules-based code to update the phenotype 
 	if( PhysiCell_settings.rules_enabled )
 	{ apply_ruleset( this ); }
+	
+	// New March 2022
+	// perform transformations 
+	standard_cell_transformations( this,this->phenotype,dt_ ); 
+	
 	if( get_single_signal(this,"necrotic") > 0.5 )
 	{
 		double rupture = this->phenotype.volume.rupture_volume; 
@@ -653,6 +656,7 @@ Cell* Cell::divide( )
 	// child->state.damage = 0.0; 
 	// child->phenotype.integrity.damage = 0.0; // leave alone - damage is heritable 
 	child->state.total_attack_time = 0.0; 
+	child->state.time_alive = 0.0;	// DZ custom for asym div
 
     if( this->functions.cell_division_function )
         { this->functions.cell_division_function( this, child); }
@@ -1168,6 +1172,9 @@ void Cell::convert_to_cell_definition( Cell_Definition& cd )
                 * phenotype.mechanics.relative_maximum_adhesion_distance;
         }
 	}
+
+	if( PhysiCell_settings.rules_enabled )
+	{ apply_ruleset( this ); }
 	return; 
 }
 

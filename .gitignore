@@ -13,6 +13,8 @@ heterogeneity
 initial.svg
 interaction_demo
 Makefile-backup
+output/
+!output/empty.txt
 pmb_debug.log
 project
 studio_debug.log
