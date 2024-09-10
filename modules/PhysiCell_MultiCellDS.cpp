@@ -792,7 +792,6 @@ void add_PhysiCell_cells_to_open_xml_pugi_v2( pugi::xml_document& xml_dom, std::
 		// name = "ID"; 
 		dTemp = (double) pCell->ID;
 		std::fwrite( &( dTemp ) , sizeof(double) , 1 , fp ); 
-		// fprintf(csv_fp, "%f," , dTemp );
 		// name = "position";    NOTE very different syntax for writing vectors!
         std::fwrite( pCell->position.data() , sizeof(double) , 3 , fp );
 		// write position data to csv
