@@ -4,9 +4,9 @@
 #include <functional>
 
 
-double sum_fn( std::vector<double> signals_in );
-double diff_fn( std::vector<double> signals_in );
-// double default_mediator_aggregator(std::vector<double> signals_in, double min_value, double base_value, double max_value);
+double signal_sum( std::vector<double> signals_in );
+double signal_difference( std::vector<double> signals_in );
+// double decreasing_dominant_mediator(std::vector<double> signals_in, double min_value, double base_value, double max_value);
 
 class Cell
 {
@@ -58,7 +58,7 @@ public:
     }
 
     AggregatorSignal() {
-        aggregator = sum_fn;
+        aggregator = signal_sum;
     }
 };
 
@@ -78,23 +78,20 @@ public:
         return {increasing_signal->evaluate(pCell), decreasing_signal->evaluate(pCell)};
     }
 
-    double default_mediator_aggregator(std::vector<double> signals_in)
+    double decreasing_dominant_mediator(std::vector<double> signals_in)
     {
-    std::cout << "Default mediator aggregator" << std::endl;
-    std::cout << "\tSignal 1: " << signals_in[0] << ", Signal 2: " << signals_in[1] << ", Min: " << min_value << ", Base: " << base_value << ", Max: " << max_value << std::endl;
-    double out = base_value;
-    std::cout << "\tBase value: " << out << std::endl;
-    out += (max_value - base_value) * signals_in[1];
-    std::cout << "\tAfter adding signal 2: " << out << std::endl;
-    out *= 1-signals_in[0];
-    std::cout << "\tAfter multiplying by signal 1: " << out << std::endl;
-    out += min_value * signals_in[0];
-    std::cout << "\tAfter adding signal 1: " << out << std::endl;
-    return out;
-    // std::cout << "Mediating signals" << std::endl;
-    // std::cout << "\tSignal 1: " << signals_in[0] << std::endl;
-    // std::cout << "\tSignal 2: " << signals_in[1] << std::endl << std::endl;
-    // return min_value * signals_in[0] + (base_value + (max_value - base_value) * signals_in[1]) * (1 - signals_in[0]);
+        std::cout << "Default mediator aggregator" << std::endl;
+        std::cout << "\tSignal 1: " << signals_in[0] << ", Signal 2: " << signals_in[1] << ", Min: " << min_value << ", Base: " << base_value << ", Max: " << max_value << std::endl;
+        double out = base_value;
+        std::cout << "\tBase value: " << out << std::endl;
+        out += (max_value - base_value) * signals_in[1];
+        std::cout << "\tAfter adding signal 2: " << out << std::endl;
+        out *= 1 - signals_in[0];
+        std::cout << "\tAfter multiplying by signal 1: " << out << std::endl;
+        out += min_value * signals_in[0];
+        std::cout << "\tAfter adding signal 1: " << out << std::endl;
+        return out;
+        // return min_value * signals_in[0] + (base_value + (max_value - base_value) * signals_in[1]) * (1 - signals_in[0]);
     };
 
     double aggregate_signals( Cell* pCell ) {
@@ -104,7 +101,7 @@ public:
 
     MediatorSignal() {
         aggregator = [this](std::vector<double> signals_in) {
-            return this->default_mediator_aggregator(signals_in);
+            return this->decreasing_dominant_mediator(signals_in);
         };
     }
     MediatorSignal(AbstractSignal *pIncreasingSignal, AbstractSignal *pDecreasingSignal)
@@ -117,7 +114,7 @@ public:
         increasing_signal = pIncreasingSignal;
         decreasing_signal = pDecreasingSignal;
         aggregator = [this](std::vector<double> signals_in)
-        { return this->default_mediator_aggregator(signals_in); };
+        { return this->decreasing_dominant_mediator(signals_in); };
     }
     MediatorSignal(AbstractSignal *pIncreasingSignal, AbstractSignal *pDecreasingSignal, double min, double base, double max)
     {
@@ -132,7 +129,7 @@ public:
         base_value = base;
         max_value = max;
         aggregator = [this](std::vector<double> signals_in)
-        { return this->default_mediator_aggregator(signals_in); };
+        { return this->decreasing_dominant_mediator(signals_in); };
     }
 };
 

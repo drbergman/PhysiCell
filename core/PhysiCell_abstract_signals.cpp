@@ -1,6 +1,6 @@
 #include "./PhysiCell_abstract_signals.h"
 
-double sum_fn( std::vector<double> signals_in )
+double signal_sum( std::vector<double> signals_in )
 {
     std::cout << "Summing signals" << std::endl;
     double signal_sum = 0;
@@ -11,7 +11,7 @@ double sum_fn( std::vector<double> signals_in )
     return signal_sum;
 }
 
-double diff_fn( std::vector<double> signals_in )
+double signal_difference( std::vector<double> signals_in )
 {
     std::cout << "Mediating signals" << std::endl;
     std::cout << "\tSignal 1: " << signals_in[0] << std::endl;
@@ -19,7 +19,7 @@ double diff_fn( std::vector<double> signals_in )
     return signals_in[1] - signals_in[0];
 }
 
-// double MediatorSignal::default_mediator_aggregator(std::vector<double> signals_in)
+// double MediatorSignal::decreasing_dominant_mediator(std::vector<double> signals_in)
 // {
 //     std::cout << "Default mediator aggregator" << std::endl;
 //     std::cout << "\tSignal 1: " << signals_in[0] << ", Signal 2: " << signals_in[1] << ", Min: " << min_value << ", Base: " << base_value << ", Max: " << max_value << std::endl;
@@ -46,7 +46,7 @@ int main (int argc, char* argv[])
     rule.max_value = 0.9;
 
     // AggregatorSignal aggregator;
-    // aggregator.signal_aggregator = sum_fn;
+    // aggregator.signal_aggregator = signal_sum;
 
     LinearSignal signal;
     signal.signal_min = 0.0;
@@ -65,7 +65,7 @@ int main (int argc, char* argv[])
     MediatorSignal mediator(&signal, &signal2, rule.min_value, rule.base_value, rule.max_value);
     // use lambda function to set the aggregator
     // mediator.aggregator = [](std::vector<double> signals_in) -> double {
-    //     return default_mediator_aggregator(signals_in, 0.3, 0.5, 0.9);
+    //     return decreasing_dominant_mediator(signals_in, 0.3, 0.5, 0.9);
     // };
     // aggregator.signals.push_back(&signal2);
     // mediator
