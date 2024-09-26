@@ -33,7 +33,7 @@
 #                                                                             #
 # BSD 3-Clause License (see https://opensource.org/licenses/BSD-3-Clause)     #
 #                                                                             #
-# Copyright (c) 2015-2022, Paul Macklin and the PhysiCell Project             #
+# Copyright (c) 2015-2024, Paul Macklin and the PhysiCell Project             #
 # All rights reserved.                                                        #
 #                                                                             #
 # Redistribution and use in source and binary forms, with or without          #
@@ -654,6 +654,9 @@ Cell* Cell::divide( )
 	// child->phenotype.integrity.damage = 0.0; // leave alone - damage is heritable 
 	child->state.total_attack_time = 0.0; 
 
+    if( this->functions.cell_division_function )
+        { this->functions.cell_division_function( this, child); }
+
 	return child;
 }
 
@@ -980,7 +983,7 @@ void Cell::add_potentials(Cell* other_agent)
 	//Repulsive
 	double R = phenotype.geometry.radius+ (*other_agent).phenotype.geometry.radius; 
 	
-	double RN = phenotype.geometry.nuclear_radius + (*other_agent).phenotype.geometry.nuclear_radius;	
+	// double RN = phenotype.geometry.nuclear_radius + (*other_agent).phenotype.geometry.nuclear_radius;	
 	double temp_r, c;
 	if( distance > R ) 
 	{
@@ -1121,24 +1124,50 @@ Cell* create_cell( Cell_Definition& cd )
 
 void Cell::convert_to_cell_definition( Cell_Definition& cd )
 {	
+	Volume cell_volume = phenotype.volume;
+	Geometry cell_geometry = phenotype.geometry;
 	// use the cell defaults; 
 	type = cd.type; 
 	type_name = cd.name; 
 	
-	custom_data = cd.custom_data; 
+	custom_data = cd.custom_data; // this is kinda risky since users may want to be updating custom_data throughout
 	parameters = cd.parameters; 
 	functions = cd.functions; 
 	
 	phenotype = cd.phenotype; 
-	// is_movable = true;
-	// is_out_of_domain = false;
+	phenotype.volume = cell_volume; // leave the cell volume alone..
+	// ..except for the following target values
+	// phenotype.volume.target_solid_cytoplasmic = cd.phenotype.volume.target_solid_cytoplasmic; // gets set by standard_volume_update_function anyways
+	phenotype.volume.target_solid_nuclear = cd.phenotype.volume.target_solid_nuclear;
+	phenotype.volume.target_fluid_fraction = cd.phenotype.volume.target_fluid_fraction;
+	phenotype.volume.target_cytoplasmic_to_nuclear_ratio = cd.phenotype.volume.target_cytoplasmic_to_nuclear_ratio;
+	phenotype.volume.relative_rupture_volume = cd.phenotype.volume.relative_rupture_volume;
 	
-	// displacement.resize(3,0.0); // state? 
+	phenotype.geometry = cell_geometry; // leave the geometry alone
+	/* things no longer done here:
+	// assign_orientation(); // not necesary since the this->state is unchanged
+	// Basic_Agent::set_total_volume(volume); // not necessary since the volume is unchanged
 	
-	assign_orientation();	
-	
-	set_total_volume( phenotype.volume.total ); 
-	
+	// not necessary since the volume is unchanged
+	// if( fabs( phenotype.volume.total - volume ) > 1e-16 )
+	// {
+	// 	double ratio= volume/ (phenotype.volume.total + 1e-16);  
+	// 	phenotype.volume.multiply_by_ratio(ratio);
+	// }
+
+	// phenotype.geometry.update( this, phenotype, 0.0 ); // not necessary since we copy geometry above
+	*/
+
+	// Here the current mechanics voxel index may not be initialized, when position is still unknown. 
+	if (get_current_mechanics_voxel_index() >= 0)
+    {
+        if( get_container()->max_cell_interactive_distance_in_voxel[get_current_mechanics_voxel_index()] < 
+            phenotype.geometry.radius * phenotype.mechanics.relative_maximum_adhesion_distance )
+        {
+            get_container()->max_cell_interactive_distance_in_voxel[get_current_mechanics_voxel_index()] = phenotype.geometry.radius
+                * phenotype.mechanics.relative_maximum_adhesion_distance;
+        }
+	}
 	return; 
 }
 
@@ -1311,6 +1340,8 @@ void Cell::ingest_cell( Cell* pCell_to_eat )
 		pCell_to_eat->functions.custom_cell_rule = NULL; 
 		pCell_to_eat->functions.update_phenotype = NULL; 
 		pCell_to_eat->functions.contact_function = NULL; 
+		pCell_to_eat->functions.cell_division_function = NULL; 
+
 		
 		// should set volume fuction to NULL too! 
 		pCell_to_eat->functions.volume_update_function = NULL; 
@@ -1541,6 +1572,7 @@ void Cell::fuse_cell( Cell* pCell_to_fuse )
 		pCell_to_fuse->functions.custom_cell_rule = NULL; 
 		pCell_to_fuse->functions.update_phenotype = NULL; 
 		pCell_to_fuse->functions.contact_function = NULL; 
+		pCell_to_fuse->functions.cell_division_function = NULL; 
 		pCell_to_fuse->functions.volume_update_function = NULL; 
 
 		// remove all adhesions 
@@ -1580,6 +1612,7 @@ void Cell::lyse_cell( void )
 	functions.custom_cell_rule = NULL; 
 	functions.update_phenotype = NULL; 
 	functions.contact_function = NULL; 
+	functions.cell_division_function = NULL; 
 	
 	// remove all adhesions 
 	
@@ -1670,6 +1703,14 @@ void display_ptr_as_bool( void (*ptr)(Cell*,Phenotype&,Cell*,Phenotype&,double),
 	return;
 }
 
+void display_ptr_as_bool( void (*ptr)(Cell*,Cell*), std::ostream& os )
+{
+	if( ptr )
+	{ os << "true"; return; }
+	os << "false"; 
+	return;
+}
+
 void display_cell_definitions( std::ostream& os )
 {
 	for( int n=0; n < cell_definitions_by_index.size() ; n++ )
@@ -1752,6 +1793,8 @@ void display_cell_definitions( std::ostream& os )
 		os << "\t\t mechanics function: "; display_ptr_as_bool( pCF->update_velocity , std::cout ); 
 		os << std::endl;
 		os << "\t\t contact function: "; display_ptr_as_bool( pCF->contact_function , std::cout ); 
+		os << std::endl; 
+        os << "\t\t cell division function: "; display_ptr_as_bool( pCF->cell_division_function , std::cout ); 
 		os << std::endl; 
 		
 		// summarize motility 
