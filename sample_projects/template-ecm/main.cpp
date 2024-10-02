@@ -84,89 +84,18 @@
 using namespace BioFVM;
 using namespace PhysiCell;
 
-class ArgumentParser {
-public:
-	bool config_file_flagged;
-	std::string path_to_config_file = "./config/PhysiCell_settings.xml";
-	std::string path_to_ic_cells_file;
-	std::string path_to_ic_substrate_file;
-	std::string path_to_ic_ecm_file;
-	std::string path_to_rules_file;
-	std::string path_to_output_folder;
-
-    ArgumentParser(int argc, char* argv[]) {
-        // read arguments
-        int opt;
-        static struct option long_options[] = {
-            {"config", required_argument, 0, 'c'},
-            {"ic-cells", required_argument, 0, 'i'},
-            {"ic-substrates", required_argument, 0, 's'},
-            {"ic-ecm", required_argument, 0, 'e'},
-            {"rules", required_argument, 0, 'r'},
-            {"output", required_argument, 0, 'o'},
-            {0, 0, 0, 0}
-        };
-
-		std::string usage = "Usage: " + std::string(argv[0]) + " [-c path_to_config_file] [-i path_to_ic_cells_file] [-s path_to_ic_substrate_file] [-e path_to_ic_ecm_file] [-o path_to_output_folder]\n"
-									  + "   Or: " + std::string(argv[0]) + " path_to_config_file [-i path_to_ic_cells_file] [-s path_to_ic_substrate_file] [-e path_to_ic_ecm_file] [-o path_to_output_folder]";
-
-		while ((opt = getopt_long(argc, argv, "c:i:s:e:r:o:", long_options, NULL)) != -1) {
-            switch (opt) {
-            case 'c':
-                config_file_flagged = true;
-                path_to_config_file = optarg;
-                break;
-            case 'i':
-                path_to_ic_cells_file = optarg;
-                break;
-			case 's':
-				path_to_ic_substrate_file = optarg;
-				break;
-			case 'e':
-				path_to_ic_ecm_file = optarg;
-				break;
-            case 'r':
-                path_to_rules_file = optarg;
-                break;
-            case 'o':
-                path_to_output_folder = optarg;
-                break;
-            default:
-				std::cerr << usage << std::endl;
-				exit(EXIT_FAILURE);
-            }
-        }
-
-        if (optind == argc - 1 && !config_file_flagged) // config file not flagged and passed in as unflagged argument
-        {
-            path_to_config_file = argv[optind];
-        }
-        else if (optind < argc - 1 || (optind == argc - 1 && config_file_flagged)) // too many unflagged arguments OR config file passed in as both flagged and unflagged arguments
-        {
-            std::cerr << usage << std::endl;
-            exit(EXIT_FAILURE);
-        }
-    }
-};
-
 int main( int argc, char* argv[] )
 {
 	// read arguments
-	ArgumentParser ap = ArgumentParser(argc, argv);
-	
+	argument_parser.parse(argc, argv);
+
 	// load and parse settings file(s)
-	bool XML_status = load_PhysiCell_config_file( ap.path_to_config_file );
-	if (!XML_status) {
-		std::cerr << "Error: failed to load settings file " << ap.path_to_config_file << std::endl;
-		exit(EXIT_FAILURE);
-	}
-	if (ap.path_to_output_folder != "") {
-		PhysiCell_settings.folder = ap.path_to_output_folder; // overwrite output folder if supplied by flag
-	}
-	char copy_command[1024];
+	load_PhysiCell_config_file();
+	
+	char copy_command [1024]; 
 
-	sprintf(copy_command, "cp %s %s/PhysiCell_settings.xml", ap.path_to_config_file.c_str(), PhysiCell_settings.folder.c_str()); //, PhysiCell_settings.folder.c_str() );
-
+	sprintf( copy_command , "cp %s %s/PhysiCell_settings.xml" , argument_parser.path_to_config_file.c_str(), PhysiCell_settings.folder.c_str() ); //, PhysiCell_settings.folder.c_str() ); 
+	
 	// copy config file to output directry 
 	system( copy_command ); 
 	
@@ -178,9 +107,9 @@ int main( int argc, char* argv[] )
 
 	/* Microenvironment setup */ 
 	
-	setup_microenvironment( ap.path_to_ic_substrate_file ); // modify this in the custom code 
+	setup_microenvironment(); // modify this in the custom code 
 
-	setup_extracellular_matrix( ap.path_to_ic_ecm_file );
+	setup_extracellular_matrix();
 
 	/* PhysiCell setup */ 
  	
@@ -190,8 +119,8 @@ int main( int argc, char* argv[] )
 	
 	/* Users typically start modifying here. START USERMODS */ 
 	
-	create_cell_types(ap.path_to_rules_file);
-	setup_tissue(ap.path_to_ic_cells_file);
+	create_cell_types();
+	setup_tissue();
 
 	/* Users typically stop modifying here. END USERMODS */ 
 	
