@@ -90,7 +90,7 @@ namespace PhysiCell{
  	
 extern pugi::xml_node physicell_config_root; 
 
-bool load_PhysiCell_config_file( std::string filename );
+bool load_PhysiCell_config_file();
 
 class PhysiCell_Settings
 {
@@ -238,60 +238,12 @@ public:
 	std::string path_to_rules_file;
 	std::string path_to_output_folder;
 
-    ArgumentParser(int argc, char* argv[]) {
-        // read arguments
-        int opt;
-        static struct option long_options[] = {
-            {"config", required_argument, 0, 'c'},
-            {"ic-cells", required_argument, 0, 'i'},
-            {"ic-substrates", required_argument, 0, 's'},
-            {"ic-ecm", required_argument, 0, 'e'},
-            {"rules", required_argument, 0, 'r'},
-            {"output", required_argument, 0, 'o'},
-            {0, 0, 0, 0}
-        };
+    void parse(int argc, char* argv[]);
 
-		std::string usage = "Usage: " + std::string(argv[0]) + " [-c path_to_config_file] [-i path_to_ic_cells_file] [-s path_to_ic_substrate_file] [-e path_to_ic_ecm_file] [-o path_to_output_folder]\n"
-									  + "   Or: " + std::string(argv[0]) + " path_to_config_file [-i path_to_ic_cells_file] [-s path_to_ic_substrate_file] [-e path_to_ic_ecm_file] [-o path_to_output_folder]";
-
-		while ((opt = getopt_long(argc, argv, "c:i:s:e:r:o:", long_options, NULL)) != -1) {
-            switch (opt) {
-            case 'c':
-                config_file_flagged = true;
-                path_to_config_file = optarg;
-                break;
-            case 'i':
-                path_to_ic_cells_file = optarg;
-                break;
-			case 's':
-				path_to_ic_substrate_file = optarg;
-				break;
-			case 'e':
-				path_to_ic_ecm_file = optarg;
-				break;
-            case 'r':
-                path_to_rules_file = optarg;
-                break;
-            case 'o':
-                path_to_output_folder = optarg;
-                break;
-            default:
-				std::cerr << usage << std::endl;
-				exit(EXIT_FAILURE);
-            }
-        }
-
-        if (optind == argc - 1 && !config_file_flagged) // config file not flagged and passed in as unflagged argument
-        {
-            path_to_config_file = argv[optind];
-        }
-        else if (optind < argc - 1 || (optind == argc - 1 && config_file_flagged)) // too many unflagged arguments OR config file passed in as both flagged and unflagged arguments
-        {
-            std::cerr << usage << std::endl;
-            exit(EXIT_FAILURE);
-        }
-    }
+	ArgumentParser() {};
 };
+
+extern ArgumentParser argument_parser;
 
 }
 
