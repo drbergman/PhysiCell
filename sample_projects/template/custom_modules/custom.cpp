@@ -67,7 +67,7 @@
 
 #include "./custom.h"
 
-void create_cell_types(std::string path_to_rules_file)
+void create_cell_types( void )
 {
 	// set the random seed
 	SeedRandom(parameters.ints("random_seed"));
@@ -115,7 +115,7 @@ void create_cell_types(std::string path_to_rules_file)
 	   Cell rule definitions
 	*/
 
-	setup_cell_rules(path_to_rules_file);
+	setup_cell_rules();
 
 	/*
 	   Put any modifications to individual cell definitions here.
@@ -136,7 +136,7 @@ void create_cell_types(std::string path_to_rules_file)
 	return;
 }
 
-void setup_microenvironment( std::string path_to_ic_substrate_file )
+void setup_microenvironment( void )
 {
 	// set domain parameters 
 	
@@ -145,16 +145,16 @@ void setup_microenvironment( std::string path_to_ic_substrate_file )
 	
 	// initialize BioFVM 
 	
-	initialize_microenvironment( path_to_ic_substrate_file ); 	
+	initialize_microenvironment(); 	
 	
 	return; 
 }
 
-void setup_tissue(std::string path_to_ic_cells_file)
+void setup_tissue( void )
 {
 	setup_tissue_domain();
 	// load cells from your CSV file (if enabled)
-	load_initial_cells(path_to_ic_cells_file);
+	load_initial_cells();
 
 	return;
 }

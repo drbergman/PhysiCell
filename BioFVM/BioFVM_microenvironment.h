@@ -362,7 +362,7 @@ class Microenvironment_Options
 extern Microenvironment_Options default_microenvironment_options; 
 extern Microenvironment microenvironment;
 
-void initialize_microenvironment( std::string path_to_ic_substrate_file = "" ); 
+void initialize_microenvironment( void ); 
 
 void load_initial_conditions_from_matlab( std::string filename );
 void load_initial_conditions_from_csv( std::string filename );
