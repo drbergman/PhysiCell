@@ -78,14 +78,16 @@ bool physicell_config_dom_initialized = false;
 pugi::xml_document physicell_config_doc; 	
 pugi::xml_node physicell_config_root; 
 	
-bool load_PhysiCell_config_file( std::string filename )
+ArgumentParser argument_parser;
+
+bool load_PhysiCell_config_file()
 {
-	std::cout << "Using config file " << filename << " ... " << std::endl ; 
-	pugi::xml_parse_result result = physicell_config_doc.load_file( filename.c_str()  );
+	std::cout << "Using config file " << argument_parser.path_to_config_file << " ... " << std::endl ; 
+	pugi::xml_parse_result result = physicell_config_doc.load_file( argument_parser.path_to_config_file.c_str()  );
 	
 	if( result.status != pugi::xml_parse_status::status_ok )
 	{
-		std::cout << "Error loading " << filename << "!" << std::endl; 
+		std::cout << "Error loading " << argument_parser.path_to_config_file << "!" << std::endl; 
 		return false;
 	}
 	
@@ -93,13 +95,16 @@ bool load_PhysiCell_config_file( std::string filename )
 	physicell_config_dom_initialized = true; 
 	
 	PhysiCell_settings.read_from_pugixml(); 
+	if (argument_parser.path_to_output_folder != "") {
+		PhysiCell_settings.folder = argument_parser.path_to_output_folder; // overwrite output folder if supplied by flag
+	}
 	
 	// now read the microenvironment (optional) 
 	
 	if( !setup_microenvironment_from_XML( physicell_config_root ) )
 	{
 		std::cout << std::endl 
-				  << "Warning: microenvironment_setup not found in " << filename << std::endl 
+				  << "Warning: microenvironment_setup not found in " << argument_parser.path_to_config_file << std::endl 
 				  << "         Either manually setup microenvironment in setup_microenvironment() (custom.cpp)" << std::endl
 				  << "         or consult documentation to add microenvironment_setup to your configuration file." << std::endl << std::endl; 
 	}
@@ -912,14 +917,35 @@ bool setup_microenvironment_from_XML( pugi::xml_node root_node )
 	default_microenvironment_options.track_internalized_substrates_in_each_agent 
 		= xml_get_bool_value( node, "track_internalized_substrates_in_each_agent" );
 
-	node = xml_find_node(node, "initial_condition");
-	if (node)
-	{
-		default_microenvironment_options.initial_condition_from_file_enabled = node.attribute("enabled").as_bool();
-		if (default_microenvironment_options.initial_condition_from_file_enabled)
+	if (argument_parser.path_to_ic_substrate_file != "") {
+		default_microenvironment_options.initial_condition_from_file_enabled = true;
+		std::string file_extension = argument_parser.path_to_ic_substrate_file.substr(argument_parser.path_to_ic_substrate_file.find_last_of(".") + 1);
+		if (file_extension == "mat")
 		{
-			default_microenvironment_options.initial_condition_file_type = node.attribute("type").as_string();
-			default_microenvironment_options.initial_condition_file = xml_get_string_value(node, "filename");
+			default_microenvironment_options.initial_condition_file_type = "matlab";
+		}
+		else if (file_extension == "csv")
+		{
+			default_microenvironment_options.initial_condition_file_type = "csv";
+		}
+		else
+		{
+			std::cerr << "Error: Initial condition file type for substrates not recognized. Please use .mat or .csv file." << std::endl;
+			exit(EXIT_FAILURE);
+		}
+		default_microenvironment_options.initial_condition_file = argument_parser.path_to_ic_substrate_file;
+	}
+	else
+	{
+		node = xml_find_node(node, "initial_condition");
+		if (node)
+		{
+			default_microenvironment_options.initial_condition_from_file_enabled = node.attribute("enabled").as_bool();
+			if (default_microenvironment_options.initial_condition_from_file_enabled)
+			{
+				default_microenvironment_options.initial_condition_file_type = node.attribute("type").as_string();
+				default_microenvironment_options.initial_condition_file = xml_get_string_value(node, "filename");
+			}
 		}
 	}
 
@@ -951,5 +977,59 @@ bool setup_microenvironment_from_XML( pugi::xml_node root_node )
 
 bool setup_microenvironment_from_XML( void )
 { return setup_microenvironment_from_XML( physicell_config_root ); }
+
+void ArgumentParser::parse(int argc, char **argv)
+{ // read arguments
+	int opt;
+	static struct option long_options[] = {
+		{"config", required_argument, 0, 'c'},
+		{"ic-cells", required_argument, 0, 'i'},
+		{"ic-substrates", required_argument, 0, 's'},
+		{"ic-ecm", required_argument, 0, 'e'},
+		{"rules", required_argument, 0, 'r'},
+		{"output", required_argument, 0, 'o'},
+		{0, 0, 0, 0}};
+
+	std::string usage = "Usage: " + std::string(argv[0]) + " [-c path_to_config_file] [-i path_to_ic_cells_file] [-s path_to_ic_substrate_file] [-e path_to_ic_ecm_file] [-o path_to_output_folder]\n" + "   Or: " + std::string(argv[0]) + " path_to_config_file [-i path_to_ic_cells_file] [-s path_to_ic_substrate_file] [-e path_to_ic_ecm_file] [-o path_to_output_folder]";
+
+	while ((opt = getopt_long(argc, argv, "c:i:s:e:r:o:", long_options, NULL)) != -1)
+	{
+		switch (opt)
+		{
+		case 'c':
+			config_file_flagged = true;
+			path_to_config_file = optarg;
+			break;
+		case 'i':
+			path_to_ic_cells_file = optarg;
+			break;
+		case 's':
+			path_to_ic_substrate_file = optarg;
+			break;
+		case 'e':
+			path_to_ic_ecm_file = optarg;
+			break;
+		case 'r':
+			path_to_rules_file = optarg;
+			break;
+		case 'o':
+			path_to_output_folder = optarg;
+			break;
+		default:
+			std::cerr << usage << std::endl;
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	if (optind == argc - 1 && !config_file_flagged) // config file not flagged and passed in as unflagged argument
+	{
+		path_to_config_file = argv[optind];
+	}
+	else if (optind < argc - 1 || (optind == argc - 1 && config_file_flagged)) // too many unflagged arguments OR config file passed in as both flagged and unflagged arguments
+	{
+		std::cerr << usage << std::endl;
+		exit(EXIT_FAILURE);
+	}
+}
 
 }; 

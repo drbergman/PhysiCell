@@ -72,13 +72,13 @@ ECM_options::ECM_options()
 {
 }
 
-void setup_extracellular_matrix(std::string path_to_ic_ecm_file )
+void setup_extracellular_matrix()
 {
-	if (path_to_ic_ecm_file != "")
+	if (argument_parser.path_to_ic_ecm_file != "")
 	{
 		PhysiCell_settings.ecm_enabled = true;
 		resize_ecm_to_microenvironment();
-		initialize_ecm_from_file(path_to_ic_ecm_file);
+		initialize_ecm_from_file(argument_parser.path_to_ic_ecm_file);
 	}
 	else
 	{

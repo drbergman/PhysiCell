@@ -2320,14 +2320,14 @@ std::vector<double> UniformInShell( double r1, double r2 )
 	return { param2*sin(theta) , param2*cos(theta), param1*(1-2*T) }; 
 }
 
-void setup_cell_rules(std::string path_to_rules_file)
+void setup_cell_rules()
 {
 	// setup
 	intialize_hypothesis_rulesets();
 
 	// load rules
-	if (path_to_rules_file != "")
-	{parse_rules_from_file(path_to_rules_file);} // defaults for rest of arguments found in .h file
+	if (argument_parser.path_to_rules_file != "")
+	{parse_rules_from_file(argument_parser.path_to_rules_file);} // defaults for rest of arguments found in .h file
 	else
 	{parse_rules_from_pugixml();}
 

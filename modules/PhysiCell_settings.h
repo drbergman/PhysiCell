@@ -76,6 +76,7 @@
 #include <random>
 #include <chrono>
 #include <unordered_map>
+#include <getopt.h>
 
 #include "./PhysiCell_pugixml.h"
 #include "../BioFVM/BioFVM.h"
@@ -89,7 +90,7 @@ namespace PhysiCell{
  	
 extern pugi::xml_node physicell_config_root; 
 
-bool load_PhysiCell_config_file( std::string filename );
+bool load_PhysiCell_config_file();
 
 class PhysiCell_Settings
 {
@@ -229,6 +230,23 @@ extern User_Parameters parameters;
 
 bool setup_microenvironment_from_XML( pugi::xml_node root_node );
 bool setup_microenvironment_from_XML( void );
+
+class ArgumentParser {
+public:
+	bool config_file_flagged = false;
+	std::string path_to_config_file = "./config/PhysiCell_settings.xml";
+	std::string path_to_ic_cells_file;
+	std::string path_to_ic_substrate_file;
+	std::string path_to_ic_ecm_file;
+	std::string path_to_rules_file;
+	std::string path_to_output_folder;
+
+    void parse(int argc, char* argv[]);
+
+	ArgumentParser() {};
+};
+
+extern ArgumentParser argument_parser;
 
 }
 

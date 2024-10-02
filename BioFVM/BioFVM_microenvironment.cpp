@@ -1268,7 +1268,7 @@ Microenvironment_Options::Microenvironment_Options()
 
 Microenvironment_Options default_microenvironment_options; 
 
-void initialize_microenvironment( std::string path_to_ic_substrate_file )
+void initialize_microenvironment( void )
 {
 	// create and name a microenvironment; 
 	microenvironment.name = default_microenvironment_options.name;
@@ -1320,23 +1320,7 @@ void initialize_microenvironment( std::string path_to_ic_substrate_file )
 	}
 
 	// set the initial condition
-	if (path_to_ic_substrate_file != "")
-	{
-		if (path_to_ic_substrate_file.substr(path_to_ic_substrate_file.find_last_of(".") + 1) == "mat")
-		{
-			load_initial_conditions_from_matlab(path_to_ic_substrate_file);
-		}
-		else if (path_to_ic_substrate_file.substr(path_to_ic_substrate_file.find_last_of(".") + 1) == "csv")
-		{
-			load_initial_conditions_from_csv(path_to_ic_substrate_file);
-		}
-		else
-		{
-			std::cout << "ERROR : Load BioFVM initial conditions from " << path_to_ic_substrate_file.substr(path_to_ic_substrate_file.find_last_of(".") + 1) << " not yet supported." << std::endl;
-			exit(-1);
-		}
-	}
-	else if (default_microenvironment_options.initial_condition_from_file_enabled)
+	if (default_microenvironment_options.initial_condition_from_file_enabled)
 	{
 		if (default_microenvironment_options.initial_condition_file_type=="matlab")
 		{
