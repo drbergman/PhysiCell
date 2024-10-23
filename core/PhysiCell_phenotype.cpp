@@ -1064,7 +1064,7 @@ void Molecular::sync_to_current_microenvironment( void )
 	{
 		internalized_total_substrates.resize( 0 , 0.0 ); 
 		fraction_released_at_death.resize( 0 , 0.0 ); 
-		fraction_transferred_when_ingested.resize( 0, 0.0 ); 
+		fraction_transferred_when_ingested.resize( 0, 1.0 ); 
 	}
 	return; 
 }
@@ -1077,7 +1077,7 @@ void Molecular::sync_to_microenvironment( Microenvironment* pNew_Microenvironmen
 
 	internalized_total_substrates.resize( number_of_densities , 0.0 ); 
 	fraction_released_at_death.resize( number_of_densities , 0.0 ); 
-	fraction_transferred_when_ingested.resize( number_of_densities , 0.0 ); 
+	fraction_transferred_when_ingested.resize( number_of_densities , 1.0 ); 
 	
 	return; 
 }
@@ -1237,7 +1237,6 @@ Phenotype& Phenotype::operator=(const Phenotype &p ) {
 	
 	cell_interactions = p.cell_interactions; 
 	cell_transformations = p.cell_transformations; 
-	cell_asymmetric_divisions = p.cell_asymmetric_divisions;
 	
 	return *this;
 }
@@ -1374,36 +1373,36 @@ double& Cell_Transformations::transformation_rate( std::string type_name )
 	return transformation_rates[n]; 
 }
 
-Cell_Asymmetric_Divisions::Cell_Asymmetric_Divisions()
+Asymmetric_Division::Asymmetric_Division()
 {
-	asymmetric_division_weights = {0.0};
+	asymmetric_division_probabilities = {0.0};
 }
 
-void Cell_Asymmetric_Divisions::sync_to_cell_definitions()
+void Asymmetric_Division::sync_to_cell_definitions()
 {
 	extern std::unordered_map<std::string,int> cell_definition_indices_by_name; 
 	int number_of_cell_defs = cell_definition_indices_by_name.size(); 
 	
-	if( asymmetric_division_weights.size() != number_of_cell_defs )
-	{ asymmetric_division_weights.resize( number_of_cell_defs, 0.0); }
+	if( asymmetric_division_probabilities.size() != number_of_cell_defs )
+	{ asymmetric_division_probabilities.resize( number_of_cell_defs, 0.0); }
 	
 	return; 
 }
 
-double Cell_Asymmetric_Divisions::weights_total( void )
+double Asymmetric_Division::probabilities_total( void )
 {
 	double total = 0.0; 
-	for( int i=0; i < asymmetric_division_weights.size(); i++ )
-	{ total += asymmetric_division_weights[i]; }
+	for( int i=0; i < asymmetric_division_probabilities.size(); i++ )
+	{ total += asymmetric_division_probabilities[i]; }
 	return total; 
 }
 
 // ease of access
-double& Cell_Asymmetric_Divisions::asymmetric_division_weight( std::string type_name )
+double& Asymmetric_Division::asymmetric_division_probability( std::string type_name )
 {
 	extern std::unordered_map<std::string,int> cell_definition_indices_by_name; 
 	int n = cell_definition_indices_by_name[type_name]; 
-	return asymmetric_division_weights[n]; 
+	return asymmetric_division_probabilities[n]; 
 }
 
 // beta functionality in 1.10.3 

@@ -402,7 +402,8 @@ bool load_cells_from_file(std::string path_to_file, std::string filetype)
 		return false;
 	}
 
-	return false;
+	copy_file_to_output(path_to_file);
+	return true; 
 }
 
 bool load_initial_cells( void )

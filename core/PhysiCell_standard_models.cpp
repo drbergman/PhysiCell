@@ -781,7 +781,7 @@ void initialize_default_cell_definition( void )
 	//					these for the cell_defaults 
 	cell_defaults.phenotype.cell_interactions.sync_to_cell_definitions(); 
 	cell_defaults.phenotype.cell_transformations.sync_to_cell_definitions(); 
-	cell_defaults.phenotype.cell_asymmetric_divisions.sync_to_cell_definitions();
+	cell_defaults.phenotype.cycle.asymmetric_division.sync_to_cell_definitions();
 	cell_defaults.phenotype.motility.sync_to_current_microenvironment(); 
 	cell_defaults.phenotype.mechanics.sync_to_cell_definitions(); 
 	
@@ -1378,25 +1378,48 @@ void standard_cell_transformations( Cell* pCell, Phenotype& phenotype, double dt
 void standard_asymmetric_division_function( Cell* pCell_parent, Cell* pCell_daughter )
 {
 	Cell_Definition* pCD_parent = cell_definitions_by_name[pCell_parent->type_name];
-	double asym_weight_total = pCell_parent->phenotype.cell_asymmetric_divisions.weights_total();
-
-	if (asym_weight_total == 0)
-	{ return; } // if all are zeros, below will convert to the first cell type by default. don't let that happen. keep it the same type
-
-	double r = asym_weight_total * UniformRandom();
-	int cell_def_index = -1;
-	for( int i=0; i < pCD_parent->phenotype.cell_asymmetric_divisions.asymmetric_division_weights.size(); i++ )
+	double total = pCell_parent->phenotype.cycle.asymmetric_division.probabilities_total();
+	if (total > 1.0)
 	{
-		if( r <= pCell_parent->phenotype.cell_asymmetric_divisions.asymmetric_division_weights[i] )
+		double sym_div_prob = pCell_parent->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities[pCell_parent->type] + 1.0 - total;
+		if (sym_div_prob < 0.0)
+		{ 
+			throw std::runtime_error("Error: Asymmetric division probabilities for " + pCD_parent->name + " sum to greater than 1.0 and cannot be normalized.");
+		}
+		pCell_parent->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities[pCell_parent->type] = sym_div_prob;
+		pCell_daughter->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities[pCell_daughter->type] = sym_div_prob;
+	}
+	double r = UniformRandom();
+	for( int i=0; i < pCD_parent->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities.size(); i++ )
+	{
+		if( r <= pCell_parent->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities[i] )
 		{
-			pCell_daughter->convert_to_cell_definition( *cell_definitions_by_index[i] );
+			if (i != pCell_daughter->type) // only convert if the daughter is not already the correct type
+			{ pCell_daughter->convert_to_cell_definition( *cell_definitions_by_index[i] ); }
 			return;
 		}
-		r -= pCell_parent->phenotype.cell_asymmetric_divisions.asymmetric_division_weights[i];
+		r -= pCell_parent->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities[i];
 	}
 	// if we're here, then do not do asym div
 	return;
 }
+
+//  alternative way to select the index from weights that could be faster (is faster as # cell types --> infinity)
+// int select_by_probabilities( const std::vector<double>& probabilities )
+// {
+// 	double r = UniformRandom();
+
+// 	std::vector<double> cumulative_weights(probabilities.size());
+// 	std::partial_sum(probabilities.begin(), probabilities.end(), cumulative_weights.begin());
+
+// 	// Use binary search to find the index
+// 	auto it = std::upper_bound(cumulative_weights.begin(), cumulative_weights.end(), r);
+// 	int index = std::distance(cumulative_weights.begin(), it);
+// 	if (index >= probabilities.size())
+// 	{ return -1; }
+	
+// 	return index;
+// }
 
 void dynamic_attachments( Cell* pCell , Phenotype& phenotype, double dt )
 {

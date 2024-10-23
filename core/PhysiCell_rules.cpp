@@ -2112,7 +2112,6 @@ void parse_rules_from_file(std::string path_to_file, std::string format, std::st
 	PhysiCell_settings.rules_enabled = true;
 }
 
-
 void parse_rules_from_parameters_v0( void )
 {
 	bool enabled = parameters.bools( "rules_enabled" ); 

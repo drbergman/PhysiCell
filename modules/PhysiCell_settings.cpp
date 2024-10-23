@@ -65,6 +65,7 @@
 ###############################################################################
 */
  
+#include <sys/stat.h>
 #include "./PhysiCell_settings.h"
 
 using namespace BioFVM; 
@@ -112,6 +113,8 @@ bool load_PhysiCell_config_file()
 	// now read user parameters
 	
 	parameters.read_from_pugixml( physicell_config_root ); 
+
+	create_output_directory( PhysiCell_settings.folder );
 
 	return true; 	
 }
@@ -323,6 +326,45 @@ void PhysiCell_Settings::read_from_pugixml( void )
 	// random seed options 
 	
 	return; 
+}
+
+bool create_directories(const std::string &path)
+{
+	std::vector<std::string> directories;
+	size_t pos = 0;
+    std::string currentPath;
+
+    while ((pos = path.find_first_of("/\\", pos)) != std::string::npos) {
+        currentPath = path.substr(0, pos++);
+        if (!create_directory(currentPath)) {
+            return false;
+        }
+    }
+    return create_directory(path);
+}
+
+bool create_directory(const std::string &path)
+{
+#if defined(__MINGW32__) || defined(__MINGW64__)
+	bool success = mkdir(path.c_str()) == 0;
+#else
+	bool success = mkdir(path.c_str(), 0755) == 0;
+#endif
+	return success || errno == EEXIST;
+}
+
+void create_output_directory(const std::string& path)
+{
+	if (!create_directories(path))
+	{
+		std::cout << "ERROR: Could not create output directory " << path << " ! Quitting." << std::endl;
+		exit(-1);
+	}
+}
+
+void create_output_directory(void)
+{
+	create_output_directory(PhysiCell_settings.folder);
 }
 
 PhysiCell_Globals PhysiCell_globals; 
@@ -927,6 +969,10 @@ bool setup_microenvironment_from_XML( pugi::xml_node root_node )
 				default_microenvironment_options.initial_condition_file = xml_get_string_value(node, "filename");
 			}
 		}
+	}
+	if (default_microenvironment_options.initial_condition_from_file_enabled)
+	{
+		copy_file_to_output(default_microenvironment_options.initial_condition_file);
 	}
 
 	// not yet supported : read initial conditions 
