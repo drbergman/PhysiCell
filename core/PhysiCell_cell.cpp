@@ -88,6 +88,7 @@
 #include <algorithm>
 #include <iterator> 
 
+std::unordered_map<std::string,int> cell_definition_type_by_name; // only need this for this file, not in the general PhysiCell namespace
 namespace PhysiCell{
 
 std::unordered_map<std::string,Cell_Definition*> cell_definitions_by_name; 
@@ -1680,18 +1681,69 @@ void prebuild_cell_definition_index_maps( void )
 	// Cell_Interactions and Cell_Transformations in the phenotype 
 	// when we set up the cell definitions. 
 	
+	std::string cell_ids_in_xml = "unknown";
 	int n = 0; 
+	int ID;
+	std::vector<std::string> names = {};
 	while( node )
 	{
-		int ID = node.attribute( "ID" ).as_int();  
-		std::string type_name = node.attribute( "name" ).value();   
+		std::string name = node.attribute( "name" ).value();
+		for (auto nm : names)
+		{
+			if (name == nm)
+			{
+				std::cout << "Error: cell_definition " << name << " is defined more than once." << std::endl;
+				std::cout << "Please ensure that all cell_definitions have unique names." << std::endl;
+				exit(-1);
+			}
+		}
+		names.push_back(name);
+		pugi::xml_attribute ID_attrib = node.attribute( "ID" );
+		if( !ID_attrib )
+		{
+			if (cell_ids_in_xml == "unknown")
+			{ cell_ids_in_xml = "no"; }
+			else if (cell_ids_in_xml == "yes")
+			{ 
+				std::cout << "Error: cell_definition " << name << " does not have an ID attribute, but previous cell_definitions did." << std::endl;
+				std::cout << "Please either add ID attributes to all cell_definitions or remove them from all cell_definitions." << std::endl;
+				exit(-1);
+			}
+			static int next_id = 0;
+			ID = next_id;
+			next_id++;
+		}
+		else
+		{
+			if (cell_ids_in_xml == "unknown")
+			{ cell_ids_in_xml = "yes"; }
+			else if (cell_ids_in_xml == "no")
+			{ 
+				std::cout << "Error: cell_definition " << name << " has an ID attribute, but previous cell_definitions did not." << std::endl;
+				std::cout << "Please either add ID attributes to all cell_definitions or remove them from all cell_definitions." << std::endl;
+				exit(-1);
+			}
+			ID = ID_attrib.as_int();
+			static std::vector<int> IDs = {}; // used to check for duplicate IDs if provided in XML
+			for (auto id : IDs)
+			{
+				if (id == ID)
+				{
+					std::cout << "Error: cell_definition " << name << " has a duplicate ID." << std::endl;
+					std::cout << "Please ensure that all cell_definition IDs are unique." << std::endl;
+					exit(-1);
+				}
+			}
+			IDs.push_back(ID);
+		}
+		cell_definition_type_by_name[ name ] = ID;
 
-		std::cout << "Pre-processing type " << ID << " named " << type_name << std::endl; 
+		std::cout << "Pre-processing type " << ID << " named " << name << std::endl; 
 		
 //		cell_definitions_by_name[ type_name ] = pCD; 
 //		cell_definitions_by_type[ pCD->type ] = pCD; 
 		
-		cell_definition_indices_by_name[ type_name ] = n; 
+		cell_definition_indices_by_name[ name ] = n; 
 		cell_definition_indices_by_type[ ID ] = n; 
 		
 		node = node.next_sibling( "cell_definition" ); 
@@ -1988,20 +2040,19 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 	Cell_Definition* pCD; 
 	
 	// if this is not "default" then create a new one 
-	if( std::strcmp( cd_node.attribute( "name" ).value() , "default" ) != 0 
-	    && std::strcmp( cd_node.attribute( "ID" ).value() , "0" ) != 0 )
+	std::string name = cd_node.attribute( "name" ).value();
+	int ID = cell_definition_type_by_name[ name ];
+
+	if( name != "default" && ID != 0 )
 	{ pCD = new Cell_Definition; }
 	else
 	{ pCD = &cell_defaults; }
 	
 	// set the name 
-	pCD->name = cd_node.attribute("name").value();
+	pCD->name = name;
 	
 	// set the ID 
-	if( cd_node.attribute("ID" ) )
-	{ pCD->type = cd_node.attribute("ID").as_int(); }
-	else
-	{ pCD->type = -1; } 
+	pCD->type = ID;
 
 	// get the parent definition (if any) 
 	Cell_Definition* pParent = NULL;
@@ -2022,8 +2073,8 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 		*pCD = *pParent; 
 		
 		// but recover the name and ID (type)
-		pCD->name = cd_node.attribute("name").value();
-		pCD->type = cd_node.attribute("ID").as_int(); 
+		pCD->name = name;
+		pCD->type = ID; 
 	} 
 
 	/* bugfix on April 24, 2022 */ 
@@ -2668,7 +2719,6 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
         node_mech = node.child( "attachment_elastic_constant" );
 		if( node_mech )
 		{ pM->attachment_elastic_constant = xml_get_my_double_value( node_mech ); }
-		std::cout << "  --------- attachment_elastic_constant = " << pM->attachment_elastic_constant << std::endl;
 
         node_mech = node.child( "attachment_rate" );
 		if( node_mech )
