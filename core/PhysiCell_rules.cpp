@@ -33,7 +33,7 @@
 #                                                                             #
 # BSD 3-Clause License (see https://opensource.org/licenses/BSD-3-Clause)     #
 #                                                                             #
-# Copyright (c) 2015-2021, Paul Macklin and the PhysiCell Project             #
+# Copyright (c) 2015-2024, Paul Macklin and the PhysiCell Project             #
 # All rights reserved.                                                        #
 #                                                                             #
 # Redistribution and use in source and binary forms, with or without          #
@@ -2083,7 +2083,7 @@ void parse_rules_from_file(std::string path_to_file, std::string format, std::st
 	}
 	if (version == -1.0)
 	{
-		version = 2.0; // default version (at least for CSVs)
+		version = 3.0; // default version (at least for CSVs)
 	}
 
 	if (format == "CSV" || format == "csv")
