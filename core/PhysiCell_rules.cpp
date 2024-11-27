@@ -33,7 +33,7 @@
 #                                                                             #
 # BSD 3-Clause License (see https://opensource.org/licenses/BSD-3-Clause)     #
 #                                                                             #
-# Copyright (c) 2015-2021, Paul Macklin and the PhysiCell Project             #
+# Copyright (c) 2015-2024, Paul Macklin and the PhysiCell Project             #
 # All rights reserved.                                                        #
 #                                                                             #
 # Redistribution and use in source and binary forms, with or without          #
@@ -256,6 +256,8 @@ void Hypothesis_Rule::add_signal( std::string signal , double half_max , double 
         std::cout << "Error! Attempted to add signal " << signal << " which is not in the dictionary." << std::endl; 
         std::cout << "Either fix your model or add the missing signal to the simulation." << std::endl; 
 
+		std::cout << "\t\tSee possible fixes at https://github.com/physicell-training/PhysiCell_common_errors\n\n"; 
+
         exit(-1); 
     }
 
@@ -270,6 +272,8 @@ void Hypothesis_Rule::add_signal( std::string signal , double half_max , double 
 	{
 		std::cout << "Error! Signal " << signal << " and Response " << response << " were already part of the rule." << 
 		std::endl; 
+
+		std::cout << "\t\tSee possible fixes at https://github.com/physicell-training/PhysiCell_common_errors\n\n"; 
 
 		exit(-1); 
 	}
@@ -758,6 +762,8 @@ Hypothesis_Rule* Hypothesis_Ruleset::add_behavior( std::string behavior , double
     {
         std::cout << "Warning! Attempted to add behavior " << behavior << " which is not in the dictionary." << std::endl; 
         std::cout << "Either fix your model or add the missing behavior to the simulation." << std::endl; 
+
+		std::cout << "\t\tSee possible fixes at https://github.com/physicell-training/PhysiCell_common_errors\n\n";
 
         exit(-1); 
     }
@@ -1302,7 +1308,7 @@ std::string csv_strings_to_English_v1( std::vector<std::string> strings , bool i
 	return output; 
 }
 
-std::string csv_strings_to_English_v2( std::vector<std::string> strings , bool include_cell_header )
+std::string csv_strings_to_English_v3( std::vector<std::string> strings , bool include_cell_header )
 {
 	std::string output = ""; 
 
@@ -1704,7 +1710,7 @@ void parse_csv_rules_v1( std::string filename )
  Cell type, signal, direction, behavior, max response value, half-max, Hill power, applies to dead?  
 */ 
 
-void parse_csv_rule_v2( std::vector<std::string> input )
+void parse_csv_rule_v3( std::vector<std::string> input )
 {
 	// if it's wrong length, skip 
 	bool skip = false; 
@@ -1728,7 +1734,7 @@ void parse_csv_rule_v2( std::vector<std::string> input )
 		return; 
 	}
 
-	std::string temp = csv_strings_to_English_v2( input , false ); // need a v1 version of this
+	std::string temp = csv_strings_to_English_v3( input , false ); // need a v1 version of this
 
 	// string portions of the rule
 	std::string cell_type = input[0]; 
@@ -1774,7 +1780,7 @@ void parse_csv_rule_v2( std::vector<std::string> input )
 	return;  
 }
 
-void parse_csv_rule_v2( std::string input )
+void parse_csv_rule_v3( std::string input )
 {
 	std::vector<std::string> tokenized_string; 
 	split_csv( input , tokenized_string , ','); 
@@ -1788,10 +1794,10 @@ void parse_csv_rule_v2( std::string input )
 	if(tokenized_string[0][0] == '/' && tokenized_string[0][1] == '/' )
 	{ std::cout << "Skipping commented rule (" << input << ")" << std::endl; return; }	
 
-	return parse_csv_rule_v2( tokenized_string ); 
+	return parse_csv_rule_v3( tokenized_string ); 
 }
 
-void parse_csv_rules_v2( std::string filename )
+void parse_csv_rules_v3( std::string filename )
 {
 	std::fstream fs( filename, std::ios::in );
 	if( !fs )
@@ -1807,7 +1813,7 @@ void parse_csv_rules_v2( std::string filename )
 		std::string line; 	
 		std::getline( fs , line, '\n'); 
 		if( line.size() > 0 )
-		{ parse_csv_rule_v2(line); }
+		{ parse_csv_rule_v3(line); }
 	}
 
 	fs.close(); 
@@ -2075,7 +2081,6 @@ void parse_rules_from_pugixml( void )
 	return;
 }
 
-
 void parse_rules_from_file(std::string path_to_file, std::string format, std::string protocol, double version) // see PhysiCell_rules.h for default values of format, protocol, and version
 {
 	std::cout << "\tProcessing ruleset in " << path_to_file << " ... " << std::endl;
@@ -2091,30 +2096,19 @@ void parse_rules_from_file(std::string path_to_file, std::string format, std::st
 	}
 	if (version == -1.0)
 	{
-		version = 2.0; // default version (at least for CSVs)
+		version = 3.0; // default version (at least for CSVs)
 	}
 
 	if (format == "CSV" || format == "csv")
 	{
+		if (version < 3.0 - 1e-10 )
+		{
+			std::cout << "\t\t**Error: Rules version < 3 no longer supported for CSVs.\n\n";
+			std::cout << "\t\tSee possible fixes at https://github.com/physicell-training/PhysiCell_common_errors\n\n";
+			exit(-1);
+		}
 		std::cout << "\tFormat: CSV (version " << version << ")" << std::endl;
-
-		if (version < 1.0)
-		{
-			parse_csv_rules_v0(path_to_file); // parse all rules in a CSV file
-		}
-		else if (version >= 1.0 - 1e-10 && version < 2.0 - 1e-10 && protocol == "CBHG")
-		{
-			parse_csv_rules_v1(path_to_file); // parse all rules in a CSV file
-		}
-		else if (version >= 2.0 - 1e-10 && protocol == "CBHG")
-		{
-			parse_csv_rules_v2(path_to_file); // parse all rules in a CSV file
-		}
-		else
-		{
-			std::cout << "\tWarning: CSV ruleset had unknown version (" << version << ") or protocol (" << protocol << "). Skipping!" << std::endl;
-			return;
-		}
+		parse_csv_rules_v3(input_filename); // parse all rules in a CSV file
 	}
 	else if (format == "XML" || format == "xml")
 	{
@@ -2124,10 +2118,11 @@ void parse_rules_from_file(std::string path_to_file, std::string format, std::st
 	}
 	else
 	{
-		std::cout << "\tWarning: Unknown format (" << format << ") for ruleset " << path_to_file << ". Skipping!" << std::endl;
-		return;
+		std::cout << "\tError: Unknown format (" << format << ") for ruleset " << path_to_file << ". Quitting!" << std::endl;
+		exit(-1);
 	}
 	PhysiCell_settings.rules_enabled = true;
+	return; 
 }
 
 
@@ -2401,7 +2396,7 @@ void export_rules_csv_v1( std::string filename )
 	return; 
 }
 
-void export_rules_csv_v2( std::string filename )
+void export_rules_csv_v3( std::string filename )
 {
 	std::fstream fs( filename, std::ios::out );
 	if( !fs )
