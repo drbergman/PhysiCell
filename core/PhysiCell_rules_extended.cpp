@@ -1,86 +1,222 @@
 #include "PhysiCell_rules_extended.h"
-#include "PhysiCell_signal_behavior.h"
-
-using namespace BioFVM; 
 
 namespace PhysiCell{
+
+#ifndef __PhysiCell_rules_extended_cpp__
+#define __PhysiCell_rules_extended_cpp__
+#endif
+
+double sum_aggregator(std::vector<double> signals_in)
+{
+    double signal_sum = 0;
+    for (auto &signal : signals_in)
+    {
+        signal_sum += signal;
+    }
+    return signal_sum;
+}
+
+double multivariate_hill_aggregator(std::vector<double> partial_hill_signals)
+{
+    double out = sum_aggregator(partial_hill_signals);
+    return out / (1 + out);
+}
+
+double MediatorSignal::decreasing_dominant_mediator(std::vector<double> signals_in)
+{
+    return min_value * signals_in[0] + (base_value + (max_value - base_value) * signals_in[1]) * (1 - signals_in[0]);
+}
+
+double MediatorSignal::increasing_dominant_mediator(std::vector<double> signals_in)
+{
+    return max_value * signals_in[1] + (base_value + (min_value - base_value) * signals_in[0]) * (1 - signals_in[1]);
+}
+
+double MediatorSignal::neutral_mediator(std::vector<double> signals_in)
+{
+    return base_value + (min_value - base_value) * signals_in[0] + (max_value - base_value) * signals_in[1];
+}
+
+void MediatorSignal::use_increasing_dominant_mediator()
+{
+	aggregator = [this](std::vector<double> signals_in)
+	{
+		return this->increasing_dominant_mediator(signals_in);
+	};
+}
+
+void MediatorSignal::use_neutral_mediator()
+{
+	aggregator = [this](std::vector<double> signals_in)
+	{
+		return this->neutral_mediator(signals_in);
+	};
+}
+
+void ElementarySignal::add_reference(std::unique_ptr<SignalReference> pSR)
+{
+	signal_reference = std::move(pSR);	   // set the reference
+	if (add_signal_reference)
+	{
+		add_signal_reference(signal_reference.get()); // depending on the class of ElementarySignal, do what else is needed when adding a reference
+	}
+}
+
 double ElementarySignal::evaluate(Cell *pCell)
 {
 	if (!applies_to_dead_cells && pCell->phenotype.death.dead)
 	{
 		return 0;
 	}
-	return transformer(get_single_signal(pCell, signal_name));
-}
-
-BehaviorRule::BehaviorRule(std::string cell_type, std::string behavior_name, double min_behavior, double max_behavior)
-{
-    pCell_Definition = find_cell_definition(cell_type);
-    behavior = behavior_name;
-    min_value = min_behavior;
-    max_value = max_behavior;
-    base_value = get_single_base_behavior(pCell_Definition, behavior_name);
-}
-
-void BehaviorRule::append_signal(std::string, std::string response)
-{
-	PartialHillSignal *pDecreasingSignal = new PartialHillSignal();
-	PartialHillSignal *pIncreasingSignal = new PartialHillSignal();
-	signal = new MediatorSignal(pDecreasingSignal, pIncreasingSignal);
-	return;
+	double signal = get_single_signal(pCell, signal_name);
+	if (signal_reference != nullptr)
+	{
+		signal = signal_reference->coordinate_transform(signal);
+	}
+	return transformer(signal);
 }
 
 void BehaviorRule::apply(Cell *pCell)
 {
-	double param = evaluate(pCell);
+	double param = signal->evaluate(pCell);
 	set_single_behavior(pCell, behavior, param);
 	return;
 }
 
-void BehaviorRule::sync_to_cell_definition( Cell_Definition* pCD )
+void BehaviorRuleset::apply(Cell *pCell)
 {
-	if( pCD == NULL )
-	{ return; }
+	for (auto &rule : rules)
+	{
+		rule->apply(pCell);
+	}
+	return;
+}
 
-	cell_type = pCD->name; 
-	pCell_Definition = pCD; 
+std::unordered_map< Cell_Definition* , std::unique_ptr<BehaviorRuleset> > behavior_rulesets; 
 
-	// sync base behavior 
-	base_value = get_single_base_behavior(pCD,behavior); 
-
+void add_behavior_ruleset( Cell_Definition* pCD )
+{
+	auto search = behavior_rulesets.find( pCD );
+	if (search == behavior_rulesets.end())
+	{
+		// I don't think I need to sync to the cell definition
+        behavior_rulesets[pCD] = std::unique_ptr<BehaviorRuleset>(new BehaviorRuleset()); // cannot use make_unique since that is only introduced in C++14
+	}
 	return; 
 }
 
-void BehaviorRuleset::add_behavior(std::string behavior, double min_behavior, double max_behavior)
+void intialize_behavior_rulesets( void )
 {
-    // check: is this a valid signal? (is it in the dictionary?)
-    if (find_behavior_index(behavior) < 0)
-    {
-        std::cout << "Warning! Attempted to add behavior " << behavior << " which is not in the dictionary." << std::endl;
-        std::cout << "Either fix your model or add the missing behavior to the simulation." << std::endl;
-
-        exit(-1);
-    }
-
-    // first, check. Is there already a ruleset?
-    for (auto &rule : rules)
-    {
-        if (rule->behavior == behavior)
-        {
-            std::cout << "ERROR: Attempted to add behavior " << behavior << " which is already in the ruleset." << std::endl;
-            std::cout << "\tIf you want to change the min and max values, use the set_min_max_behavior function." << std::endl;
-            exit(-1);
-        }
-    }
-    // if not, add it
-    BehaviorRule *pBR = new BehaviorRule(cell_type, behavior, min_behavior, max_behavior);
+	behavior_rulesets.clear(); // empty(); 
+	for( int n; n < cell_definitions_by_index.size() ; n++ )
+	for (auto &pCD : cell_definitions_by_index)
+	{
+		add_behavior_ruleset(pCD); 
+	}
+	return; 
 }
 
-void BehaviorRuleset::sync_to_cell_definition(std::string cell_type)
+void setup_behavior_rules( void )
 {
-    pCell_Definition = find_cell_definition(cell_type);
-    sync_to_cell_definition_finish(cell_type);
+	intialize_behavior_rulesets();
+
+	parse_behavior_rules_from_pugixml();
+
+	// display_behavior_rules( std::cout );
+
+	// save_annotated_detailed_English_behavior_rules(); 
+	// save_annotated_detailed_English_behavior_rules_HTML(); 
+	// save_annotated_English_behavior_rules(); 
+	// save_annotated_English_behavior_rules_HTML(); 
+
+	std::string dictionary_file = "./" + PhysiCell_settings.folder + "/dictionaries.txt";
+	std::ofstream dict_of( dictionary_file , std::ios::out ); 
+
+	display_signal_dictionary( dict_of ); // done 
+	display_behavior_dictionary( dict_of ); // done 
+	dict_of.close(); 
+
+	// // save rules (v1)
+	// std::string rules_file = PhysiCell_settings.folder + "/cell_rules.csv"; 
+	// export_rules_csv_v1( rules_file ); 
+	return; 
 }
+
+void apply_behavior_ruleset( Cell* pCell )
+{
+	Cell_Definition* pCD = find_cell_definition( pCell->type_name ); 
+	behavior_rulesets[pCD]->apply( pCell );
+	return; 
+}
+
+// BehaviorRule::BehaviorRule(std::string cell_type, std::string behavior_name, double min_behavior, double max_behavior)
+// {
+//     pCell_Definition = find_cell_definition(cell_type);
+//     behavior = behavior_name;
+//     min_value = min_behavior;
+//     max_value = max_behavior;
+//     base_value = get_single_base_behavior(pCell_Definition, behavior_name);
+// }
+
+// void BehaviorRule::append_signal(std::string, std::string response)
+// {
+// 	PartialHillSignal *pDecreasingSignal = new PartialHillSignal();
+// 	PartialHillSignal *pIncreasingSignal = new PartialHillSignal();
+// 	signal = new MediatorSignal(pDecreasingSignal, pIncreasingSignal);
+// 	return;
+// }
+
+// void BehaviorRule::apply(Cell *pCell)
+// {
+// 	double param = evaluate(pCell);
+// 	set_single_behavior(pCell, behavior, param);
+// 	return;
+// }
+
+// void BehaviorRule::sync_to_cell_definition( Cell_Definition* pCD )
+// {
+// 	if( pCD == NULL )
+// 	{ return; }
+
+// 	cell_type = pCD->name; 
+// 	pCell_Definition = pCD; 
+
+// 	// sync base behavior 
+// 	base_value = get_single_base_behavior(pCD,behavior); 
+
+// 	return; 
+// }
+
+// void BehaviorRuleset::add_behavior(std::string behavior, double min_behavior, double max_behavior)
+// {
+//     // check: is this a valid signal? (is it in the dictionary?)
+//     if (find_behavior_index(behavior) < 0)
+//     {
+//         std::cout << "Warning! Attempted to add behavior " << behavior << " which is not in the dictionary." << std::endl;
+//         std::cout << "Either fix your model or add the missing behavior to the simulation." << std::endl;
+
+//         exit(-1);
+//     }
+
+//     // first, check. Is there already a ruleset?
+//     for (auto &rule : rules)
+//     {
+//         if (rule->behavior == behavior)
+//         {
+//             std::cout << "ERROR: Attempted to add behavior " << behavior << " which is already in the ruleset." << std::endl;
+//             std::cout << "\tIf you want to change the min and max values, use the set_min_max_behavior function." << std::endl;
+//             exit(-1);
+//         }
+//     }
+//     // if not, add it
+//     BehaviorRule *pBR = new BehaviorRule(cell_type, behavior, min_behavior, max_behavior);
+// }
+
+// void BehaviorRuleset::sync_to_cell_definition(std::string cell_type)
+// {
+//     pCell_Definition = find_cell_definition(cell_type);
+//     sync_to_cell_definition_finish(cell_type);
+// }
 
 // BehaviorRule* Hypothesis_Ruleset::add_behavior( std::string behavior , double min_behavior, double max_behavior )
 // {
@@ -152,7 +288,7 @@ void BehaviorRuleset::sync_to_cell_definition(std::string cell_type)
 // 	return *pBR; 
 // } 
 
-void parse_xml_rules_extended(const std::string filename)
+void parse_xml_behavior_rules(const std::string filename)
 {
 	bool physicell_rules_dom_initialized = false;
 	pugi::xml_document physicell_rules_doc;
@@ -166,11 +302,11 @@ void parse_xml_rules_extended(const std::string filename)
 		exit(-1);
 	}
 
-	physicell_rules_root = physicell_rules_doc.child("hypothesis_rulesets");
+	physicell_rules_root = physicell_rules_doc.child("behavior_rulesets");
 	physicell_rules_dom_initialized = true;
 
 	pugi::xml_node ruleset_node;
-	ruleset_node = xml_find_node(physicell_rules_root, "hypothesis_ruleset");
+	ruleset_node = xml_find_node(physicell_rules_root, "behavior_ruleset");
 	std::vector<std::string> cell_definitions_ruled;
 
 	while (ruleset_node)
@@ -190,6 +326,7 @@ void parse_xml_rules_extended(const std::string filename)
 		cell_definitions_ruled.push_back(cell_type);
 
 		std::vector<std::string> behaviors_ruled;
+		Cell_Definition *pCD = find_cell_definition(cell_type);
 
 		pugi::xml_node behavior_node = ruleset_node.child("behavior");
 		while (behavior_node)
@@ -205,104 +342,48 @@ void parse_xml_rules_extended(const std::string filename)
 				}
 			}
 			behaviors_ruled.push_back(behavior);
-			double base_behavior = get_single_base_behavior(find_cell_definition(cell_type), behavior);
-			AbstractSignal *pAS = parse_abstract_signal(behavior_node, base_behavior);
+
+			std::unique_ptr<AbstractSignal> pAS = parse_abstract_signal(behavior_node); // make this a unique ptr
+			std::unique_ptr<BehaviorRule> pBR = std::unique_ptr<BehaviorRule>(new BehaviorRule(behavior, std::move(pAS))); // make sure this is initalized correctly (and probably using unique_ptrs and releasing the pAS pointer, too)
+			behavior_rulesets[pCD]->add_behavior_rule(std::move(pBR)); // make sure add_behavior_rule is defined, unique ptrs are used correctly, and pointers are released if need be
+
 			behavior_node = behavior_node.next_sibling("behavior");
 		}
-		ruleset_node = ruleset_node.next_sibling("hypothesis_ruleset");
+		ruleset_node = ruleset_node.next_sibling("behavior_ruleset");
 	}
 	return;
 }
 
-AbstractSignal *parse_abstract_signal(const pugi::xml_node node, double base_value)
+std::unique_ptr<AbstractSignal> parse_abstract_signal(pugi::xml_node node)
 {
 	// idea: also start with mediator. if only one of increasing or decreasing provided, then can scrap the mediator and use either an elementary signal or an aggregator
-	AbstractSignal* pAS;
 	if (signal_is_mediator(node))
 	{
-		pAS = parse_mediator_signal(node, base_value);
+		return parse_mediator_signal(node);
 	}
 	else if (signal_is_aggregator(node))
 	{
-		pAS = parse_aggregator_signal(node);
+		return parse_aggregator_signal(node);
 	}
 	else if (signal_is_elementary(node))
 	{
-		pAS = parse_elementary_signal(node);
+		return parse_elementary_signal(node);
 	}
-	else
-	{
-		std::cout << "ERROR: Signal type not recognized." << std::endl;
-		exit(-1);
-	}
-	return pAS;
-}
-
-AbstractSignal *parse_mediator_signal(pugi::xml_node mediator_node, double base_value)
-{
-	if (mediator_node.child("base_value"))
-	{
-		base_value = xml_get_double_value(mediator_node, "base_value");
-	}
-	pugi::xml_node decreasing_signals_node = mediator_node.child("decreasing_signals");
-	pugi::xml_node increasing_signals_node = mediator_node.child("increasing_signals");
-
-	double min_value = 0.1;
-	double max_value = 10.0;
-
-	AbstractSignal *pDecreasingSignal;
-	AbstractSignal *pIncreasingSignal;
-	if (decreasing_signals_node)
-	{
-		pDecreasingSignal = parse_aggregator_signal(decreasing_signals_node);
-		if (mediator_node.child("min_value"))
-		{
-			min_value = xml_get_double_value(mediator_node, "min_value");
-		}
-		min_value = xml_get_double_value(decreasing_signals_node, "max_response");
-		// process_decreasing_signals(behavior_node, cell_type, behavior);
-	}
-	if (increasing_signals_node)
-	{
-		pIncreasingSignal = parse_aggregator_signal(increasing_signals_node);
-		if (mediator_node.child("max_value"))
-		{
-			max_value = xml_get_double_value(mediator_node, "max_value");
-		}
-		// process_increasing_signals(behavior_node, cell_type, behavior);
-	}
-	MediatorSignal *pSM = new MediatorSignal(pDecreasingSignal, pIncreasingSignal, min_value, base_value, max_value);
-	return pSM;
-}
-
-AbstractSignal *parse_aggregator_signal(pugi::xml_node aggregator_node)
-{
-	pugi::xml_node signal_node = xml_find_node(aggregator_node, "signal");
-	std::vector<AbstractSignal *> signals;
-	while(signal_node)
-	{
-		signals.push_back(parse_abstract_signal(signal_node));
-		signal_node = signal_node.next_sibling("signal");
-	}
-	AggregatorSignal *pAS = new AggregatorSignal(signals);	
-	return pAS;
-}
-
-AbstractSignal *parse_elementary_signal(const pugi::xml_node elementary_node)
-{
-	ElementarySignal *pES = new ElementarySignal();
-	return pES;
-	// parse the signal
-	// add the signal to the signal dictionary
-	// return;
+	std::cout << "ERROR: Failed to parse node in behavior rulesets:" << std::endl;
+	node.print(std::cout);
+	exit(-1);
 }
 
 bool signal_is_mediator(pugi::xml_node node)
 {
-	bool is_mediator = node.name() == "behavior"; // by default, assume that the top-level signal is a mediator
+	bool is_mediator = std::string(node.name()) == "behavior"; // by default, assume that the top-level signal is a mediator
+	std::cout << "tag = behavior? " << is_mediator << std::endl;
 	is_mediator |= (node.attribute("type")) && node.attribute("type").value() == "mediator";
-	is_mediator |= xml_find_node(node, "decreasing_signals") == pugi::xml_node(); // if the type was not declared but there are decreasing signals, then it is a mediator
-	is_mediator |= xml_find_node(node, "increasing_signals") == pugi::xml_node(); // if the type was not declared but there are increasing signals, then it is a mediator
+	std::cout << "or type = mediator? " << is_mediator << std::endl;
+	is_mediator |= xml_find_node(node, "decreasing_signals") != nullptr; // if the type was not declared but there are decreasing signals, then it is a mediator
+	std::cout << "or has decreasing signals? " << is_mediator << std::endl;
+	is_mediator |= xml_find_node(node, "increasing_signals") != nullptr; // if the type was not declared but there are increasing signals, then it is a mediator
+	std::cout << "or has increasing signals? " << is_mediator << std::endl;
 	return is_mediator;
 }
 
@@ -319,11 +400,275 @@ bool signal_is_aggregator(pugi::xml_node node)
 
 bool signal_is_elementary(pugi::xml_node node)
 {
-	if (node.name() == "signal")
+	if (std::string(node.name()) == "signal")
 	{
 		return true; // if the node is a signal node, then it is an elementary signal by process of elimination
 	}
 	return false;
+}
+
+std::unique_ptr<AbstractSignal> parse_mediator_signal(pugi::xml_node mediator_node)
+{
+	std::cout << "Parsing mediator node:" << std::endl;
+	mediator_node.print(std::cout);
+	double base_value = 1.0;
+	if (std::string(mediator_node.name()) == "behavior")
+	{
+		std::string behavior = mediator_node.attribute("name").value();
+		std::string cell_type = mediator_node.parent().attribute("name").value();
+		base_value = get_single_base_behavior(find_cell_definition(cell_type), behavior);
+	}
+	else if (mediator_node.child("base_value"))
+	{
+		base_value = xml_get_double_value(mediator_node, "base_value");
+	}
+	pugi::xml_node decreasing_signals_node = mediator_node.child("decreasing_signals");
+	pugi::xml_node increasing_signals_node = mediator_node.child("increasing_signals");
+
+	double min_value = base_value; // default to base value unless the decreasing signals node has a max_response
+	double max_value = base_value; // default to base value unless the increasing signals node has a max_response
+
+	std::unique_ptr<AbstractSignal> pDecreasingSignal;
+	std::unique_ptr<AbstractSignal> pIncreasingSignal;
+	if (decreasing_signals_node)
+	{
+		std::cout << "Parsing decreasing signals" << std::endl;
+		pDecreasingSignal = parse_aggregator_signal(decreasing_signals_node);
+		if (decreasing_signals_node.child("max_response"))
+		{
+			min_value = xml_get_double_value(decreasing_signals_node, "max_response");
+		}
+	}
+	else
+	{
+		// later can check that at least one signal present, and if not, switch to an aggregator on the increasing signals
+		pDecreasingSignal = std::unique_ptr<AggregatorSignal>(new AggregatorSignal());
+	}
+	if (increasing_signals_node)
+	{
+		std::cout << "Parsing increasing signals" << std::endl;
+		pIncreasingSignal = parse_aggregator_signal(increasing_signals_node);
+		if (increasing_signals_node.child("max_response"))
+		{
+			max_value = xml_get_double_value(increasing_signals_node, "max_response");
+		}
+	}
+	else
+	{
+		// later can check that at least one signal present, and if not, switch to an aggregator on the decreasing signals
+		pIncreasingSignal = std::unique_ptr<AggregatorSignal>(new AggregatorSignal());
+	}
+	return std::unique_ptr<MediatorSignal>(new MediatorSignal(std::move(pDecreasingSignal), std::move(pIncreasingSignal), min_value, base_value, max_value));
+}
+
+std::unique_ptr<AbstractSignal> parse_aggregator_signal(pugi::xml_node aggregator_node)
+{
+	std::cout << "Parsing aggregator node:" << std::endl;
+	aggregator_node.print(std::cout);
+	pugi::xml_node signal_node = xml_find_node(aggregator_node, "signal");
+	std::vector<std::unique_ptr<PhysiCell::AbstractSignal>> signals;
+	while (signal_node)
+	{
+		std::cout << "Parsing signal node:" << std::endl;
+		signal_node.print(std::cout);
+		signals.push_back(parse_abstract_signal(signal_node));
+		signal_node = signal_node.next_sibling("signal");
+	}
+	return std::unique_ptr<AggregatorSignal>(new AggregatorSignal(std::move(signals)));
+}
+
+std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementary_node)
+{
+	std::cout << "Parsing elementary signal node:" << std::endl;
+	elementary_node.print(std::cout);
+	std::string name = elementary_node.attribute("name").value();
+	std::string type = elementary_node.attribute("type").value();
+	std::unique_ptr<AbstractSignal> pAS;
+	if (type == "Hill")
+	{
+		pAS = parse_hill_signal(name, elementary_node);
+	}
+	else if (type == "PartialHill")
+	{
+		pAS = parse_partial_hill_signal(name, elementary_node);
+	}
+	else if (type == "Linear")
+	{
+		pAS = parse_linear_signal(name, elementary_node);
+	}
+	else if (type == "Heaviside" || type == "Step" || type == "Switch")
+	{
+		pAS = parse_heaviside_signal(name, elementary_node);
+	}
+	else
+	{
+		std::cout << "ERROR: Elementary signal type not recognized: " << type << std::endl;
+		exit(-1);
+	}
+	pugi::xml_node reference_node = xml_find_node(elementary_node, "reference");
+	if (reference_node)
+	{
+		// Use dynamic_cast to check if pAS is actually an ElementarySignal
+		ElementarySignal *pES = dynamic_cast<ElementarySignal *>(pAS.get());
+		if (pES)
+		{
+			parse_reference(reference_node, pES);
+		}
+		else
+		{
+			std::cout << "ERROR: Signal is not an ElementarySignal." << std::endl;
+			exit(-1);
+		}
+	}
+	return pAS;
+}
+
+std::unique_ptr<AbstractSignal> parse_hill_signal(std::string name, pugi::xml_node hill_node)
+{
+	double half_max = xml_get_double_value(hill_node, "half_max");
+	double hill_power = xml_get_double_value(hill_node, "hill_power");
+	bool applies_to_dead_cells = xml_get_bool_value(hill_node, "applies_to_dead_cells");
+	return std::unique_ptr<HillSignal>(new HillSignal(name, applies_to_dead_cells, half_max, hill_power));
+}
+
+std::unique_ptr<AbstractSignal> parse_partial_hill_signal(std::string name, pugi::xml_node partial_hill_node)
+{
+	double half_max = xml_get_double_value(partial_hill_node, "half_max");
+	double hill_power = xml_get_double_value(partial_hill_node, "hill_power");
+	bool applies_to_dead_cells = xml_get_bool_value(partial_hill_node, "applies_to_dead_cells");
+	return std::unique_ptr<PartialHillSignal>(new PartialHillSignal(name, applies_to_dead_cells, half_max, hill_power));
+}
+
+std::unique_ptr<AbstractSignal> parse_linear_signal(std::string name, pugi::xml_node linear_node)
+{
+	double signal_min = xml_get_double_value(linear_node, "signal_min");
+	double signal_max = xml_get_double_value(linear_node, "signal_max");
+	bool applies_to_dead_cells = xml_get_bool_value(linear_node, "applies_to_dead_cells");
+	return std::unique_ptr<LinearSignal>(new LinearSignal(name, applies_to_dead_cells, signal_min, signal_max));
+}
+
+std::unique_ptr<AbstractSignal> parse_heaviside_signal(std::string name, pugi::xml_node heaviside_node)
+{
+	double threshold = xml_get_double_value(heaviside_node, "threshold");
+	bool applies_to_dead_cells = xml_get_bool_value(heaviside_node, "applies_to_dead_cells");
+	return std::unique_ptr<HeavisideSignal>(new HeavisideSignal(name, applies_to_dead_cells, threshold));
+}
+
+void parse_reference(pugi::xml_node reference_node, ElementarySignal *pES)
+{
+	std::string type = xml_get_string_value(reference_node, "type");
+	double reference_value = xml_get_double_value(reference_node, "value");
+	std::unique_ptr<SignalReference> pSR;
+	if (type == "increasing")
+	{
+		pSR = std::unique_ptr<SignalReference>(new IncreasingSignalReference(reference_value));
+	}
+	else if (type == "decreasing")
+	{
+		pSR = std::unique_ptr<SignalReference>(new DecreasingSignalReference(reference_value));
+	}
+	else
+	{
+		std::cout << "ERROR: Reference type not recognized: " << type << std::endl;
+		exit(-1);
+	}
+    pES->add_reference(std::move(pSR));
+	return;
+}
+
+void parse_behavior_rules_from_pugixml( void )
+{
+	pugi::xml_node node = physicell_config_root.child( "cell_rules" ); 
+	if( !node )
+	{ 
+		std::cout << "Error: Could not find <cell_rules> section of XML config file." << std::endl 
+				 <<  "       Cannot parse cell rules, so disabling." << std::endl; 
+
+		PhysiCell_settings.rules_enabled = false; 
+		return; 
+	}
+
+	// find the set of rulesets 
+	node = node.child( "rulesets" ); 
+	if( !node )
+	{ 
+		std::cout << "Error: Could not find <rulesets> in the <cell_rules> section of XML config file." << std::endl 
+				 <<  "       Cannot parse cell rules, so disabling." << std::endl; 
+
+		PhysiCell_settings.rules_enabled = false; 
+		return; 
+	}
+	// find the first ruleset 
+	node = node.child( "ruleset");
+	if( !node )
+	{ 
+		std::cout << "Error: Could not find any <ruleset> in the <rulesets> section of XML config file." << std::endl 
+				 <<  "       Cannot parse cell rules, so disabling." << std::endl; 
+
+		PhysiCell_settings.rules_enabled = false; 
+		return; 
+	}
+
+	while( node )
+	{
+		std::cout << node.name() << std::endl;
+		if (node.attribute("enabled").as_bool() == true)
+		{
+			std::string folder = xml_get_string_value(node, "folder");
+			std::string filename = xml_get_string_value(node, "filename");
+			std::string input_filename = folder + "/" + filename;
+
+			std::string format = node.attribute("format").as_string();
+			std::string protocol = node.attribute("protocol").as_string();
+			double version = node.attribute("version").as_double();
+
+			parse_behavior_rules_from_file(input_filename, format, protocol, version);
+		}
+		else
+		{
+			std::cout << "\tRuleset disabled ... " << std::endl;
+		}
+		node = node.next_sibling("ruleset");
+	}
+	return;
+}
+
+void parse_behavior_rules_from_file(std::string path_to_file, std::string format, std::string protocol, double version) // see PhysiCell_rules.h for default values of format, protocol, and version
+{
+	std::cout << "\tProcessing ruleset in " << path_to_file << " ... " << std::endl;
+
+	// get the file  extension of path_to_file
+	if (format == "")
+	{
+		format = path_to_file.substr(path_to_file.find_last_of(".") + 1);
+	}
+	if (protocol == "")
+	{
+		protocol = "CBHG"; // default protocol (at least for CSVs)
+	}
+	if (version == -1.0)
+	{
+		version = 3.0; // default version (at least for CSVs)
+	}
+
+	if (format == "CSV" || format == "csv")
+	{
+		std::cerr << "Error: CSV format not supported for behavior rules. Quitting!" << std::endl;
+		throw std::runtime_error("CSV format not supported for behavior rules.");
+	}
+	else if (format == "XML" || format == "xml")
+	{
+		std::cout << "\tFormat: XML" << std::endl;
+		parse_xml_behavior_rules(path_to_file);
+		PhysiCell_settings.rules_enabled = true;
+	}
+	else
+	{
+		std::cout << "\tError: Unknown format (" << format << ") for ruleset " << path_to_file << ". Quitting!" << std::endl;
+		exit(-1);
+	}
+	PhysiCell_settings.rules_enabled = true;
+	return; 
 }
 
 };

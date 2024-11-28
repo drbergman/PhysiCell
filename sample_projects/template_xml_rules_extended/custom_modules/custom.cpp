@@ -69,9 +69,6 @@
 
 void create_cell_types( void )
 {
-	// set the random seed 
-	SeedRandom( parameters.ints("random_seed") );  
-	
 	/* 
 	   Put any modifications to default cell definition here if you 
 	   want to have "inherited" by other cell types. 
@@ -115,7 +112,7 @@ void create_cell_types( void )
        Cell rule definitions 
 	*/
 
-	setup_cell_rules(); 
+	setup_behavior_rules(); 
 
 	/* 
 	   Put any modifications to individual cell definitions here. 

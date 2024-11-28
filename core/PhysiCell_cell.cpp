@@ -321,7 +321,7 @@ void Cell::advance_bundled_phenotype_functions( double dt_ )
 	// New March 2023 in Version 1.12.0 
 	// call the rules-based code to update the phenotype 
 	if( PhysiCell_settings.rules_enabled )
-	{ apply_ruleset( this ); }
+	{ apply_behavior_ruleset( this ); }
 	if( get_single_signal(this,"necrotic") > 0.5 )
 	{
 		double rupture = this->phenotype.volume.rupture_volume; 

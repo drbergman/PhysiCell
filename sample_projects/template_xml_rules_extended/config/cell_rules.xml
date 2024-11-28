@@ -1,23 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<hypothesis_rulesets>
-
-    <hypothesis_ruleset name="default">
+<behavior_rulesets>
+    <behavior_ruleset name="default">
         <behavior name="apoptosis">
-            <decreasing_signals />
+            <decreasing_signals>
+                <max_response>0</max_response>
+                <signal name="substrate" type="PartialHill">
+                    <half_max>15</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </decreasing_signals>
             <increasing_signals>
                 <max_response>1e-4</max_response>
-                <signal name="substrate" type="Hill">
+                <signal name="substrate" type="PartialHill">
                     <half_max>4</half_max>
                     <hill_power>2</hill_power>
                     <applies_to_dead>0</applies_to_dead>
+                    <reference>
+                        <type>increasing</type>
+                        <value>0.5</value>
+                    </reference>
                 </signal>
             </increasing_signals>
         </behavior>
         <behavior name="cycle entry">
             <decreasing_signals>
                 <max_response>1e-4</max_response>
-                <signal name="substrate" type="Hill">
+                <signal name="substrate" type="PartialHill">
                     <half_max>1</half_max>
                     <hill_power>2</hill_power>
                     <applies_to_dead>0</applies_to_dead>
@@ -29,6 +39,6 @@
                 </signal>
             </decreasing_signals>
         </behavior>
-    </hypothesis_ruleset>
+    </behavior_ruleset>
 
-</hypothesis_rulesets>
+</behavior_rulesets>

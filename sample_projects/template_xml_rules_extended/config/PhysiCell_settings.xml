@@ -122,6 +122,7 @@
 		<legacy_random_points_on_sphere_in_divide>false</legacy_random_points_on_sphere_in_divide>
 		<virtual_wall_at_domain_edge>true</virtual_wall_at_domain_edge>
         <disable_automated_spring_adhesions>false</disable_automated_spring_adhesions>
+		<random_seed>0</random_seed>
 	</options>	
 
 	<microenvironment_setup>
@@ -330,7 +331,7 @@
 	
     <cell_rules>
         <rulesets>
-            <ruleset protocol="CBHG" version="2.0" format="xml" enabled="true">
+            <ruleset format="xml" enabled="true">
                 <folder>./config</folder>
                 <filename>cell_rules.xml</filename>
             </ruleset>
@@ -339,11 +340,6 @@
     </cell_rules>
 	
 	<user_parameters>
-		<random_seed type="int" units="dimensionless">0</random_seed> 
-		<!-- example parameters from the template --> 
-		
-		<div_initialization type="divider" description="---Initialization settings---"/>
-		
 		<number_of_cells type="int" units="none" description="initial number of cells (for each cell type)">5</number_of_cells>
 	</user_parameters>
 	
