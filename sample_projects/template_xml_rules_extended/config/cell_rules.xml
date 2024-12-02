@@ -3,6 +3,7 @@
 <behavior_rulesets>
     <behavior_ruleset name="default">
         <behavior name="apoptosis">
+            <mediator>decreasing dominant</mediator>
             <decreasing_signals>
                 <max_response>0</max_response>
                 <signal name="substrate" type="PartialHill">
@@ -25,6 +26,7 @@
             </increasing_signals>
         </behavior>
         <behavior name="cycle entry">
+            <mediator>increasing dominant</mediator>
             <decreasing_signals>
                 <max_response>1e-4</max_response>
                 <signal name="substrate" type="PartialHill">
@@ -38,6 +40,29 @@
                     <applies_to_dead>0</applies_to_dead>
                 </signal>
             </decreasing_signals>
+        </behavior>
+        <behavior name="migration speed">
+            <mediator>neutral</mediator>
+            <decreasing_signals>
+                <max_response>0.01</max_response>
+                <signal name="substrate" type="PartialHill">
+                    <half_max>10</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                    <reference>
+                        <type>decreasing</type>
+                        <value>15.0</value>
+                    </reference>
+                </signal>
+            </decreasing_signals>
+            <increasing_signals>
+                <max_response>2.0</max_response>
+                <signal name="time" type="Linear">
+                    <signal_min>60</signal_min>
+                    <signal_max>120</signal_max>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
         </behavior>
     </behavior_ruleset>
 

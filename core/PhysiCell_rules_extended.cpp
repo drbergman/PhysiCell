@@ -298,7 +298,7 @@ void parse_xml_behavior_rules(const std::string filename)
 
 	if (result.status != pugi::xml_parse_status::status_ok)
 	{
-		std::cout << "Error loading " << filename << "!" << std::endl;
+		std::cerr << "Error loading " << filename << "!" << std::endl;
 		exit(-1);
 	}
 
@@ -317,7 +317,7 @@ void parse_xml_behavior_rules(const std::string filename)
 		{
 			if (cell_type == cell_definitions_ruled[i])
 			{
-				std::cout << "XML Rules ERROR: Two rulesets for " << cell_type << " found." << std::endl
+				std::cerr << "XML Rules ERROR: Two rulesets for " << cell_type << " found." << std::endl
 						  << "\tCombine them into a single ruleset please :)" << std::endl
 						  << "\tSupport for rules across multiple files for the same cell type not yet supported." << std::endl;
 				exit(-1);
@@ -336,7 +336,7 @@ void parse_xml_behavior_rules(const std::string filename)
 			{
 				if (behavior == behaviors_ruled[i])
 				{
-					std::cout << "XML Rules ERROR: The behavior " << behavior << " is being set again for " << cell_type << "." << std::endl
+					std::cerr << "XML Rules ERROR: The behavior " << behavior << " is being set again for " << cell_type << "." << std::endl
 							  << "\tSelect only one to keep. :)" << std::endl;
 					exit(-1);
 				}
@@ -369,21 +369,17 @@ std::unique_ptr<AbstractSignal> parse_abstract_signal(pugi::xml_node node)
 	{
 		return parse_elementary_signal(node);
 	}
-	std::cout << "ERROR: Failed to parse node in behavior rulesets:" << std::endl;
-	node.print(std::cout);
+	std::cerr << "ERROR: Failed to parse node in behavior rulesets:" << std::endl;
+	node.print(std::cerr);
 	exit(-1);
 }
 
 bool signal_is_mediator(pugi::xml_node node)
 {
 	bool is_mediator = std::string(node.name()) == "behavior"; // by default, assume that the top-level signal is a mediator
-	std::cout << "tag = behavior? " << is_mediator << std::endl;
 	is_mediator |= (node.attribute("type")) && node.attribute("type").value() == "mediator";
-	std::cout << "or type = mediator? " << is_mediator << std::endl;
 	is_mediator |= xml_find_node(node, "decreasing_signals") != nullptr; // if the type was not declared but there are decreasing signals, then it is a mediator
-	std::cout << "or has decreasing signals? " << is_mediator << std::endl;
 	is_mediator |= xml_find_node(node, "increasing_signals") != nullptr; // if the type was not declared but there are increasing signals, then it is a mediator
-	std::cout << "or has increasing signals? " << is_mediator << std::endl;
 	return is_mediator;
 }
 
@@ -409,8 +405,6 @@ bool signal_is_elementary(pugi::xml_node node)
 
 std::unique_ptr<AbstractSignal> parse_mediator_signal(pugi::xml_node mediator_node)
 {
-	std::cout << "Parsing mediator node:" << std::endl;
-	mediator_node.print(std::cout);
 	double base_value = 1.0;
 	if (std::string(mediator_node.name()) == "behavior")
 	{
@@ -432,7 +426,6 @@ std::unique_ptr<AbstractSignal> parse_mediator_signal(pugi::xml_node mediator_no
 	std::unique_ptr<AbstractSignal> pIncreasingSignal;
 	if (decreasing_signals_node)
 	{
-		std::cout << "Parsing decreasing signals" << std::endl;
 		pDecreasingSignal = parse_aggregator_signal(decreasing_signals_node);
 		if (decreasing_signals_node.child("max_response"))
 		{
@@ -446,7 +439,6 @@ std::unique_ptr<AbstractSignal> parse_mediator_signal(pugi::xml_node mediator_no
 	}
 	if (increasing_signals_node)
 	{
-		std::cout << "Parsing increasing signals" << std::endl;
 		pIncreasingSignal = parse_aggregator_signal(increasing_signals_node);
 		if (increasing_signals_node.child("max_response"))
 		{
@@ -458,19 +450,41 @@ std::unique_ptr<AbstractSignal> parse_mediator_signal(pugi::xml_node mediator_no
 		// later can check that at least one signal present, and if not, switch to an aggregator on the decreasing signals
 		pIncreasingSignal = std::unique_ptr<AggregatorSignal>(new AggregatorSignal());
 	}
-	return std::unique_ptr<MediatorSignal>(new MediatorSignal(std::move(pDecreasingSignal), std::move(pIncreasingSignal), min_value, base_value, max_value));
+
+	std::unique_ptr<MediatorSignal> pMS = std::unique_ptr<MediatorSignal>(new MediatorSignal(std::move(pDecreasingSignal), std::move(pIncreasingSignal), min_value, base_value, max_value));
+
+	pugi::xml_node mediator_fn_node = xml_find_node(mediator_node, "mediator");
+	if (mediator_fn_node)
+	{
+		std::string mediator_fn = xml_get_my_string_value(mediator_fn_node);
+		if (mediator_fn == "decreasing dominant")
+		{
+			// decreasing dominant mediator is the default
+		}
+		else if (mediator_fn == "increasing dominant")
+		{
+			pMS->use_increasing_dominant_mediator();
+		}
+		else if (mediator_fn == "neutral")
+		{
+			pMS->use_neutral_mediator();
+		}
+		else
+		{
+			std::cerr << "ERROR: Mediator not recognized: " << mediator_fn << std::endl;
+			std::cerr << "Must be one of: decreasing dominant, increasing dominant, neutral" << std::endl;
+			exit(-1);
+		}
+	}
+	return pMS;
 }
 
 std::unique_ptr<AbstractSignal> parse_aggregator_signal(pugi::xml_node aggregator_node)
 {
-	std::cout << "Parsing aggregator node:" << std::endl;
-	aggregator_node.print(std::cout);
 	pugi::xml_node signal_node = xml_find_node(aggregator_node, "signal");
 	std::vector<std::unique_ptr<PhysiCell::AbstractSignal>> signals;
 	while (signal_node)
 	{
-		std::cout << "Parsing signal node:" << std::endl;
-		signal_node.print(std::cout);
 		signals.push_back(parse_abstract_signal(signal_node));
 		signal_node = signal_node.next_sibling("signal");
 	}
@@ -479,8 +493,6 @@ std::unique_ptr<AbstractSignal> parse_aggregator_signal(pugi::xml_node aggregato
 
 std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementary_node)
 {
-	std::cout << "Parsing elementary signal node:" << std::endl;
-	elementary_node.print(std::cout);
 	std::string name = elementary_node.attribute("name").value();
 	std::string type = elementary_node.attribute("type").value();
 	std::unique_ptr<AbstractSignal> pAS;
@@ -502,7 +514,7 @@ std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementar
 	}
 	else
 	{
-		std::cout << "ERROR: Elementary signal type not recognized: " << type << std::endl;
+		std::cerr << "ERROR: Elementary signal type not recognized: " << type << std::endl;
 		exit(-1);
 	}
 	pugi::xml_node reference_node = xml_find_node(elementary_node, "reference");
@@ -516,7 +528,7 @@ std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementar
 		}
 		else
 		{
-			std::cout << "ERROR: Signal is not an ElementarySignal." << std::endl;
+			std::cerr << "ERROR: Signal is not an ElementarySignal." << std::endl;
 			exit(-1);
 		}
 	}
@@ -569,7 +581,7 @@ void parse_reference(pugi::xml_node reference_node, ElementarySignal *pES)
 	}
 	else
 	{
-		std::cout << "ERROR: Reference type not recognized: " << type << std::endl;
+		std::cerr << "ERROR: Reference type not recognized: " << type << std::endl;
 		exit(-1);
 	}
     pES->add_reference(std::move(pSR));
@@ -581,7 +593,7 @@ void parse_behavior_rules_from_pugixml( void )
 	pugi::xml_node node = physicell_config_root.child( "cell_rules" ); 
 	if( !node )
 	{ 
-		std::cout << "Error: Could not find <cell_rules> section of XML config file." << std::endl 
+		std::cout << "Warning: Could not find <cell_rules> section of XML config file." << std::endl 
 				 <<  "       Cannot parse cell rules, so disabling." << std::endl; 
 
 		PhysiCell_settings.rules_enabled = false; 
@@ -592,7 +604,7 @@ void parse_behavior_rules_from_pugixml( void )
 	node = node.child( "rulesets" ); 
 	if( !node )
 	{ 
-		std::cout << "Error: Could not find <rulesets> in the <cell_rules> section of XML config file." << std::endl 
+		std::cout << "Warning: Could not find <rulesets> in the <cell_rules> section of XML config file." << std::endl 
 				 <<  "       Cannot parse cell rules, so disabling." << std::endl; 
 
 		PhysiCell_settings.rules_enabled = false; 
@@ -602,7 +614,7 @@ void parse_behavior_rules_from_pugixml( void )
 	node = node.child( "ruleset");
 	if( !node )
 	{ 
-		std::cout << "Error: Could not find any <ruleset> in the <rulesets> section of XML config file." << std::endl 
+		std::cout << "Warning: Could not find any <ruleset> in the <rulesets> section of XML config file." << std::endl 
 				 <<  "       Cannot parse cell rules, so disabling." << std::endl; 
 
 		PhysiCell_settings.rules_enabled = false; 
@@ -611,7 +623,6 @@ void parse_behavior_rules_from_pugixml( void )
 
 	while( node )
 	{
-		std::cout << node.name() << std::endl;
 		if (node.attribute("enabled").as_bool() == true)
 		{
 			std::string folder = xml_get_string_value(node, "folder");
@@ -664,7 +675,7 @@ void parse_behavior_rules_from_file(std::string path_to_file, std::string format
 	}
 	else
 	{
-		std::cout << "\tError: Unknown format (" << format << ") for ruleset " << path_to_file << ". Quitting!" << std::endl;
+		std::cerr << "\tError: Unknown format (" << format << ") for ruleset " << path_to_file << ". Quitting!" << std::endl;
 		exit(-1);
 	}
 	PhysiCell_settings.rules_enabled = true;

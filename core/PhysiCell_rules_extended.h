@@ -151,13 +151,10 @@ class DecreasingSignalReference : public SignalReference
 public:
     double coordinate_transform(double signal)
     {
-        std::cout << "Inside coord transform for DecreasingSignalReference with signal = " << signal << std::endl;
-        std::cout << "\treference_value = " << reference_value << std::endl;
         if (signal >= reference_value)
         {
             return 0;
         }
-        std::cout << "returning " << reference_value - signal << std::endl;
         return reference_value - signal;
     }
     DecreasingSignalReference();
