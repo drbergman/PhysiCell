@@ -134,11 +134,54 @@ double AbsoluteSignal::evaluate(Cell *pCell)
 	return transformer(get_single_signal(pCell, signal_name));
 }
 
-void BehaviorRule::apply(Cell *pCell)
+void BehaviorSetter::apply(Cell *pCell)
 {
 	double param = signal->evaluate(pCell);
 	set_single_behavior(pCell, behavior, param);
-	return;
+}
+
+double euler_direct_solve(double current, double rate, double target)
+{
+	return current + phenotype_dt * rate * (target - current);
+}
+
+double exponential_solve(double current, double rate, double target)
+{
+	return target + (current - target) * exp(-rate * phenotype_dt);
+}
+
+void BehaviorAccumulator::apply(Cell *pCell)
+{
+	double rate = signal->evaluate(pCell);
+	double current_value = get_single_behavior(pCell, behavior);
+	if (rate < 0)
+	{
+		// current_value = std::max(euler_direct_solve(current_value, -rate, base_value), base_value); // decay towards base value (note rate < 0); do not let it go below base value
+		current_value = exponential_solve(current_value, -rate, base_value);
+	}
+	else if (rate > 0)
+	{
+		// current_value = std::min(euler_direct_solve(current_value, rate, saturation_value), saturation_value); // grow towards saturation value (note rate > 0); do not let it go above saturation value
+		current_value = exponential_solve(current_value, rate, saturation_value);
+	}
+	set_single_behavior(pCell, behavior, current_value);
+}
+
+void BehaviorAttenuator::apply(Cell *pCell)
+{
+	double rate = signal->evaluate(pCell);
+	double current_value = get_single_behavior(pCell, behavior);
+	if (rate < 0)
+	{
+		// current_value = std::min(euler_direct_solve(current_value, -rate, base_value), base_value); // decay towards base value (note rate < 0); do not let it go below saturation value
+		current_value = exponential_solve(current_value, -rate, base_value);
+	}
+	else if (rate > 0)
+	{
+		// current_value = std::max(euler_direct_solve(current_value, rate, saturation_value), saturation_value); // grow towards saturation value (note rate > 0); do not let it go above base value
+		current_value = exponential_solve(current_value, rate, saturation_value);
+	}
+	set_single_behavior(pCell, behavior, current_value);
 }
 
 void BehaviorRuleset::apply(Cell *pCell)
@@ -401,15 +444,41 @@ void parse_xml_behavior_rules(const std::string filename)
 			}
 			behaviors_ruled.push_back(behavior);
 
-			std::unique_ptr<AbstractSignal> pAS = parse_abstract_signal(behavior_node); // make this a unique ptr
-			std::unique_ptr<BehaviorRule> pBR = std::unique_ptr<BehaviorRule>(new BehaviorRule(behavior, std::move(pAS))); // make sure this is initalized correctly (and probably using unique_ptrs and releasing the pAS pointer, too)
-			behavior_rulesets[pCD]->add_behavior_rule(std::move(pBR)); // make sure add_behavior_rule is defined, unique ptrs are used correctly, and pointers are released if need be
+			std::unique_ptr<BehaviorRule> pBR = parse_behavior(cell_type, behavior, behavior_node);
+			behavior_rulesets[pCD]->add_behavior_rule(std::move(pBR));
 
 			behavior_node = behavior_node.next_sibling("behavior");
 		}
 		ruleset_node = ruleset_node.next_sibling("behavior_ruleset");
 	}
 	return;
+}
+
+std::unique_ptr<BehaviorRule> parse_behavior(std::string cell_type, std::string behavior, pugi::xml_node node)
+{
+	std::string type = "setter"; // default to setter
+	if (xml_find_node(node, "type"))
+	{
+		type = xml_get_string_value(node, "type");
+	}
+	std::unique_ptr<AbstractSignal> pAS = parse_abstract_signal(node);
+	if (type=="setter")
+	{
+		return std::unique_ptr<BehaviorRule>(new BehaviorSetter(behavior, std::move(pAS)));
+	}
+	double base_value = get_single_base_behavior(find_cell_definition(cell_type), behavior); // base value for the behavior (not the rate) that negative rates will return the cell to
+	double saturation_value = xml_get_double_value(node, "saturation_value"); // saturation value for the behavior (not the rate) that positive rates will move the cell to
+	if (type=="accumulator")
+	{
+		return std::unique_ptr<BehaviorRule>(new BehaviorAccumulator(behavior, std::move(pAS), base_value, saturation_value));
+	}
+	else if (type=="attenuator")
+	{
+		return std::unique_ptr<BehaviorRule>(new BehaviorAttenuator(behavior, std::move(pAS), base_value, saturation_value));
+	}
+	std::cerr << "ERROR: Behavior type not recognized: " << type << std::endl;
+	std::cerr << "Must be one of: setter (or omitted), accumulator, attenuator" << std::endl;
+	exit(-1);
 }
 
 std::unique_ptr<AbstractSignal> parse_abstract_signal(pugi::xml_node node)
@@ -456,15 +525,20 @@ bool signal_is_elementary(pugi::xml_node node)
 std::unique_ptr<AbstractSignal> parse_mediator_signal(pugi::xml_node mediator_node)
 {
 	double base_value = 1.0;
-	if (std::string(mediator_node.name()) == "behavior")
+	if (mediator_node.child("base_value"))
+	{
+		base_value = xml_get_double_value(mediator_node, "base_value");
+	}
+	else if (std::string(mediator_node.name()) == "behavior")
 	{
 		std::string behavior = mediator_node.attribute("name").value();
 		std::string cell_type = mediator_node.parent().attribute("name").value();
 		base_value = get_single_base_behavior(find_cell_definition(cell_type), behavior);
 	}
-	else if (mediator_node.child("base_value"))
+	else
 	{
-		base_value = xml_get_double_value(mediator_node, "base_value");
+		std::cerr << "ERROR: Mediator signal must have a base value." << std::endl;
+		exit(-1);
 	}
 	pugi::xml_node decreasing_signals_node = mediator_node.child("decreasing_signals");
 	pugi::xml_node increasing_signals_node = mediator_node.child("increasing_signals");

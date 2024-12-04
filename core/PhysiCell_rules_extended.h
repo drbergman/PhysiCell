@@ -367,11 +367,12 @@ public:
     std::string behavior;
     std::unique_ptr<AbstractSignal> signal;
 
-    void apply(Cell* pCell);
+    virtual void apply(Cell* pCell) = 0;
 
     BehaviorRule(std::string behavior, std::unique_ptr<AbstractSignal> pSignal)
         : behavior(behavior), signal(std::move(pSignal)) {}
 
+    virtual ~BehaviorRule() {}
     // std::string cell_type;
     // Cell_Definition *pCell_Definition;
 
@@ -395,6 +396,49 @@ public:
     void English_detailed_display(std::ostream &os);
     void English_detailed_display_HTML(std::ostream &os);
     */
+};
+
+class BehaviorSetter : public BehaviorRule
+{
+public:
+    void apply(Cell* pCell);
+    using BehaviorRule::BehaviorRule; // Inherit constructors from BehaviorRule
+};
+
+class BehaviorAccumulator : public BehaviorRule
+{
+public:
+    double base_value;
+    double saturation_value;
+
+    void apply(Cell* pCell);
+
+    BehaviorAccumulator(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_value)
+        : BehaviorRule(behavior, std::move(pSignal)), base_value(base_value), saturation_value(saturation_value) 
+    {
+        if (saturation_value < base_value)
+        {
+            throw std::invalid_argument("Saturation value must be greater than or equal to base value for an accumulator.");
+        }
+    }
+};
+
+class BehaviorAttenuator : public BehaviorRule
+{
+public:
+    double base_value;
+    double saturation_value;
+
+    void apply(Cell* pCell);
+
+    BehaviorAttenuator(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_value)
+        : BehaviorRule(behavior, std::move(pSignal)), base_value(base_value), saturation_value(saturation_value) 
+    {
+        if (saturation_value > base_value)
+        {
+            throw std::invalid_argument("Saturation value must be less than or equal to base value for an attenuator.");
+        }
+    }
 };
 
 class BehaviorRuleset
@@ -446,7 +490,9 @@ public:
 
 void apply_behavior_ruleset( Cell* pCell );
 
-void parse_xml_rules_extended(const std::string filename);
+void parse_xml_behavior_rules(const std::string filename);
+std::unique_ptr<BehaviorRule> parse_behavior(std::string cell_type, std::string behavior, pugi::xml_node node);
+
 bool signal_is_mediator(pugi::xml_node parent_node);
 bool signal_is_aggregator(pugi::xml_node parent_node);
 bool signal_is_elementary(pugi::xml_node parent_node);
@@ -467,6 +513,8 @@ void setup_behavior_rules( void );
 void parse_behavior_rules_from_pugixml( void );
 void parse_behavior_rules_from_file(std::string path_to_file, std::string format, std::string protocol, double version); // see PhysiCell_rules.h for default values of format, protocol, and version
 
-}; 
+double euler_direct_solve(double current, double rate, double target);
+double exponential_solve(double current, double rate, double target);
+};
 
 #endif

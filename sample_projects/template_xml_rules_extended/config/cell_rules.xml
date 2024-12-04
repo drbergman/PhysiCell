@@ -31,6 +31,7 @@
     </behavior_ruleset>
     <behavior_ruleset name="decreasing_dominant_mediator_hill">
         <behavior name="custom:sample">
+            <type>setter</type>
             <mediator>decreasing dominant</mediator>
             <decreasing_signals>
                 <max_response>0</max_response>
@@ -233,6 +234,48 @@
                         <type>increasing</type>
                         <value>20</value>
                     </reference>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="accumulator">
+        <behavior name="custom:sample">
+            <type>accumulator</type>
+            <saturation_value note="This is the saturation of the behavior, not the rate.">1.0</saturation_value>
+            <base_value note="This is the base rate of change towards the base behavior.">-0.05</base_value>
+            <increasing_signals>
+                <max_response note="This is the saturation of the rate of change towards the saturation value.">0.2</max_response>
+                <aggregator>product</aggregator>
+                <signal name="time" type="Hill">
+                    <half_max>5</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+                <signal name="time" type="Heaviside">
+                    <type>decreasing</type>
+                    <threshold>30</threshold>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="attenuator">
+        <behavior name="custom:sample">
+            <type>attenuator</type>
+            <saturation_value note="This is the saturation of the behavior, not the rate.">0.0</saturation_value>
+            <base_value note="This is the base rate of change towards the base behavior.">-0.05</base_value>
+            <increasing_signals>
+                <max_response note="This is the saturation of the rate of change towards the saturation value.">0.2</max_response>
+                <aggregator>product</aggregator>
+                <signal name="time" type="Hill">
+                    <half_max>5</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+                <signal name="time" type="Heaviside">
+                    <type>decreasing</type>
+                    <threshold>30</threshold>
+                    <applies_to_dead>0</applies_to_dead>
                 </signal>
             </increasing_signals>
         </behavior>
