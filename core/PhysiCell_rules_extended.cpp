@@ -1,4 +1,5 @@
 #include "PhysiCell_rules_extended.h"
+#include <algorithm> // For std::min_element, std::max_element, std::nth_element
 
 namespace PhysiCell{
 
@@ -20,6 +21,63 @@ double multivariate_hill_aggregator(std::vector<double> partial_hill_signals)
 {
     double out = sum_aggregator(partial_hill_signals);
     return out / (1 + out);
+}
+
+double product_aggregator(std::vector<double> signals_in)
+{
+	double signal_product = 1;
+	for (auto &signal : signals_in)
+	{
+		if (signal == 0)
+		{
+			return 0;
+		}
+		signal_product *= signal;
+	}
+	return signal_product;
+}
+
+double mean_aggregator(std::vector<double> signals_in)
+{
+	return sum_aggregator(signals_in) / signals_in.size();
+}
+
+double max_aggregator(std::vector<double> signals_in)
+{
+    return *std::max_element(signals_in.begin(), signals_in.end());
+}
+
+double min_aggregator(std::vector<double> signals_in)
+{
+	return *std::min_element(signals_in.begin(), signals_in.end());
+}
+
+double median_aggregator(std::vector<double> signals_in)
+{
+    size_t n = signals_in.size();
+    size_t mid = n / 2;
+
+    std::nth_element(signals_in.begin(), signals_in.begin() + mid, signals_in.end());
+
+    double signal_median;
+    if (n % 2 == 0)
+    {
+        double mid1 = signals_in[mid];
+        std::nth_element(signals_in.begin(), signals_in.begin() + mid - 1, signals_in.end());
+        double mid2 = signals_in[mid - 1];
+        signal_median = (mid1 + mid2) / 2.0;
+    }
+    else
+    {
+        signal_median = signals_in[mid];
+    }
+    return signal_median;
+}
+
+double geometric_mean_aggregator(std::vector<double> signals_in)
+{
+	double product = product_aggregator(signals_in);
+	return pow(product, 1.0 / signals_in.size());
 }
 
 double MediatorSignal::decreasing_dominant_mediator(std::vector<double> signals_in)
@@ -53,16 +111,7 @@ void MediatorSignal::use_neutral_mediator()
 	};
 }
 
-void ElementarySignal::add_reference(std::unique_ptr<SignalReference> pSR)
-{
-	signal_reference = std::move(pSR);	   // set the reference
-	if (add_signal_reference)
-	{
-		add_signal_reference(signal_reference.get()); // depending on the class of ElementarySignal, do what else is needed when adding a reference
-	}
-}
-
-double ElementarySignal::evaluate(Cell *pCell)
+double RelativeSignal::evaluate(Cell *pCell)
 {
 	if (!applies_to_dead_cells && pCell->phenotype.death.dead)
 	{
@@ -74,6 +123,15 @@ double ElementarySignal::evaluate(Cell *pCell)
 		signal = signal_reference->coordinate_transform(signal);
 	}
 	return transformer(signal);
+}
+
+double AbsoluteSignal::evaluate(Cell *pCell)
+{
+	if (!applies_to_dead_cells && pCell->phenotype.death.dead)
+	{
+		return 0;
+	}
+	return transformer(get_single_signal(pCell, signal_name));
 }
 
 void BehaviorRule::apply(Cell *pCell)
@@ -377,7 +435,7 @@ std::unique_ptr<AbstractSignal> parse_abstract_signal(pugi::xml_node node)
 bool signal_is_mediator(pugi::xml_node node)
 {
 	bool is_mediator = std::string(node.name()) == "behavior"; // by default, assume that the top-level signal is a mediator
-	is_mediator |= (node.attribute("type")) && node.attribute("type").value() == "mediator";
+	is_mediator |= (node.attribute("type")) && std::strcmp(node.attribute("type").value(), "mediator")==0;
 	is_mediator |= xml_find_node(node, "decreasing_signals") != nullptr; // if the type was not declared but there are decreasing signals, then it is a mediator
 	is_mediator |= xml_find_node(node, "increasing_signals") != nullptr; // if the type was not declared but there are increasing signals, then it is a mediator
 	return is_mediator;
@@ -385,22 +443,14 @@ bool signal_is_mediator(pugi::xml_node node)
 
 bool signal_is_aggregator(pugi::xml_node node)
 {
-	bool is_aggregator = (node.attribute("type")) && node.attribute("type").value() == "aggregator";
-	pugi::xml_node signal_node = xml_find_node(node, "signal");
-	if (signal_node && signal_node.next_sibling("signal"))
-	{
-		return true; // if there is more than one signal, then it is an aggregator
-	}
+	bool is_aggregator = (node.attribute("type")) && std::strcmp(node.attribute("type").value(), "aggregator")==0;
+	is_aggregator |= std::string(node.name()) == "decreasing_signals" || std::string(node.name()) == "increasing_signals";
 	return is_aggregator;
 }
 
 bool signal_is_elementary(pugi::xml_node node)
 {
-	if (std::string(node.name()) == "signal")
-	{
-		return true; // if the node is a signal node, then it is an elementary signal by process of elimination
-	}
-	return false;
+	return std::string(node.name()) == "signal" && node.attribute("name") && node.attribute("type"); // make sure it fits the template for an elementary signal
 }
 
 std::unique_ptr<AbstractSignal> parse_mediator_signal(pugi::xml_node mediator_node)
@@ -488,7 +538,52 @@ std::unique_ptr<AbstractSignal> parse_aggregator_signal(pugi::xml_node aggregato
 		signals.push_back(parse_abstract_signal(signal_node));
 		signal_node = signal_node.next_sibling("signal");
 	}
-	return std::unique_ptr<AggregatorSignal>(new AggregatorSignal(std::move(signals)));
+	std::unique_ptr<AggregatorSignal> pAS = std::unique_ptr<AggregatorSignal>(new AggregatorSignal(std::move(signals)));
+
+	pugi::xml_node aggregator_fn_node = xml_find_node(aggregator_node, "aggregator");
+	if (aggregator_fn_node)
+	{
+		std::string aggregator_fn = xml_get_my_string_value(aggregator_fn_node);
+		if (aggregator_fn == "sum")
+		{
+			pAS->aggregator = sum_aggregator;
+		}
+		else if (aggregator_fn == "product")
+		{
+			pAS->aggregator = product_aggregator;
+		}
+		else if (aggregator_fn == "multivariate hill")
+		{
+			// multivariate hill is the default
+		}
+		else if (aggregator_fn == "mean")
+		{
+			pAS->aggregator = mean_aggregator;
+		}
+		else if (aggregator_fn == "max")
+		{
+			pAS->aggregator = max_aggregator;
+		}
+		else if (aggregator_fn == "min")
+		{
+			pAS->aggregator = min_aggregator;
+		}
+		else if (aggregator_fn == "median")
+		{
+			pAS->aggregator = median_aggregator;
+		}
+		else if (aggregator_fn == "geometric mean")
+		{
+			pAS->aggregator = geometric_mean_aggregator;
+		}
+		else
+		{
+			std::cerr << "ERROR: Aggregator not recognized: " << aggregator_fn << std::endl;
+			std::cerr << "Must be one of: sum, product, multivariate hill, mean, max, min, median, geometric mean" << std::endl;
+			exit(-1);
+		}
+	}
+	return pAS;
 }
 
 std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementary_node)
@@ -520,8 +615,8 @@ std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementar
 	pugi::xml_node reference_node = xml_find_node(elementary_node, "reference");
 	if (reference_node)
 	{
-		// Use dynamic_cast to check if pAS is actually an ElementarySignal
-		ElementarySignal *pES = dynamic_cast<ElementarySignal *>(pAS.get());
+		// Use dynamic_cast to check if pAS is actually a RelativeSignal
+		RelativeSignal *pES = dynamic_cast<RelativeSignal *>(pAS.get());
 		if (pES)
 		{
 			parse_reference(reference_node, pES);
@@ -553,20 +648,40 @@ std::unique_ptr<AbstractSignal> parse_partial_hill_signal(std::string name, pugi
 
 std::unique_ptr<AbstractSignal> parse_linear_signal(std::string name, pugi::xml_node linear_node)
 {
+	bool is_decreasing = xml_find_node(linear_node, "type") && xml_get_string_value(linear_node, "type") == "decreasing"; // default is increasing, so only switch if this is given and is set to "decreasing"
 	double signal_min = xml_get_double_value(linear_node, "signal_min");
 	double signal_max = xml_get_double_value(linear_node, "signal_max");
 	bool applies_to_dead_cells = xml_get_bool_value(linear_node, "applies_to_dead_cells");
-	return std::unique_ptr<LinearSignal>(new LinearSignal(name, applies_to_dead_cells, signal_min, signal_max));
+	std::unique_ptr<LinearSignal> pLS;
+	if (is_decreasing)
+	{
+		pLS = std::unique_ptr<LinearSignal>(new DecreasingLinearSignal(name, applies_to_dead_cells, signal_min, signal_max));
+	}
+	else
+	{
+		pLS = std::unique_ptr<LinearSignal>(new IncreasingLinearSignal(name, applies_to_dead_cells, signal_min, signal_max));
+	}
+	return pLS;
 }
 
 std::unique_ptr<AbstractSignal> parse_heaviside_signal(std::string name, pugi::xml_node heaviside_node)
 {
 	double threshold = xml_get_double_value(heaviside_node, "threshold");
 	bool applies_to_dead_cells = xml_get_bool_value(heaviside_node, "applies_to_dead_cells");
-	return std::unique_ptr<HeavisideSignal>(new HeavisideSignal(name, applies_to_dead_cells, threshold));
+	bool is_decreasing = xml_find_node(heaviside_node, "type") && xml_get_string_value(heaviside_node, "type") == "decreasing"; // default is increasing, so only switch if this is given and is set to "decreasing"
+	std::unique_ptr<HeavisideSignal> pHS;
+	if (is_decreasing)
+	{
+		pHS = std::unique_ptr<HeavisideSignal>(new DecreasingHeavisideSignal(name, applies_to_dead_cells, threshold));
+	}
+	else
+	{
+		pHS = std::unique_ptr<HeavisideSignal>(new IncreasingHeavisideSignal(name, applies_to_dead_cells, threshold));
+	}
+	return pHS;
 }
 
-void parse_reference(pugi::xml_node reference_node, ElementarySignal *pES)
+void parse_reference(pugi::xml_node reference_node, RelativeSignal *pRelSig)
 {
 	std::string type = xml_get_string_value(reference_node, "type");
 	double reference_value = xml_get_double_value(reference_node, "value");
@@ -584,7 +699,7 @@ void parse_reference(pugi::xml_node reference_node, ElementarySignal *pES)
 		std::cerr << "ERROR: Reference type not recognized: " << type << std::endl;
 		exit(-1);
 	}
-    pES->add_reference(std::move(pSR));
+    pRelSig->add_reference(std::move(pSR));
 	return;
 }
 

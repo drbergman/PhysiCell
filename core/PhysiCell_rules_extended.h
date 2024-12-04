@@ -14,6 +14,12 @@ namespace PhysiCell{
 
 double sum_aggregator(std::vector<double> signals_in);
 double multivariate_hill_aggregator(std::vector<double> partial_hill_signals);
+double product_aggregator(std::vector<double> signals_in);
+double mean_aggregator(std::vector<double> signals_in);
+double max_aggretator(std::vector<double> signals_in);
+double min_aggregator(std::vector<double> signals_in);
+double median_aggregator(std::vector<double> signals_in);
+double geometric_mean_aggregator(std::vector<double> signals_in);
 
 class AbstractSignal
 {
@@ -60,7 +66,7 @@ public:
 
     AggregatorSignal()
     {
-        aggregator = sum_aggregator;
+        aggregator = multivariate_hill_aggregator;
     }
 
     AggregatorSignal(std::vector<std::unique_ptr<PhysiCell::AbstractSignal>> pSignals) : AggregatorSignal()
@@ -83,7 +89,7 @@ public:
 
     std::vector<double> get_signals(Cell *pCell)
     {
-        return {increasing_signal->evaluate(pCell), decreasing_signal->evaluate(pCell)};
+        return {decreasing_signal->evaluate(pCell), increasing_signal->evaluate(pCell)};
     }
 
     double decreasing_dominant_mediator(std::vector<double> signals_in);
@@ -120,6 +126,23 @@ public:
     void use_neutral_mediator();
 };
 
+class ElementarySignal : public AbstractSignal
+{
+public:
+    std::string signal_name;
+    bool applies_to_dead_cells;
+
+    virtual double transformer( double signal )
+    {
+        return signal;
+    }
+
+    ElementarySignal(std::string signal_name, bool applies_to_dead_cells) : signal_name(signal_name), applies_to_dead_cells(applies_to_dead_cells) {}
+
+    virtual ~ElementarySignal() {}
+};
+
+
 class SignalReference
 {
 public:
@@ -146,6 +169,7 @@ public:
         reference_value = reference_value_;
     }
 };
+
 class DecreasingSignalReference : public SignalReference
 {
 public:
@@ -165,53 +189,31 @@ public:
     }
 };
 
-class ElementarySignal : public AbstractSignal
+class RelativeSignal : public ElementarySignal
 {
-private:
+protected:
     std::unique_ptr<SignalReference> signal_reference = nullptr;
 
 public:
-    std::string signal_name;
-    bool applies_to_dead_cells;
-
-    virtual double transformer( double signal )
-    {
-        return signal;
-    }
-
-    std::function<void(SignalReference*)> add_signal_reference;
-
-    void add_reference(std::unique_ptr<SignalReference> pSR);
+    virtual void add_reference(std::unique_ptr<SignalReference> pSR) = 0;
     double evaluate(Cell *pCell);
-
-    ElementarySignal(std::string signal_name, bool applies_to_dead_cells) : signal_name(signal_name), applies_to_dead_cells(applies_to_dead_cells) {}
-
-    virtual ~ElementarySignal() {}
+    using ElementarySignal::ElementarySignal; // Inherit constructors from ElementarySignal
 };
 
-class AbstractHillSignal : public ElementarySignal
+class AbstractHillSignal : public RelativeSignal
 {
-protected:
-    void abstract_hill_signal_initializer()
-    {
-        add_signal_reference = [this](SignalReference *pSR)
-        {
-            half_max = pSR->coordinate_transform(half_max);
-            if (half_max <= 0)
-            {
-                throw std::invalid_argument("Half max must be in the range in which the signal has effect.");
-            }
-        };
-    }
-
 public:
     double half_max;
     double hill_power;
 
-    AbstractHillSignal(std::string signal_name, bool applies_to_dead_cells, double half_max, double hill_power)
-        : ElementarySignal(signal_name, applies_to_dead_cells), half_max(half_max), hill_power(hill_power)
+    void add_reference(std::unique_ptr<SignalReference> pSR)
     {
-        abstract_hill_signal_initializer();
+        signal_reference = std::move(pSR);
+        half_max = signal_reference->coordinate_transform(half_max);
+        if (half_max <= 0)
+        {
+            throw std::invalid_argument("Half max must be in the range in which the signal has effect.");
+        }
     }
 
     double rescale(double signal)
@@ -219,6 +221,9 @@ public:
         signal /= half_max;
         return pow(signal, hill_power);
     }
+
+    AbstractHillSignal(std::string signal_name, bool applies_to_dead_cells, double half_max, double hill_power)
+        : RelativeSignal(signal_name, applies_to_dead_cells), half_max(half_max), hill_power(hill_power) {}
 };
 
 class PartialHillSignal : public AbstractHillSignal
@@ -247,12 +252,34 @@ public:
         : AbstractHillSignal(signal_name, applies_to_dead_cells, half_max, hill_power) {}
 };
 
-class LinearSignal : public ElementarySignal
+// AbsoluteSignals do not have need of a reference value
+class AbsoluteSignal : public ElementarySignal
 {
+protected:
+    double evaluate(Cell *pCell);
+
+public:
+    using ElementarySignal::ElementarySignal; // Inherit constructors from ElementarySignal
+};
+
+class LinearSignal : public AbsoluteSignal
+{
+protected:
+    double signal_range;
+
 public:
     double signal_min;
     double signal_max;
 
+    LinearSignal(std::string signal_name, bool applies_to_dead_cells, double signal_min, double signal_max)
+        : AbsoluteSignal(signal_name, applies_to_dead_cells), signal_min(signal_min), signal_max(signal_max)
+    {
+        signal_range = signal_max - signal_min;
+    }
+};
+
+class IncreasingLinearSignal : public LinearSignal
+{
     double transformer(double signal)
     {
         if (signal <= signal_min) {
@@ -262,35 +289,43 @@ public:
             return 1;
         }
         else {
-            return (signal - signal_min) / (signal_max - signal_min);
+            return (signal - signal_min) / signal_range;
         }
     }
 
-    LinearSignal(std::string signal_name, bool applies_to_dead_cells, double signal_min, double signal_max)
-        : ElementarySignal(signal_name, applies_to_dead_cells), signal_min(signal_min), signal_max(signal_max)
-    {
-        add_signal_reference = [this](SignalReference *pSR) {
-            double bound_1 = pSR->coordinate_transform(this->signal_min);
-            double bound_2 = pSR->coordinate_transform(this->signal_max);
-            if (bound_1 <= bound_2)
-            {
-                this->signal_min = bound_1;
-                this->signal_max = bound_2;
-            }
-            else // the signal reference swapped the order of the bounds
-            {
-                this->signal_min = bound_2;
-                this->signal_max = bound_1;
-            }
-        };
-    }
+    using LinearSignal::LinearSignal;
 };
 
-class HeavisideSignal : public ElementarySignal
+class DecreasingLinearSignal : public LinearSignal
+{
+    double transformer(double signal)
+    {
+        if (signal <= signal_min) {
+            return 1;
+        }
+        else if (signal >= signal_max) {
+            return 0;
+        }
+        else {
+            return (signal_max - signal) / signal_range;
+        }
+    }
+
+    using LinearSignal::LinearSignal;
+};
+
+class HeavisideSignal : public AbsoluteSignal
 {
 public:
     double threshold;
 
+    HeavisideSignal(std::string signal_name, bool applies_to_dead_cells, double threshold)
+        : AbsoluteSignal(signal_name, applies_to_dead_cells), threshold(threshold) {}
+};
+
+class IncreasingHeavisideSignal : public HeavisideSignal
+{
+public:
     double transformer(double signal)
     {
         if (signal < threshold)
@@ -303,14 +338,27 @@ public:
         }
     }
 
-    HeavisideSignal(std::string signal_name, bool applies_to_dead_cells, double threshold)
-        : ElementarySignal(signal_name, applies_to_dead_cells), threshold(threshold)
+    IncreasingHeavisideSignal(std::string signal_name, bool applies_to_dead_cells, double threshold)
+        : HeavisideSignal(signal_name, applies_to_dead_cells, threshold) {}
+};
+
+class DecreasingHeavisideSignal : public HeavisideSignal
+{
+public:
+    double transformer(double signal)
     {
-        add_signal_reference = [this](SignalReference *pSR)
+        if (signal > threshold)
         {
-            this->threshold = pSR->coordinate_transform(this->threshold);
-        };
+            return 0;
+        }
+        else
+        {
+            return 1;
+        }
     }
+
+    DecreasingHeavisideSignal(std::string signal_name, bool applies_to_dead_cells, double threshold)
+        : HeavisideSignal(signal_name, applies_to_dead_cells, threshold) {}
 };
 
 class BehaviorRule
@@ -413,7 +461,7 @@ std::unique_ptr<AbstractSignal> parse_partial_hill_signal(std::string name, pugi
 std::unique_ptr<AbstractSignal> parse_linear_signal(std::string name, pugi::xml_node linear_node);
 std::unique_ptr<AbstractSignal> parse_heaviside_signal(std::string name, pugi::xml_node heaviside_node);
 
-void parse_reference(pugi::xml_node reference_node, ElementarySignal *pES);
+void parse_reference(pugi::xml_node reference_node, RelativeSignal *pRelSig);
 
 void setup_behavior_rules( void );
 void parse_behavior_rules_from_pugixml( void );
