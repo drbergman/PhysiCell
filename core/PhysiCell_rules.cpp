@@ -2110,6 +2110,7 @@ void parse_rules_from_file(std::string path_to_file, std::string format, std::st
 		exit(-1);
 	}
 	PhysiCell_settings.rules_enabled = true;
+	copy_file_to_output( path_to_file );
 }
 
 void parse_rules_from_parameters_v0( void )
@@ -2548,10 +2549,9 @@ void record_cell_rules( void )
 	display_behavior_dictionary(dict_of); // done
 	dict_of.close();
 
-	// save rules (v1)
-	std::string rules_file = PhysiCell_settings.folder + "/cell_rules.csv"; 
+	// save rules (v3)
+	std::string rules_file = PhysiCell_settings.folder + "/cell_rules_parsed.csv"; 
 	export_rules_csv_v3( rules_file ); 
-
 
 	return;
 }
