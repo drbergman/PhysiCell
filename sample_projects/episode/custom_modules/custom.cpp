@@ -33,7 +33,7 @@
 #                                                                             #
 # BSD 3-Clause License (see https://opensource.org/licenses/BSD-3-Clause)     #
 #                                                                             #
-# Copyright (c) 2015-2025, Paul Macklin and the PhysiCell Project             #
+# Copyright (c) 2015-2021, Paul Macklin and the PhysiCell Project             #
 # All rights reserved.                                                        #
 #                                                                             #
 # Redistribution and use in source and binary forms, with or without          #
@@ -65,103 +65,144 @@
 ###############################################################################
 */
 
-#ifndef __PhysiCell_geometry_h__
-#define __PhysiCell_geometry_h__
 
-#include <string>
-#include <vector>
-#include <sstream>
-
-#include "../core/PhysiCell.h"
-#include "./PhysiCell_settings.h"
+#include "custom.h"
 
 
-namespace PhysiCell
+// constantes variables
+
+static const double ZERO = 0;
+static const std::vector<double> VECTOR_ZERO (4, ZERO);  // generate a 4 character long vector of zeros.
+
+
+// functions
+
+void create_cell_types( void )
 {
-// loaders 
-bool load_initial_cells( void );
-bool load_cells_from_file( std::string path_to_file );
-bool load_cells_from_file( std::string path_to_file, std::string filetype );
-void load_cells_csv_v1( std::string filename ); // done 
+	std::cout << "generate cell types ..." << std::endl;
+	std::cout << "cell types can only be defined the first episode of the runtime!" << std::endl;
+
+	// put any modifications to default cell definition here if you
+	// want to have "inherited" by other cell types.
+	// this is a good place to set default functions.
+
+	// cell_default initial definition
+	initialize_default_cell_definition();
+	cell_defaults.phenotype.secretion.sync_to_microenvironment( &microenvironment );
+
+	cell_defaults.functions.volume_update_function = standard_volume_update_function;
+	cell_defaults.functions.update_velocity = standard_update_cell_velocity;
+
+	cell_defaults.functions.update_migration_bias = NULL;
+	cell_defaults.functions.update_phenotype = NULL;  // update_cell_and_death_parameters_O2_based;
+	cell_defaults.functions.custom_cell_rule = NULL;
+	cell_defaults.functions.contact_function = NULL;
+
+	cell_defaults.functions.add_cell_basement_membrane_interactions = NULL;
+	cell_defaults.functions.calculate_distance_to_membrane = NULL;
+
+	// parse the cell definitions in the XML config file
+	initialize_cell_definitions_from_pugixml();
+
+	// generate the maps of cell definitions.
+	build_cell_definitions_maps();
+
+	// intializes cell signal and response dictionaries
+	setup_signal_behavior_dictionaries();
+
+	// initializ cell rule definitions
+	setup_cell_rules();
+
+	// put any modifications to individual cell definitions here.
+	// this is a good place to set custom functions.
+	cell_defaults.functions.update_phenotype = phenotype_function;
+	cell_defaults.functions.custom_cell_rule = custom_function;
+	cell_defaults.functions.contact_function = contact_function;
+
+	// summarize the cell defintion setup.
+	display_cell_definitions( std::cout );
+
+	return;
+}
 
 
-std::vector<std::string> split_csv_labels( std::string labels_line ); // done 
-Cell* process_csv_v2_line( std::string line , std::vector<std::string> labels ); // done 
-void load_cells_csv_v2( std::string filename ); // done 
+void setup_microenvironment( void )
+{
+	// set domain parameters
+
+	// put any custom code to set non-homogeneous initial conditions or
+	// extra Dirichlet nodes here.
+
+	// initialize BioFVM
+	initialize_microenvironment();
+
+	return;
+}
 
 
-void load_cells_csv( std::string filename ); 
+void setup_tissue( void )
+{
+	double Xmin = microenvironment.mesh.bounding_box[0];
+	double Ymin = microenvironment.mesh.bounding_box[1];
+	double Zmin = microenvironment.mesh.bounding_box[2];
 
+	double Xmax = microenvironment.mesh.bounding_box[3];
+	double Ymax = microenvironment.mesh.bounding_box[4];
+	double Zmax = microenvironment.mesh.bounding_box[5];
 
+	if ( default_microenvironment_options.simulate_2D == true )
+	{
+		Zmin = 0.0;
+		Zmax = 0.0;
+	}
 
-void load_cells_mat( std::string filename ); 
-void load_cells_physicell( std::string filename ); 
+	double Xrange = Xmax - Xmin;
+	double Yrange = Ymax - Ymin;
+	double Zrange = Zmax - Zmin;
 
-bool load_cells_from_pugixml( pugi::xml_node root ); 
-bool load_cells_from_pugixml( void ); // load cells based on default config XML root
+	// create some of each type of cell
+	Cell* pC;
 
-void set_parameters_from_distributions( const pugi::xml_node root );
-void set_parameters_from_distributions(void);
-void set_distributed_parameters(pugi::xml_node node, Cell_Definition *pCD);
-void set_distributed_parameter(pugi::xml_node node_dist, Cell_Definition *pCD);
-void set_distributed_parameter(Cell_Definition *pCD, std::string behavior, std::string type, pugi::xml_node node_dist);
+	for ( int k=0; k < cell_definitions_by_index.size(); k++ )
+	{
+		Cell_Definition* pCD = cell_definitions_by_index[k];
+		std::cout << "Placing cells of type " << pCD->name << " ... " << std::endl;
+		for ( int n = 0; n < parameters.ints( "number_of_cells" ); n++ )
+		{
+			std::vector<double> position = {0,0,0};
+			position[0] = Xmin + UniformRandom() * Xrange;
+			position[1] = Ymin + UniformRandom() * Yrange;
+			position[2] = Zmin + UniformRandom() * Zrange;
 
-void get_log_normal_bounds(pugi::xml_node node_dist, std::string behavior, Cell_Definition *pCD, double &lb, double &ub, double base_value, bool check_base);
-void set_distributed_parameter(Cell* pCell, std::string behavior, double val);
-void print_drawing_expectations(double mu, double sigma, double lb, double ub, int n);
+			pC = create_cell( *pCD );
+			pC->assign_position( position );
+		}
+	}
+	std::cout << std::endl;
 
-bool is_in(std::string x, std::vector<std::string> A);
-bool strcmpi(std::string x, std::string y);
+	// load cells from your CSV file (if enabled)
+	load_cells_from_pugixml();
+	set_parameters_from_distributions();
 
-//	
-// 2D functions 
-//
-void fill_circle( std::vector<double> center , double radius , Cell_Definition* pCD , double compression ); 
-void fill_circle( std::vector<double> center , double radius , Cell_Definition* pCD ); 
+	// add custom data vector
+	for ( int i = 0 ; i < all_cells->size(); i++ )
+	{
+		std::vector<double> vector_double = VECTOR_ZERO;
+		( *all_cells )[i]->custom_data.add_vector_variable( "my_vector", vector_double );
+	}
 
-void fill_circle( std::vector<double> center , double radius , int cell_type , double compression );
-void fill_circle( std::vector<double> center , double radius , int cell_type ); 
+	return;
+}
 
+std::vector<std::string> my_coloring_function( Cell* pCell )
+{ return paint_by_number_cell_coloring( pCell ); }
 
-void fill_annulus( std::vector<double> center , double outer_radius , double inner_radius, Cell_Definition* pCD , double compression ); 
-void fill_annulus( std::vector<double> center , double outer_radius , double inner_radius, Cell_Definition* pCD ); 
+void phenotype_function( Cell* pCell, Phenotype& phenotype, double dt )
+{ return; }
 
-void fill_annulus( std::vector<double> center , double outer_radius , double inner_radius, int cell_type , double compression );
-void fill_annulus( std::vector<double> center , double outer_radius , double inner_radius, int cell_type ); 
+void custom_function( Cell* pCell, Phenotype& phenotype, double dt )
+{ return; }
 
+void contact_function( Cell* pMe, Phenotype& phenoMe, Cell* pOther, Phenotype& phenoOther, double dt )
+{ return; }
 
-// bounds = { xmin, ymin, zmin, xmax, ymax, zmax } 
-void fill_rectangle( std::vector<double> bounds , Cell_Definition* pCD , double compression ); 
-void fill_rectangle( std::vector<double> bounds , Cell_Definition* pCD ); 
-
-void fill_rectangle( std::vector<double> bounds , int cell_type , double compression );  
-void fill_rectangle( std::vector<double> bounds , int cell_type ); 
-
-
-//
-// 3D functions
-//
-void fill_sphere( std::vector<double> center , double radius , Cell_Definition* pCD , double compression ); 
-void fill_sphere( std::vector<double> center , double radius , Cell_Definition* pCD ); 
-
-void fill_sphere( std::vector<double> center , double radius , int cell_type , double compression ); 
-void fill_sphere( std::vector<double> center , double radius , int cell_type ); 
-
-// bounds = { xmin, ymin, zmin, xmax, ymax, zmax } 
-void fill_box( std::vector<double> bounds , Cell_Definition* pCD , double compression ); 
-void fill_box( std::vector<double> bounds , Cell_Definition* pCD ); 
-
-void fill_box( std::vector<double> bounds , int cell_type , double compression ); 
-void fill_box( std::vector<double> bounds , int cell_type ); 
-
-void draw_line( std::vector<double> start , std::vector<double> end , Cell_Definition* pCD , double compression ); 
-void draw_line( std::vector<double> start , std::vector<double> end , Cell_Definition* pCD ); 
-
-void draw_line( std::vector<double> start , std::vector<double> end , int cell_type , double compression ); 
-void draw_line( std::vector<double> start , std::vector<double> end , int cell_type ); 
-
-
-
-};
-
-#endif

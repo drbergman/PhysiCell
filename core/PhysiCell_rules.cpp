@@ -33,7 +33,7 @@
 #                                                                             #
 # BSD 3-Clause License (see https://opensource.org/licenses/BSD-3-Clause)     #
 #                                                                             #
-# Copyright (c) 2015-2024, Paul Macklin and the PhysiCell Project             #
+# Copyright (c) 2015-2025, Paul Macklin and the PhysiCell Project             #
 # All rights reserved.                                                        #
 #                                                                             #
 # Redistribution and use in source and binary forms, with or without          #
@@ -2545,9 +2545,11 @@ void record_cell_rules( void )
 	std::string dictionary_file = "./" + PhysiCell_settings.folder + "/dictionaries.txt";
 	std::ofstream dict_of(dictionary_file, std::ios::out);
 
-	display_signal_dictionary(dict_of);	  // done
-	display_behavior_dictionary(dict_of); // done
-	dict_of.close();
+	// display_signal_dictionary( dict_of ); // done 
+	display_signal_dictionary_with_synonyms( dict_of ); // 
+	// display_behavior_dictionary( dict_of ); // done 
+	display_behavior_dictionary_with_synonyms( dict_of ); // done 
+	dict_of.close(); 
 
 	// save rules (v3)
 	std::string rules_file = PhysiCell_settings.folder + "/cell_rules_parsed.csv"; 

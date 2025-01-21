@@ -33,7 +33,7 @@
 #                                                                             #
 # BSD 3-Clause License (see https://opensource.org/licenses/BSD-3-Clause)     #
 #                                                                             #
-# Copyright (c) 2015-2025, Paul Macklin and the PhysiCell Project             #
+# Copyright (c) 2015-2021, Paul Macklin and the PhysiCell Project             #
 # All rights reserved.                                                        #
 #                                                                             #
 # Redistribution and use in source and binary forms, with or without          #
@@ -65,103 +65,25 @@
 ###############################################################################
 */
 
-#ifndef __PhysiCell_geometry_h__
-#define __PhysiCell_geometry_h__
-
-#include <string>
-#include <vector>
-#include <sstream>
 
 #include "../core/PhysiCell.h"
-#include "./PhysiCell_settings.h"
+#include "../modules/PhysiCell_standard_modules.h"
 
+using namespace BioFVM;
+using namespace PhysiCell;
 
-namespace PhysiCell
-{
-// loaders 
-bool load_initial_cells( void );
-bool load_cells_from_file( std::string path_to_file );
-bool load_cells_from_file( std::string path_to_file, std::string filetype );
-void load_cells_csv_v1( std::string filename ); // done 
+// setup functions to help us along
+void create_cell_types( void );
+void setup_tissue( void );
 
+// set up the BioFVM microenvironment
+void setup_microenvironment( void );
 
-std::vector<std::string> split_csv_labels( std::string labels_line ); // done 
-Cell* process_csv_v2_line( std::string line , std::vector<std::string> labels ); // done 
-void load_cells_csv_v2( std::string filename ); // done 
+// custom pathology coloring function
+std::vector<std::string> my_coloring_function( Cell* );
 
+// custom functions can go here
+void phenotype_function( Cell* pCell, Phenotype& phenotype, double dt );
+void custom_function( Cell* pCell, Phenotype& phenotype, double dt );
+void contact_function( Cell* pMe, Phenotype& phenoMe, Cell* pOther, Phenotype& phenoOther, double dt );
 
-void load_cells_csv( std::string filename ); 
-
-
-
-void load_cells_mat( std::string filename ); 
-void load_cells_physicell( std::string filename ); 
-
-bool load_cells_from_pugixml( pugi::xml_node root ); 
-bool load_cells_from_pugixml( void ); // load cells based on default config XML root
-
-void set_parameters_from_distributions( const pugi::xml_node root );
-void set_parameters_from_distributions(void);
-void set_distributed_parameters(pugi::xml_node node, Cell_Definition *pCD);
-void set_distributed_parameter(pugi::xml_node node_dist, Cell_Definition *pCD);
-void set_distributed_parameter(Cell_Definition *pCD, std::string behavior, std::string type, pugi::xml_node node_dist);
-
-void get_log_normal_bounds(pugi::xml_node node_dist, std::string behavior, Cell_Definition *pCD, double &lb, double &ub, double base_value, bool check_base);
-void set_distributed_parameter(Cell* pCell, std::string behavior, double val);
-void print_drawing_expectations(double mu, double sigma, double lb, double ub, int n);
-
-bool is_in(std::string x, std::vector<std::string> A);
-bool strcmpi(std::string x, std::string y);
-
-//	
-// 2D functions 
-//
-void fill_circle( std::vector<double> center , double radius , Cell_Definition* pCD , double compression ); 
-void fill_circle( std::vector<double> center , double radius , Cell_Definition* pCD ); 
-
-void fill_circle( std::vector<double> center , double radius , int cell_type , double compression );
-void fill_circle( std::vector<double> center , double radius , int cell_type ); 
-
-
-void fill_annulus( std::vector<double> center , double outer_radius , double inner_radius, Cell_Definition* pCD , double compression ); 
-void fill_annulus( std::vector<double> center , double outer_radius , double inner_radius, Cell_Definition* pCD ); 
-
-void fill_annulus( std::vector<double> center , double outer_radius , double inner_radius, int cell_type , double compression );
-void fill_annulus( std::vector<double> center , double outer_radius , double inner_radius, int cell_type ); 
-
-
-// bounds = { xmin, ymin, zmin, xmax, ymax, zmax } 
-void fill_rectangle( std::vector<double> bounds , Cell_Definition* pCD , double compression ); 
-void fill_rectangle( std::vector<double> bounds , Cell_Definition* pCD ); 
-
-void fill_rectangle( std::vector<double> bounds , int cell_type , double compression );  
-void fill_rectangle( std::vector<double> bounds , int cell_type ); 
-
-
-//
-// 3D functions
-//
-void fill_sphere( std::vector<double> center , double radius , Cell_Definition* pCD , double compression ); 
-void fill_sphere( std::vector<double> center , double radius , Cell_Definition* pCD ); 
-
-void fill_sphere( std::vector<double> center , double radius , int cell_type , double compression ); 
-void fill_sphere( std::vector<double> center , double radius , int cell_type ); 
-
-// bounds = { xmin, ymin, zmin, xmax, ymax, zmax } 
-void fill_box( std::vector<double> bounds , Cell_Definition* pCD , double compression ); 
-void fill_box( std::vector<double> bounds , Cell_Definition* pCD ); 
-
-void fill_box( std::vector<double> bounds , int cell_type , double compression ); 
-void fill_box( std::vector<double> bounds , int cell_type ); 
-
-void draw_line( std::vector<double> start , std::vector<double> end , Cell_Definition* pCD , double compression ); 
-void draw_line( std::vector<double> start , std::vector<double> end , Cell_Definition* pCD ); 
-
-void draw_line( std::vector<double> start , std::vector<double> end , int cell_type , double compression ); 
-void draw_line( std::vector<double> start , std::vector<double> end , int cell_type ); 
-
-
-
-};
-
-#endif

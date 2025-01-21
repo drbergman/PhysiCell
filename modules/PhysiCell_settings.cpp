@@ -33,7 +33,7 @@
 #                                                                             #
 # BSD 3-Clause License (see https://opensource.org/licenses/BSD-3-Clause)     #
 #                                                                             #
-# Copyright (c) 2015-2024, Paul Macklin and the PhysiCell Project             #
+# Copyright (c) 2015-2025, Paul Macklin and the PhysiCell Project             #
 # All rights reserved.                                                        #
 #                                                                             #
 # Redistribution and use in source and binary forms, with or without          #
@@ -81,10 +81,12 @@ pugi::xml_node physicell_config_root;
 	
 ArgumentParser argument_parser;
 
-bool load_PhysiCell_config_file()
+bool read_PhysiCell_config_file( void )
 {
+	physicell_config_dom_initialized = false; 
+
 	std::cout << "Using config file " << argument_parser.path_to_config_file << " ... " << std::endl ; 
-	pugi::xml_parse_result result = physicell_config_doc.load_file( argument_parser.path_to_config_file.c_str()  );
+	pugi::xml_parse_result result = physicell_config_doc.load_file( argument_parser.path_to_config_file.c_str() );
 	
 	if( result.status != pugi::xml_parse_status::status_ok )
 	{
@@ -94,7 +96,14 @@ bool load_PhysiCell_config_file()
 	
 	physicell_config_root = physicell_config_doc.child("PhysiCell_settings");
 	physicell_config_dom_initialized = true; 
-	
+	return true;
+}
+
+bool load_PhysiCell_config_file( void )
+{
+	if (!read_PhysiCell_config_file( ))
+	{ return false; }
+
 	PhysiCell_settings.read_from_pugixml(); 
 	if (argument_parser.path_to_output_folder != "") {
 		PhysiCell_settings.folder = argument_parser.path_to_output_folder; // overwrite output folder if supplied by flag
@@ -104,15 +113,14 @@ bool load_PhysiCell_config_file()
 	
 	if( !setup_microenvironment_from_XML( physicell_config_root ) )
 	{
-		std::cout << std::endl 
-				  << "Warning: microenvironment_setup not found in " << argument_parser.path_to_config_file << std::endl 
-				  << "         Either manually setup microenvironment in setup_microenvironment() (custom.cpp)" << std::endl
-				  << "         or consult documentation to add microenvironment_setup to your configuration file." << std::endl << std::endl; 
+		std::cout << std::endl
+			<< "Warning: microenvironment_setup not found in " << argument_parser.path_to_config_file << std::endl
+			<< "         Either manually setup microenvironment in setup_microenvironment() (custom.cpp)" << std::endl
+			<< "         or consult documentation to add microenvironment_setup to your configuration file." << std::endl << std::endl;
 	}
 	
 	// now read user parameters
-	
-	parameters.read_from_pugixml( physicell_config_root ); 
+	parameters.read_from_pugixml( physicell_config_root );
 
 	create_output_directory( PhysiCell_settings.folder );
 
@@ -354,7 +362,7 @@ bool create_directories(const std::string &path)
 
 bool create_directory(const std::string &path)
 {
-#if defined(__MINGW32__) || defined(__MINGW64__)
+#if defined(_WIN32)
 	bool success = mkdir(path.c_str()) == 0;
 #else
 	bool success = mkdir(path.c_str(), 0755) == 0;
