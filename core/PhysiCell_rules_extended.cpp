@@ -193,7 +193,7 @@ void BehaviorRuleset::apply(Cell *pCell)
 	return;
 }
 
-std::unordered_map< Cell_Definition* , std::unique_ptr<BehaviorRuleset> > behavior_rulesets; 
+std::unordered_map<Cell_Definition *, std::unique_ptr<BehaviorRuleset>> behavior_rulesets;
 
 void add_behavior_ruleset( Cell_Definition* pCD )
 {
@@ -209,7 +209,6 @@ void add_behavior_ruleset( Cell_Definition* pCD )
 void intialize_behavior_rulesets( void )
 {
 	behavior_rulesets.clear(); // empty(); 
-	for( int n; n < cell_definitions_by_index.size() ; n++ )
 	for (auto &pCD : cell_definitions_by_index)
 	{
 		add_behavior_ruleset(pCD); 
@@ -596,7 +595,7 @@ std::unique_ptr<AbstractSignal> parse_mediator_signal(pugi::xml_node mediator_no
 		else
 		{
 			std::cerr << "ERROR: Mediator not recognized: " << mediator_fn << std::endl;
-			std::cerr << "Must be one of: decreasing dominant, increasing dominant, neutral" << std::endl;
+			std::cerr << "Must be one of: 'decreasing dominant', 'increasing dominant', 'neutral'" << std::endl;
 			exit(-1);
 		}
 	}
@@ -653,7 +652,7 @@ std::unique_ptr<AbstractSignal> parse_aggregator_signal(pugi::xml_node aggregato
 		else
 		{
 			std::cerr << "ERROR: Aggregator not recognized: " << aggregator_fn << std::endl;
-			std::cerr << "Must be one of: sum, product, multivariate hill, mean, max, min, median, geometric mean" << std::endl;
+			std::cerr << "Must be one of: 'sum', 'product', 'multivariate hill', 'mean', 'max', 'min', 'median', 'geometric mean'" << std::endl;
 			exit(-1);
 		}
 	}
@@ -697,7 +696,7 @@ std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementar
 		}
 		else
 		{
-			std::cerr << "ERROR: Signal is not an ElementarySignal." << std::endl;
+			std::cerr << "ERROR: Reference defined for a Signal that is not an ElementarySignal." << std::endl;
 			exit(-1);
 		}
 	}
