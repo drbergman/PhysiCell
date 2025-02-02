@@ -992,44 +992,44 @@ bool setup_microenvironment_from_XML( pugi::xml_node root_node )
 		copy_file_to_output(default_microenvironment_options.initial_condition_file);
 	}
 
-	node = xml_find_node( root_node , "microenvironment_setup" );
-	node = xml_find_node( node , "options" );
-	node = xml_find_node(node, "dirichlet_nodes");
-	if (node)
+	if (argument_parser.path_to_ic_dc_file != "")
 	{
-		default_microenvironment_options.dirichlet_condition_from_file_enabled = node.attribute("enabled").as_bool();
-		if (default_microenvironment_options.dirichlet_condition_from_file_enabled)
+		default_microenvironment_options.dirichlet_condition_from_file_enabled = true;
+		std::string file_extension = argument_parser.path_to_ic_dc_file.substr(argument_parser.path_to_ic_dc_file.find_last_of(".") + 1);
+		if (file_extension == "mat")
 		{
-			default_microenvironment_options.dirichlet_condition_file_type = node.attribute("type").as_string();
-			default_microenvironment_options.dirichlet_condition_file = xml_get_string_value(node, "filename");
-
-			copy_file_to_output(default_microenvironment_options.dirichlet_condition_file);
+			default_microenvironment_options.dirichlet_condition_file_type = "matlab";
+		}
+		else if (file_extension == "csv")
+		{
+			default_microenvironment_options.dirichlet_condition_file_type = "csv";
+		}
+		else
+		{
+			std::cerr << "Error: Dirichlet condition file type for substrates not recognized. Please use .mat or .csv file." << std::endl;
+			exit(EXIT_FAILURE);
+		}
+		default_microenvironment_options.dirichlet_condition_file = argument_parser.path_to_ic_dc_file;
+	}
+	else
+	{
+		node = xml_find_node( root_node , "microenvironment_setup" );
+		node = xml_find_node( node , "options" );
+		node = xml_find_node(node, "dirichlet_nodes");
+		if (node)
+		{
+			default_microenvironment_options.dirichlet_condition_from_file_enabled = node.attribute("enabled").as_bool();
+			if (default_microenvironment_options.dirichlet_condition_from_file_enabled)
+			{
+				default_microenvironment_options.dirichlet_condition_file_type = node.attribute("type").as_string();
+				default_microenvironment_options.dirichlet_condition_file = xml_get_string_value(node, "filename");
+			}
 		}
 	}
-
-	// not yet supported : read initial conditions 
-	/*
-	// read in initial conditions from an external file 
-			<!-- not yet supported --> 
-			<initial_condition type="matlab" enabled="false">
-				<filename>./config/initial.mat</filename>
-			</initial_condition>
-	*/
-	
-	// not yet supported : read Dirichlet nodes (including boundary)
-	/*
-	// Read in Dirichlet nodes from an external file.
-	// Note that if they are defined this way, then 
-	// set 	default_microenvironment_options.outer_Dirichlet_conditions = false;
-	// so that the microenvironment initialization in BioFVM does not 
-	// also add Dirichlet nodes at the outer boundary
-
-			<!-- not yet supported --> 
-			<dirichlet_nodes type="matlab" enabled="false">
-				<filename>./config/dirichlet.mat</filename>
-			</dirichlet_nodes>
-	*/
-
+	if (default_microenvironment_options.dirichlet_condition_from_file_enabled)
+	{
+		copy_file_to_output(default_microenvironment_options.dirichlet_condition_file);
+	}
 	return true;  
 }
 
@@ -1044,13 +1044,14 @@ void ArgumentParser::parse(int argc, char **argv)
 		{"ic-cells", required_argument, 0, 'i'},
 		{"ic-substrates", required_argument, 0, 's'},
 		{"ic-ecm", required_argument, 0, 'e'},
+		{"ic-dc", required_argument, 0, 'd'},
 		{"rules", required_argument, 0, 'r'},
 		{"output", required_argument, 0, 'o'},
 		{0, 0, 0, 0}};
 
-	std::string usage = "Usage: " + std::string(argv[0]) + " [-c path_to_config_file] [-i path_to_ic_cells_file] [-s path_to_ic_substrate_file] [-e path_to_ic_ecm_file] [-o path_to_output_folder]\n" + "   Or: " + std::string(argv[0]) + " path_to_config_file [-i path_to_ic_cells_file] [-s path_to_ic_substrate_file] [-e path_to_ic_ecm_file] [-o path_to_output_folder]";
+	std::string usage = "Usage: " + std::string(argv[0]) + " [-c path_to_config_file] [-i path_to_ic_cells_file] [-s path_to_ic_substrate_file] [-e path_to_ic_ecm_file] [-d path_to_ic_dc_file] [-o path_to_output_folder]\n" + "   Or: " + std::string(argv[0]) + " path_to_config_file [-i path_to_ic_cells_file] [-s path_to_ic_substrate_file] [-e path_to_ic_ecm_file] [-d path_to_ic_dc_file] [-o path_to_output_folder]";
 
-	while ((opt = getopt_long(argc, argv, "c:i:s:e:r:o:", long_options, NULL)) != -1)
+	while ((opt = getopt_long(argc, argv, "c:i:s:e:d:r:o:", long_options, NULL)) != -1)
 	{
 		switch (opt)
 		{
@@ -1066,6 +1067,9 @@ void ArgumentParser::parse(int argc, char **argv)
 			break;
 		case 'e':
 			path_to_ic_ecm_file = optarg;
+			break;
+		case 'd':
+			path_to_ic_dc_file = optarg;
 			break;
 		case 'r':
 			path_to_rules_file = optarg;

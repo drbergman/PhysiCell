@@ -243,11 +243,12 @@ class ArgumentParser {
 public:
 	bool config_file_flagged = false;
 	std::string path_to_config_file = "./config/PhysiCell_settings.xml";
-	std::string path_to_ic_cells_file;
-	std::string path_to_ic_substrate_file;
-	std::string path_to_ic_ecm_file;
-	std::string path_to_rules_file;
-	std::string path_to_output_folder;
+	std::string path_to_ic_cells_file = "";
+	std::string path_to_ic_substrate_file = "";
+	std::string path_to_ic_ecm_file = "";
+	std::string path_to_ic_dc_file = "";
+	std::string path_to_rules_file = "";
+	std::string path_to_output_folder = "";
 
     void parse(int argc, char* argv[]);
 
