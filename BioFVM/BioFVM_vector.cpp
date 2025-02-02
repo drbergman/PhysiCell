@@ -376,6 +376,61 @@ void csv_to_vector( const char* buffer , std::vector<double>& vect )
 	return; 
 }
 
+void dirichlet_csv_to_vector( const char* buffer , std::vector<bool>& is_missing , std::vector<double>& data )
+{
+	size_t ind = 0;
+    unsigned int i=0;
+    std::string entry;
+    while( i < strlen( buffer ) )
+    {
+        if(buffer[i] == ',')
+        {
+            if(entry.empty())
+            {
+				is_missing[ind] = true;
+            }
+            else
+            {
+				data[ind] = std::stod(entry);
+				is_missing[ind] = false;
+            }
+            entry.clear();
+			ind++;
+        }
+        else
+        {
+            entry += buffer[i];
+        }
+        i++;
+    }
+    // Handle the last entry
+    if(entry.empty())
+    {
+		is_missing[ind] = true;
+    }
+    else
+    {
+		data[ind] = std::stod(entry);
+		is_missing[ind] = false;
+    }
+
+	if (is_missing[0] || is_missing[1] || is_missing[2])
+	{
+		std::cerr << "Error: x, y, and z data must be provided for each row in the .csv file specifying BioFVM dirichlet conditions." << std::endl;
+		exit(-1);
+	}
+
+	if (ind < is_missing.size() - 1)
+	{
+		std::cerr << "Error: Wrong number of data supplied in a row of the .csv file specifying BioFVM dirichlet conditions." << std::endl;
+		std::cerr << "\tExpected: " << is_missing.size() << ". Found: " << ind + 1 << std::endl;
+		std::cerr << "\tRow: " << buffer << std::endl;
+		exit(-1);
+	}
+    return; 
+}
+
+
 char* vector_to_csv( const std::vector<double>& vect )
 { 
 	static int datum_size = 16;  // format = %.7e, 1 (sign) + 1 (lead) + 1 (decimal) + 7 (figs) + 2 (e, sign) + 3 (exponent) + 1 (delimiter) = 16
