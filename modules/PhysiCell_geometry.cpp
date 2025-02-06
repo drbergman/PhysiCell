@@ -297,7 +297,7 @@ void load_cells_csv_v1( std::string filename )
 	std::ifstream file( filename, std::ios::in );
 	if( !file )
 	{ 
-		std::cout << "Error: " << filename << " not found during cell loading. Quitting." << std::endl; 
+		std::cerr << "Error: " << filename << " not found during cell loading. Quitting." << std::endl; 
 		exit(-1);
 	}
 	else
@@ -313,7 +313,7 @@ void load_cells_csv_v1( std::string filename )
 
 		if( data.size() != 4 )
 		{
-			std::cout << "Error! Importing cells from a CSV file expects each row to be x,y,z,typeID." << std::endl;
+			std::cerr << "Error! Importing cells from a CSV file expects each row to be x,y,z,typeID." << std::endl;
 			exit(-1);
 		}
 
@@ -378,28 +378,26 @@ bool load_cells_from_file(std::string path_to_file, std::string filetype)
 		std::cout << "Loading cells from CSV file " << path_to_file << " ... " << std::endl;
 		load_cells_csv(path_to_file);
 		system("sleep 1");
-		return true;
 	}
-	if (filetype == "matlab" || filetype == "mat" || filetype == "MAT")
+	else if (filetype == "matlab" || filetype == "mat" || filetype == "MAT")
 	{
-		std::cout << "Error: Load cell positions from matlab not yet supported. Try CSV." << std::endl;
+		std::cerr << "Error: Load cell positions from matlab not yet supported. Try CSV." << std::endl;
 		exit(-1);
-		std::cout << "Loading cells from matlab file " << path_to_file << " ... " << std::endl;
-		return false;
 	}
-	if (filetype == "scene")
+	else if (filetype == "scene")
 	{
-		std::cout << "Error: load cell positions from scene not yet supported. Try CSV." << std::endl;
+		std::cerr << "Error: load cell positions from scene not yet supported. Try CSV." << std::endl;
 		exit(-1);
-		std::cout << "Loading cells from scene file " << path_to_file << " ... " << std::endl;
-		return false;
 	}
-	if (filetype == "physicell" || filetype == "PhysiCell")
+	else if (filetype == "physicell" || filetype == "PhysiCell")
 	{
-		std::cout << "Error: load cell positions from PhysiCell snapshot not yet supported. Try CSV." << std::endl;
+		std::cerr << "Error: load cell positions from PhysiCell snapshot not yet supported. Try CSV." << std::endl;
 		exit(-1);
-		std::cout << "Loading cells from PhysiCell file " << path_to_file << " ... " << std::endl;
-		return false;
+	}
+	else
+	{
+		std::cerr << "Error: Unknown cell position filetype " << filetype << " in XML. Try CSV." << std::endl; 
+		exit(-1);
 	}
 
 	copy_file_to_output(path_to_file);
@@ -469,7 +467,7 @@ void set_distributed_parameter(pugi::xml_node node_dist, Cell_Definition *pCD)
 	std::string behavior = xml_get_string_value(node_dist, "behavior");
 	if (!is_in(type, supported_distributions))
 	{
-		std::cout << "ERROR: Only supporting these distributions:" << std::endl
+		std::cerr << "ERROR: Only supporting these distributions:" << std::endl
 				  << "\t\t" << supported_distributions << std::endl
 				  << "\tBut" << behavior << " for " << pCD->name << " using " << type << "." << std::endl;
 		exit(-1);
@@ -477,7 +475,7 @@ void set_distributed_parameter(pugi::xml_node node_dist, Cell_Definition *pCD)
 
 	if (!strcmpi(behavior,"volume") && find_behavior_index(behavior) == -1)
 	{
-		std::cout << "ERROR: Initial parameter distributions can only be set for volume and cell behaviors." << std::endl
+		std::cerr << "ERROR: Initial parameter distributions can only be set for volume and cell behaviors." << std::endl
 				  << "\t" << behavior << " is not among these." << std::endl;
 		exit(-1);
 	}
@@ -514,7 +512,7 @@ void set_distributed_parameter(Cell_Definition *pCD, std::string behavior, std::
 		double max = xml_get_double_value(node_dist, "max");
 		if (check_base && (base_value < min || base_value > max))
 		{
-			std::cout << "ERROR: The base value for " << behavior << " in " << pCD->name << " is " << base_value << std::endl
+			std::cerr << "ERROR: The base value for " << behavior << " in " << pCD->name << " is " << base_value << std::endl
 					  << "\tThis value is outside the range of the uniform distribution." << std::endl
 					  << "\tmin = " << min << ", max = " << max << "." << std::endl
 					  << "\tIf you want to allow the base value to be outside the range, set check_base to false." << std::endl;
@@ -523,7 +521,7 @@ void set_distributed_parameter(Cell_Definition *pCD, std::string behavior, std::
 		double dv = max - min;
 		if (dv < 0)
 		{
-			std::cout << "ERROR: The min and max values for " << behavior << " in " << pCD->name << " do not satisfy min <= max." << std::endl
+			std::cerr << "ERROR: The min and max values for " << behavior << " in " << pCD->name << " do not satisfy min <= max." << std::endl
 					  << "\tmin = " << min << ", max = " << max << std::endl;
 			exit(-1);
 		}
@@ -542,7 +540,7 @@ void set_distributed_parameter(Cell_Definition *pCD, std::string behavior, std::
 		double min = xml_get_double_value(node_dist, "min");
 		if (min <= 0)
 		{
-			std::cout << "ERROR: The log uniform distirbution must be defined on a positive interval." << std::endl
+			std::cerr << "ERROR: The log uniform distirbution must be defined on a positive interval." << std::endl
 					  << "\tThe min value for " << behavior << " in " << pCD->name << " is " << min << std::endl
 					  << "\tSet the min and max as the bounds on the value you want, not the bounds on the exponent." << std::endl
 					  << "\tFor example, if you want a value between 0.1 and 10, set min=0.1 and max=10, not min=-1 and max=1." << std::endl;
@@ -551,7 +549,7 @@ void set_distributed_parameter(Cell_Definition *pCD, std::string behavior, std::
 		double max = xml_get_double_value(node_dist, "max");
 		if (check_base && (base_value < min || base_value > max))
 		{
-			std::cout << "ERROR: The base value for " << behavior << " in " << pCD->name << " is " << base_value << std::endl
+			std::cerr << "ERROR: The base value for " << behavior << " in " << pCD->name << " is " << base_value << std::endl
 					  << "\tThis value is outside the range of the loguniform distribution." << std::endl
 					  << "\tmin = " << min << ", max = " << max << "." << std::endl
 					  << "\tIf you want to allow the base value to be outside the range, set check_base to false." << std::endl;
@@ -562,7 +560,7 @@ void set_distributed_parameter(Cell_Definition *pCD, std::string behavior, std::
 		double dv = max - min;
 		if (dv < 0)
 		{
-			std::cout << "ERROR: The min and max values for " << behavior << " in " << pCD->name << " do not satisfy min <= max." << std::endl
+			std::cerr << "ERROR: The min and max values for " << behavior << " in " << pCD->name << " do not satisfy min <= max." << std::endl
 					  << "\tmin = " << min << ", max = " << max << std::endl;
 			exit(-1);
 		}
@@ -588,13 +586,13 @@ void set_distributed_parameter(Cell_Definition *pCD, std::string behavior, std::
 		{ ub = xml_get_double_value(node_dist, "upper_bound"); }
 		if (lb > ub)
 		{
-			std::cout << "ERROR: The lower and upper bounds for " << behavior << " in " << pCD->name << " do not satisfy lb <= ub." << std::endl
+			std::cerr << "ERROR: The lower and upper bounds for " << behavior << " in " << pCD->name << " do not satisfy lb <= ub." << std::endl
 					  << "\tlb = " << lb << ", ub = " << ub << std::endl;
 			exit(-1);
 		}
 		if (check_base && (base_value < lb || base_value > ub))
 		{
-			std::cout << "ERROR: The base value for " << behavior << " in " << pCD->name << " is " << base_value << std::endl
+			std::cerr << "ERROR: The base value for " << behavior << " in " << pCD->name << " is " << base_value << std::endl
 					  << "\tThis value is outside the range of the truncated normal distribution." << std::endl
 					  << "\tExpecting values between " << lb << " and " << ub << "." << std::endl
 					  << "\tIf you want to allow the base value to be outside the range, set check_base to false." << std::endl;
@@ -664,7 +662,7 @@ void get_log_normal_bounds(pugi::xml_node node_dist, std::string behavior, Cell_
 		lb = xml_get_double_value(node_dist, "lower_bound");
 		if (lb < 0)
 		{
-			std::cout << "ERROR: The lower bound for a lognormal/log10normal distribution only matters if it is non-negative." << std::endl
+			std::cerr << "ERROR: The lower bound for a lognormal/log10normal distribution only matters if it is non-negative." << std::endl
 					  << "\tThe lower bound for " << behavior << " in " << pCD->name << " is " << lb << "." << std::endl
 					  << "\tThe lower bound is for the actual assigned value while the mean and standard deviation are for the log/log10 of the value." << std::endl
 					  << "\tSince this seems to imply (understandable!) confusion about the lognormal/log10normal distribution, I'm going to exit." << std::endl;
@@ -677,13 +675,13 @@ void get_log_normal_bounds(pugi::xml_node node_dist, std::string behavior, Cell_
 	}
 	if (lb > ub)
 	{
-		std::cout << "ERROR: The lower and upper bounds for " << behavior << " in " << pCD->name << " do not satisfy lb <= ub." << std::endl
+		std::cerr << "ERROR: The lower and upper bounds for " << behavior << " in " << pCD->name << " do not satisfy lb <= ub." << std::endl
 				  << "\tlb = " << lb << ", ub = " << ub << std::endl;
 		exit(-1);
 	}
 	if (check_base && (base_value < lb || base_value > ub))
 	{
-		std::cout << "ERROR: The base value for " << behavior << " in " << pCD->name << " is " << base_value << std::endl
+		std::cerr << "ERROR: The base value for " << behavior << " in " << pCD->name << " is " << base_value << std::endl
 				  << "\tThis value is outside the range of the lognormal/log10normal distribution." << std::endl
 				  << "\tExpecting values between " << lb << " and " << ub << "." << std::endl
 				  << "\tIf you want to allow the base value to be outside the range, set check_base to false." << std::endl;
@@ -849,7 +847,7 @@ void load_cells_csv_v2( std::string filename )
 	std::ifstream file( filename, std::ios::in );
 	if( !file )
 	{ 
-		std::cout << "Error: " << filename << " not found during cell loading. Quitting." << std::endl; 
+		std::cerr << "Error: " << filename << " not found during cell loading. Quitting." << std::endl; 
 		exit(-1);
 	}
 	else
@@ -885,7 +883,7 @@ void load_cells_csv( std::string filename )
 	std::ifstream file( filename, std::ios::in );
 	if( !file )
 	{ 
-		std::cout << "Error: " << filename << " not found during cell loading. Quitting." << std::endl; 
+		std::cerr << "Error: " << filename << " not found during cell loading. Quitting." << std::endl; 
 		exit(-1);
 	}
 
