@@ -90,7 +90,8 @@
 		<max_time units="min">1440</max_time> <!-- 1 days * 24 h * 60 min -->
 		<time_units>min</time_units>
 		<space_units>micron</space_units>
-	
+
+		<dt_intracellular units="min">0.01</dt_intracellular>
 		<dt_diffusion units="min">0.01</dt_diffusion>
 		<dt_mechanics units="min">0.1</dt_mechanics>
 		<dt_phenotype units="min">6</dt_phenotype>	
@@ -307,7 +308,7 @@
 
 				<intracellular type="roadrunner">
 					<sbml_filename>./config/Toy_Metabolic_Model.xml</sbml_filename>
-                    <intracellular_dt>0.01</intracellular_dt>
+					<intracellular_dt>0.1</intracellular_dt>
                     <map PC_substrate="oxygen" sbml_species="Oxygen"></map >
                     <map PC_substrate="lactate" sbml_species="Lactate"></map >
                     <map PC_substrate="glucose" sbml_species="Glucose"></map >

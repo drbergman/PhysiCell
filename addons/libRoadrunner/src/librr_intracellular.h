@@ -26,34 +26,22 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 {
  private:
  public:
-	
-	// static long counter;
-
     std::string sbml_filename;
-    // bool enabled = false;
-
 
 	int num_rows_result_table = 1;
 	
-	// double time_step = 12;
-	// bool discrete_time = false;
-	// double time_tick = 0.5;
-	// double scaling = 1.0;
-	
-	// std::map<std::string, double> initial_values;
 	std::map<std::string, double> parameters;
 	std::map<std::string, std::string> substrate_species;
 	std::map<std::string, std::string> custom_data_species;
 	std::map<std::string, std::string> phenotype_species;
 	std::map<std::string, int> species_result_column_index;
 	
-    // rrc::RRHandle rrHandle = createRRInstance();
     rrc::RRHandle rrHandle;
-    // rrc::RRHandle rrHandle;
-    // rrc::RRVectorPtr vptr;
 	rrc::RRCDataPtr result = 0;  // start time, end time, and number of points
 
-	double next_librr_run = 0;
+	double update_time_step = 0.01;
+	double previous_update_time = 0.0;
+	double next_librr_run = 0.0;
 
     RoadRunnerIntracellular();
 
@@ -61,12 +49,9 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 	
 	RoadRunnerIntracellular(RoadRunnerIntracellular* copy);
 	
-    // rwh: review this
 	Intracellular* clone()
     {
-		// return static_cast<Intracellular*>(new RoadRunnerIntracellular(this));
 		RoadRunnerIntracellular* clone = new RoadRunnerIntracellular(this);
-		clone->sbml_filename = this->sbml_filename;
 		clone->substrate_species = this->substrate_species;
         clone->phenotype_species = this->phenotype_species;
 		clone->custom_data_species = this->custom_data_species;

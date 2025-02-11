@@ -179,80 +179,66 @@ void setup_tissue( void )
         set_single_behavior( pCell , "custom:intra_lac" , parameters.doubles("initial_internal_lactate")); 
         set_single_behavior( pCell , "custom:intra_energy" , parameters.doubles("initial_energy")); 
 
-/*         pCell->custom_data[i_Oxy_i] = parameters.doubles("initial_internal_oxygen");
-        pCell->custom_data[i_Glu_i] = parameters.doubles("initial_internal_glucose");
-        pCell->custom_data[i_Lac_i] = parameters.doubles("initial_internal_lactate");
-        pCell->custom_data[energy_vi] = parameters.doubles("initial_energy"); */
-        
         double cell_volume = pCell->phenotype.volume.total;
-        
-        //std::cout << "oxygen custom data : " << pCell->custom_data[i_Oxy_i] << std::endl;
-        //std::cout << "oxygen custom data : SIGNAL" << get_single_signal( pCell, "custom:intra_oxy") << std::endl;
-        
-        
-        set_single_behavior( pCell , "custom:intra_oxy" , parameters.doubles("initial_internal_oxygen"));
-        
         
         pCell->phenotype.molecular.internalized_total_substrates[oxygen_substrate_index]= get_single_signal( pCell, "custom:intra_oxy") * cell_volume;
         pCell->phenotype.molecular.internalized_total_substrates[glucose_substrate_index]= get_single_signal( pCell, "custom:intra_glu") * cell_volume;
         pCell->phenotype.molecular.internalized_total_substrates[lactate_substrate_index]= get_single_signal( pCell, "custom:intra_lac") * cell_volume;
-        pCell->phenotype.intracellular->start();
-        (*all_cells)[i]->phenotype.intracellular->set_parameter_value("Energy",get_single_signal( pCell, "custom:intra_energy"));
-       
+        pCell->phenotype.intracellular->set_parameter_value("Energy",get_single_signal( pCell, "custom:intra_energy"));
+
+		pCell->functions.pre_update_intracellular = pre_update_intracellular;
+		pCell->functions.post_update_intracellular = post_update_intracellular;
     }
 
 	return; 
 }
 
-void update_intracellular()
+void pre_update_intracellular( Cell* pCell, Phenotype& phenotype, double dt )
 {
     // BioFVM Indices
     static int oxygen_substrate_index = microenvironment.find_density_index( "oxygen" );
     static int glucose_substrate_index = microenvironment.find_density_index( "glucose" ); 
     static int lactate_substrate_index = microenvironment.find_density_index( "lactate");
 
-    #pragma omp parallel for 
-    for( int i=0; i < (*all_cells).size(); i++ )
-    {
-        if( (*all_cells)[i]->is_out_of_domain == false  )
-        {
-            // Cell Volume
-            double cell_volume = (*all_cells)[i]->phenotype.volume.total;
-            
-            // Get Intracellular Concentrations
-            double oxy_val_int = get_single_signal((*all_cells)[i], "intracellular oxygen"); 
-            double glu_val_int = get_single_signal((*all_cells)[i], "intracellular glucose"); 
-            double lac_val_int = get_single_signal((*all_cells)[i], "intracellular lactate"); 
-            
-            // Update SBML 
-            (*all_cells)[i]->phenotype.intracellular->set_parameter_value("Oxygen",oxy_val_int);
-            (*all_cells)[i]->phenotype.intracellular->set_parameter_value("Glucose",glu_val_int);
-            (*all_cells)[i]->phenotype.intracellular->set_parameter_value("Lactate",lac_val_int);
-                        
-            // SBML Simulation
-            (*all_cells)[i]->phenotype.intracellular->update();
-            
-            // Phenotype Simulation
-            (*all_cells)[i]->phenotype.intracellular->update_phenotype_parameters((*all_cells)[i]->phenotype);
-                        
-            // Internalized Chemical Update After SBML Simulation
-            (*all_cells)[i]->phenotype.molecular.internalized_total_substrates[oxygen_substrate_index] = (*all_cells)[i]->phenotype.intracellular->get_parameter_value("Oxygen") * cell_volume;
-            (*all_cells)[i]->phenotype.molecular.internalized_total_substrates[glucose_substrate_index] = (*all_cells)[i]->phenotype.intracellular->get_parameter_value("Glucose") * cell_volume;
-            (*all_cells)[i]->phenotype.molecular.internalized_total_substrates[lactate_substrate_index] = (*all_cells)[i]->phenotype.intracellular->get_parameter_value("Lactate") * cell_volume;
-            
-
-            //Save custom data
-            set_single_behavior( (*all_cells)[i] , "custom:intra_oxy" , (*all_cells)[i]->phenotype.intracellular->get_parameter_value("Oxygen") ); 
-            set_single_behavior( (*all_cells)[i] , "custom:intra_glu" , (*all_cells)[i]->phenotype.intracellular->get_parameter_value("Glucose") ); 
-            set_single_behavior( (*all_cells)[i] , "custom:intra_lac" , (*all_cells)[i]->phenotype.intracellular->get_parameter_value("Lactate") ); 
-            set_single_behavior( (*all_cells)[i] , "custom:intra_energy" , (*all_cells)[i]->phenotype.intracellular->get_parameter_value("Energy") ); 
-            
-        }
-    }
-    
+	// Cell Volume
+	double cell_volume = pCell->phenotype.volume.total;
+	
+	// Get Intracellular Concentrations
+	double oxy_val_int = get_single_signal(pCell, "intracellular oxygen"); 
+	double glu_val_int = get_single_signal(pCell, "intracellular glucose"); 
+	double lac_val_int = get_single_signal(pCell, "intracellular lactate"); 
+	
+	// Update SBML 
+	pCell->phenotype.intracellular->set_parameter_value("Oxygen",oxy_val_int);
+	pCell->phenotype.intracellular->set_parameter_value("Glucose",glu_val_int);
+	pCell->phenotype.intracellular->set_parameter_value("Lactate",lac_val_int);
 }
 
+void post_update_intracellular( Cell* pCell, Phenotype& phenotype, double dt )
+{
+    // BioFVM Indices
+    static int oxygen_substrate_index = microenvironment.find_density_index( "oxygen" );
+    static int glucose_substrate_index = microenvironment.find_density_index( "glucose" ); 
+    static int lactate_substrate_index = microenvironment.find_density_index( "lactate");
 
+	// Cell Volume
+	double cell_volume = pCell->phenotype.volume.total;
+
+	// Phenotype Simulation
+	pCell->phenotype.intracellular->update_phenotype_parameters(pCell->phenotype);
+				
+	// Internalized Chemical Update After SBML Simulation
+	pCell->phenotype.molecular.internalized_total_substrates[oxygen_substrate_index] = pCell->phenotype.intracellular->get_parameter_value("Oxygen") * cell_volume;
+	pCell->phenotype.molecular.internalized_total_substrates[glucose_substrate_index] = pCell->phenotype.intracellular->get_parameter_value("Glucose") * cell_volume;
+	pCell->phenotype.molecular.internalized_total_substrates[lactate_substrate_index] = pCell->phenotype.intracellular->get_parameter_value("Lactate") * cell_volume;
+	
+
+	//Save custom data
+	set_single_behavior( pCell , "custom:intra_oxy" , pCell->phenotype.intracellular->get_parameter_value("Oxygen") ); 
+	set_single_behavior( pCell , "custom:intra_glu" , pCell->phenotype.intracellular->get_parameter_value("Glucose") ); 
+	set_single_behavior( pCell , "custom:intra_lac" , pCell->phenotype.intracellular->get_parameter_value("Lactate") ); 
+	set_single_behavior( pCell , "custom:intra_energy" , pCell->phenotype.intracellular->get_parameter_value("Energy") ); 
+}
 
 std::vector<std::string> my_coloring_function( Cell* pCell )
 {
