@@ -188,6 +188,11 @@ void setup_tissue( void )
 
 		pCell->functions.pre_update_intracellular = pre_update_intracellular;
 		pCell->functions.post_update_intracellular = post_update_intracellular;
+
+		int n_terms = 1;
+		int n_delay = static_cast<int> (parameters.doubles("delay_time")/(dynamic_cast<RoadRunnerIntracellular*>(pCell->phenotype.intracellular)->update_time_step));
+
+		pCell->phenotype.intracellular->initialize_delay_terms(n_terms, n_delay);
     }
 
 	return; 

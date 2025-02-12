@@ -27,6 +27,7 @@ RoadRunnerIntracellular::RoadRunnerIntracellular(RoadRunnerIntracellular* copy)
 	intracellular_type = copy->intracellular_type;
 	sbml_filename = copy->sbml_filename;
 	parameters = copy->parameters;
+    delay_terms = copy->delay_terms;
 }
 
 void RoadRunnerIntracellular::initialize_intracellular_from_pugixml(pugi::xml_node& node)

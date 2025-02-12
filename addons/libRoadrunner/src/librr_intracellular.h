@@ -29,6 +29,8 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
     std::string sbml_filename;
 
 	int num_rows_result_table = 1;
+
+	std::vector<std::vector<double>> delay_terms;
 	
 	std::map<std::string, double> parameters;
 	std::map<std::string, std::string> substrate_species;
@@ -79,6 +81,13 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 	}
     
 	void inherit(PhysiCell::Cell * cell) {}
+
+	void initialize_delay_terms(int n_terms, int n_delay) {
+		delay_terms.resize(n_terms);
+		for (int i = 0; i < n_terms; i++) {
+			delay_terms[i].resize(n_delay);
+		}
+	}
 	
     int update_phenotype_parameters(PhysiCell::Phenotype& phenotype);
     int validate_PhysiCell_tokens(PhysiCell::Phenotype& phenotype);
