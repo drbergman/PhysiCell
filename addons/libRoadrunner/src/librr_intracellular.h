@@ -36,6 +36,7 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 	std::map<std::string, std::string> substrate_species;
 	std::map<std::string, std::string> custom_data_species;
 	std::map<std::string, std::string> phenotype_species;
+	std::map<std::string, std::string> other_species;
 	std::map<std::string, int> species_result_column_index;
 	
     rrc::RRHandle rrHandle;
@@ -65,10 +66,15 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
         std::cout << "------ librr_intracellular: getIntracellularModel called\n";
 		return static_cast<Intracellular*>(this);
 	}
-	
-	void initialize_intracellular_from_pugixml(pugi::xml_node& node);
-	
-    // Need 'int' return type to avoid bizarre compile errors? But 'void' to match MaBoSS.
+
+	void initialize_intracellular_from_pugixml(pugi::xml_node &node);
+	void initialize_substrate_species_maps(pugi::xml_node &node);
+	void initialize_custom_data_species_maps(pugi::xml_node &node);
+	void initialize_phenotype_species_maps(pugi::xml_node &node);
+	void initialize_other_species_maps(pugi::xml_node &node);
+	void initialize_species_maps(pugi::xml_node &node, std::map<std::string, std::string> &data_map, std::string attribute);
+
+	// Need 'int' return type to avoid bizarre compile errors? But 'void' to match MaBoSS.
 	void start();
 
 	bool need_update();

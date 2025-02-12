@@ -47,40 +47,12 @@ void RoadRunnerIntracellular::initialize_intracellular_from_pugixml(pugi::xml_no
         update_time_step = PhysiCell::xml_get_my_double_value (node_update_time_step); 
         std::cout << "\n------------- "  << __FUNCTION__ << ": intracellular_dt = " << update_time_step << std::endl;
     }
-	
-	pugi::xml_node node_species = node.child( "map" );
-	while( node_species )
-	{
-        // ---------  substrate
-        
-		std::string substrate_name = node_species.attribute( "PC_substrate" ).value(); 
-		if( substrate_name != "" )
-		{
-			std::string species_name = node_species.attribute( "sbml_species" ).value();
-			substrate_species[substrate_name] = species_name;
-            std::cout << "\n------------- "  << __FUNCTION__ << ": species_name= " << species_name << std::endl;
-		}
-        // ---------  custom_data
-		std::string custom_data_name = node_species.attribute( "PC_custom_data" ).value(); 
-		if( custom_data_name != "" )
-		{
-			std::string species_name = node_species.attribute( "sbml_species" ).value();
-			custom_data_species[custom_data_name] = species_name;
-		}
-        
-        
-        // ---------  phenotype_data
-        std::string phenotype_name = node_species.attribute( "PC_phenotype" ).value(); 
-        
-		if( phenotype_name != "" )
-		{
-			std::string species_name = node_species.attribute( "sbml_species" ).value();
-			phenotype_species[phenotype_name] = species_name;
-		}
 
-		node_species = node_species.next_sibling( "map" ); 
-	}
-	
+    initialize_substrate_species_maps(node);
+    initialize_custom_data_species_maps(node);
+    initialize_phenotype_species_maps(node);
+	initialize_other_species_maps(node);
+
     std::cout << "  ------- substrate_species map:"  << std::endl;
     for(auto elm : substrate_species)
     {
@@ -99,8 +71,53 @@ void RoadRunnerIntracellular::initialize_intracellular_from_pugixml(pugi::xml_no
         std::cout << "      "  << elm.first << " -> " << elm.second << std::endl;
     }
     std::cout << std::endl;
+    std::cout << "  ------- other_species map:"  << std::endl;
+    for(auto elm : other_species)
+    {
+        std::cout << "      "  << elm.first << " -> " << elm.second << std::endl;
+    }
+    std::cout << std::endl;
 
 }
+
+void RoadRunnerIntracellular::initialize_substrate_species_maps(pugi::xml_node& node)
+{
+    initialize_species_maps(node, substrate_species, "PC_substrate");
+}
+
+void RoadRunnerIntracellular::initialize_custom_data_species_maps(pugi::xml_node& node)
+{
+    initialize_species_maps(node, custom_data_species, "PC_custom_data");
+}
+
+void RoadRunnerIntracellular::initialize_phenotype_species_maps(pugi::xml_node& node)
+{
+    initialize_species_maps(node, phenotype_species, "PC_phenotype");
+}
+
+void RoadRunnerIntracellular::initialize_other_species_maps(pugi::xml_node& node)
+{
+    initialize_species_maps(node, other_species, "PC_other");
+}
+
+void RoadRunnerIntracellular::initialize_species_maps(pugi::xml_node& node, std::map<std::string, std::string>& data_map, std::string attribute)
+{
+    pugi::xml_node node_map = node.child( "map" );
+    while ( node_map )
+    {
+        std::string pc_name = node_map.attribute( attribute.c_str() ).value(); 
+        if ( pc_name == "" )
+        {
+            node_map = node_map.next_sibling("map");
+            continue;
+        }
+        std::string species_name = node_map.attribute( "sbml_species" ).value();
+        data_map[pc_name] = species_name;
+        std::cout << "\n------------- "  << __FUNCTION__ << ": species_name= " << species_name << std::endl;
+        node_map = node_map.next_sibling("map");
+    }
+}
+
 
 
 void RoadRunnerIntracellular::start()
