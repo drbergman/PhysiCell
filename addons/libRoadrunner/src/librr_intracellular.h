@@ -18,9 +18,44 @@
 // #include "rrc_types.h"
 #include "../roadrunner/include/rr/C/rrc_api.h"
 #include "../roadrunner/include/rr/C/rrc_types.h"
+#include <functional>
+#include <algorithm>
+
 // #include "rrc_utilities.h"
 extern "C" rrc::RRHandle createRRInstance();
 // #endif
+
+typedef std::function<void(PhysiCell::Cell* pCell)> MappingFunction;
+
+class RoadRunnerMapping
+{
+public:
+	std::string physicell_name;
+	std::string sbml_species;
+	std::string io_type;
+	std::string physicell_dictionary_name;
+	int index;
+	MappingFunction value_map = [] (PhysiCell::Cell *pCell) {}; // default to a function that does nothing
+	bool mapping_initialized = false;
+
+	RoadRunnerMapping() {};
+	RoadRunnerMapping(std::string physicell_name, std::string sbml_species, std::string io_type)
+		: physicell_name(physicell_name), sbml_species(sbml_species), io_type(io_type) {};
+
+	void initialize_mapping(void);
+};
+
+MappingFunction select_signal_setter(const std::string& name, const std::string& sbml_species);
+
+bool is_physicell_phenotype_token(const std::string& name);
+MappingFunction select_phenotype_by_token_inputter(const std::string& name, const std::string& sbml_species);
+MappingFunction select_phenotype_by_token_outputter(const std::string& name, const std::string& sbml_species);
+
+void validate_mappings(std::vector<RoadRunnerMapping*> mappings);
+
+std::vector<int> parse_ctr_token(const std::string &name);
+void throw_invalid_ctr_token(const std::string& name);
+void validate_cycle_mappings(std::vector<RoadRunnerMapping*> mappings, int num_of_phases);
 
 class RoadRunnerIntracellular : public PhysiCell::Intracellular 
 {
@@ -30,13 +65,11 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 
 	int num_rows_result_table = 1;
 
-	std::vector<std::vector<double>> delay_terms;
-	
 	std::map<std::string, double> parameters;
-	std::map<std::string, std::string> substrate_species;
-	std::map<std::string, std::string> custom_data_species;
-	std::map<std::string, std::string> phenotype_species;
-	std::map<std::string, std::string> other_species;
+	bool mappings_initialized = false;
+	void initialize_mappings();
+	std::vector<RoadRunnerMapping *> input_mappings;
+	std::vector<RoadRunnerMapping *> output_mappings;
 	std::map<std::string, int> species_result_column_index;
 	
     rrc::RRHandle rrHandle;
@@ -55,9 +88,6 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 	Intracellular* clone()
     {
 		RoadRunnerIntracellular* clone = new RoadRunnerIntracellular(this);
-		clone->substrate_species = this->substrate_species;
-        clone->phenotype_species = this->phenotype_species;
-		clone->custom_data_species = this->custom_data_species;
 		return static_cast<Intracellular*>(clone);
 	}
 
@@ -68,11 +98,6 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 	}
 
 	void initialize_intracellular_from_pugixml(pugi::xml_node &node);
-	void initialize_substrate_species_maps(pugi::xml_node &node);
-	void initialize_custom_data_species_maps(pugi::xml_node &node);
-	void initialize_phenotype_species_maps(pugi::xml_node &node);
-	void initialize_other_species_maps(pugi::xml_node &node);
-	void initialize_species_maps(pugi::xml_node &node, std::map<std::string, std::string> &data_map, std::string attribute);
 
 	// Need 'int' return type to avoid bizarre compile errors? But 'void' to match MaBoSS.
 	void start();
@@ -80,24 +105,23 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 	bool need_update();
 
     // Need 'int' return type to avoid bizarre compile errors.
-	void update();
-	void update(PhysiCell::Cell* cell, PhysiCell::Phenotype& phenotype, double dt) {
-		update();
-		update_phenotype_parameters(phenotype);
-	}
+	void update() {};
+	void update(PhysiCell::Cell* cell, PhysiCell::Phenotype& phenotype, double dt);
+
+	void pre_update(PhysiCell::Cell* cell);
+	void post_update(PhysiCell::Cell* cell);
     
 	void inherit(PhysiCell::Cell * cell) {}
 
-	void initialize_delay_terms(int n_terms, int n_delay) {
-		delay_terms.resize(n_terms);
-		for (int i = 0; i < n_terms; i++) {
-			delay_terms[i].resize(n_delay);
-		}
-	}
-	
-    int update_phenotype_parameters(PhysiCell::Phenotype& phenotype);
+	RoadRunnerMapping *find_input_mapping(std::string physicell_name, std::string sbml_species);
+	RoadRunnerMapping *find_input_mapping(std::string sbml_species); // sbml_species is unique for inputs (above is for convenience)
+	RoadRunnerMapping *find_output_mapping(std::string physicell_name, std::string sbml_species);
+	RoadRunnerMapping *find_output_mapping(std::string sbml_species); // sbml_species is unique for outputs (above is for convenience)
+
+	int update_phenotype_parameters(PhysiCell::Phenotype& phenotype) {return 0;}; // all handled within update
     int validate_PhysiCell_tokens(PhysiCell::Phenotype& phenotype);
     int validate_SBML_species();
+	void validate_SBML_species(std::vector<std::string> all_species, std::vector<RoadRunnerMapping*> mappings);
     int create_custom_data_for_SBML(PhysiCell::Phenotype& phenotype);
 	
 	double get_parameter_value(std::string name);
@@ -113,5 +137,7 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 
 	static void save_libRR(std::string path, std::string index);
 };
+
+RoadRunnerIntracellular* getRoadRunnerModel(PhysiCell::Phenotype& phenotype);
 
 #endif
