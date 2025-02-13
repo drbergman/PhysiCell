@@ -69,12 +69,6 @@
 #include "../BioFVM/BioFVM.h"  
 using namespace BioFVM;
 
-
-#include "rrc_api.h"
-#include "rrc_types.h"
-// #include "rrc_utilities.h"
-extern "C" rrc::RRHandle createRRInstance();
-
 void create_cell_types( void )
 {
 	// set the random seed 
@@ -133,7 +127,6 @@ void setup_microenvironment( void )
 
 void setup_tissue( void )
 {
-
     static int oxygen_substrate_index = microenvironment.find_density_index( "oxygen" );
     static int glucose_substrate_index = microenvironment.find_density_index( "glucose" ); 
     static int lactate_substrate_index = microenvironment.find_density_index( "lactate");
@@ -197,8 +190,6 @@ std::vector<std::string> my_coloring_function( Cell* pCell )
 	
 	return output; 
 }
-
-
 
 std::vector<std::vector<double>> create_cell_circle_positions(double cell_radius, double sphere_radius)
 {

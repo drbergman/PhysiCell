@@ -72,28 +72,24 @@ void RoadRunnerMapping::initialize_mapping( void )
 // PhysiCell does not have an API for setting signals, but libRoadRunner does in limited cases
 MappingFunction select_signal_setter(const std::string& name, const std::string& sbml_species)
 {
-    // if a substrate name, set the extracellular concentration
-    int density_index = microenvironment.find_density_index(name);
-    if (density_index != -1)
-    {
-        return [density_index, sbml_species](PhysiCell::Cell *pCell)
-        { microenvironment.density_vector(pCell->get_current_voxel_index())[density_index] = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
-    }
-
     // if "intracellular <substrate>" or "internalized <substrate>", set the internalized substrate amount
-    else if (name.find("intracellular") == 0 || name.find("internalized") == 0)
+    if (name.find("intracellular") == 0 || name.find("internalized") == 0)
     {
         size_t space_ind = name.find(" ");
         if (space_ind != std::string::npos)
         {
             std::string substrate_name = name.substr(space_ind + 1, std::string::npos);
-            density_index = microenvironment.find_density_index(substrate_name);
+            int density_index = microenvironment.find_density_index(substrate_name);
             if (density_index != -1)
             {
                 return [density_index, sbml_species](PhysiCell::Cell *pCell)
                 { pCell->phenotype.molecular.internalized_total_substrates[density_index] = pCell->phenotype.intracellular->get_parameter_value(sbml_species) * pCell->phenotype.volume.total; };
             }
         }
+        std::cerr << "ERROR: \"" << name << "\" is not a valid signal that can be set using libRoadRunner." << std::endl
+                  << "    Somehow, this signal was recognized by the signals dictionary but now it seems malformed." << std::endl
+                  << "    I honestly don't know what to say...or how to help you :/" << std::endl;
+        exit(-1);
     }
 
     // if "volume", set the cell volume
@@ -120,8 +116,17 @@ MappingFunction select_signal_setter(const std::string& name, const std::string&
                   << "    How did you even end up here?" << std::endl;
         exit(-1);
     }
-
-    return nullptr;
+    else
+    {
+        std::cerr << "ERROR: \"" << name << "\" is not a signal that can be set using libRoadRunner." << std::endl
+                  << "    The available signals are: " << std::endl
+                  << "        - intracellular <substrate_name>" << std::endl
+                  << "        - internalized <substrate_name>" << std::endl
+                  << "        - volume" << std::endl
+                  << "        - damage" << std::endl
+                  << "        - custom:<custom_data_name>" << std::endl;
+        exit(-1);
+    }
 }
 
 bool is_physicell_phenotype_token(const std::string& name)
