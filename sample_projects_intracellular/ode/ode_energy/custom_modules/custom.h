@@ -82,8 +82,6 @@ void setup_microenvironment( void );
 // custom pathology coloring function 
 
 std::vector<std::string> my_coloring_function( Cell* );
-void pre_update_intracellular( Cell* pCell, Phenotype& phenotype, double dt );
-void post_update_intracellular( Cell* pCell, Phenotype& phenotype, double dt );
 
 // custom functions can go here 
 std::vector<std::vector<double>> create_cell_circle_positions(double cell_radius, double sphere_radius);

@@ -113,10 +113,14 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
     
 	void inherit(PhysiCell::Cell * cell) {}
 
-	RoadRunnerMapping *find_input_mapping(std::string physicell_name, std::string sbml_species);
-	RoadRunnerMapping *find_input_mapping(std::string sbml_species); // sbml_species is unique for inputs (above is for convenience)
-	RoadRunnerMapping *find_output_mapping(std::string physicell_name, std::string sbml_species);
-	RoadRunnerMapping *find_output_mapping(std::string sbml_species); // sbml_species is unique for outputs (above is for convenience)
+	// These find_<IO>_mapping functions are not currently used, but since I made them, we'll keep them around.
+	RoadRunnerMapping *find_input_mapping(std::string sbml_species); // sbml_species is unique for inputs (below is for convenience)
+	RoadRunnerMapping *find_input_mapping(std::string physicell_name, std::string sbml_species)
+	{ return find_input_mapping(sbml_species); } // sbml_species is unique for inputs (above is for convenience)}
+
+	RoadRunnerMapping *find_output_mapping(std::string sbml_species); // sbml_species is unique for outputs (below is for convenience)
+	RoadRunnerMapping *find_output_mapping(std::string physicell_name, std::string sbml_species)
+	{ return find_output_mapping(physicell_name); } // sbml_species is unique for outputs (above is for convenience)}
 
 	int update_phenotype_parameters(PhysiCell::Phenotype& phenotype) {return 0;}; // all handled within update
     int validate_PhysiCell_tokens(PhysiCell::Phenotype& phenotype);

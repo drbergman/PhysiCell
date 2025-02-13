@@ -128,26 +128,44 @@ bool is_physicell_phenotype_token(const std::string& name)
 {
     if (name[0] == 'm')
     {
+        std::cout << "WARNING: The token \"" << name << "\" can be replaced with the relevant behavior name. The mapping is as follows:" << std::endl
+                  << "    - mms -> migration speed" << std::endl
+                  << "    - mpt -> persistence time" << std::endl
+                  << "    - mmb -> migration bias" << std::endl << std::endl
+                  << "Doing so will allow the libRoadRunner addon to validate that there are not competing mappings." << std::endl;
         return name == "mms" || name == "mpt" || name == "mmb";
     }
     else if (name[0] == 'd')
     {
+        std::cout << "WARNING: The token \"" << name << "\" can be replaced with the relevant death model name. The mapping is as follows:" << std::endl
+                  << "    - da -> apoptosis" << std::endl
+                  << "    - dn -> necrosis" << std::endl << std::endl
+                  << "Doing so will allow the libRoadRunner addon to validate that there are not competing mappings." << std::endl;
         return name == "da" || name == "dn";
     }
     else if (name[0] == 's')
     {
+        std::cout << "WARNING: The token \"" << name << "\" can be replaced with the relevant substrate name. The mapping is as follows:" << std::endl
+                  << "    - sur -> <substrate_name> uptake" << std::endl
+                  << "    - ssr -> <substrate_name> secretion" << std::endl
+                  << "    - ssd -> <substrate_name> secretion target" << std::endl
+                  << "    - ser -> <substrate_name> export" << std::endl
+                  << "Doing so will allow the libRoadRunner addon to validate that there are not competing mappings." << std::endl;
         if (name.substr(0, 3) != "sur" && name.substr(0, 3) != "ssr" && name.substr(0, 3) != "ssd" && name.substr(0, 3) != "ser")
         {
             return false;
         }
-        if (name[4] != '_')
+        if (name[3] != '_')
         {
             return false;
         }
-        return microenvironment.find_density_index(name.substr(5, std::string::npos)) != -1;
+        return microenvironment.find_density_index(name.substr(4, std::string::npos)) != -1;
     }
     else if (name[0] == 'c')
     {
+        std::cout << "WARNING: The token \"" << name << "\" can be replaced with the relevant cycle transition rate name. The mapping is as follows:" << std::endl
+                  << "    - ctr_<start_index>_<end_index> -> exit from cycle phase <start_index>" << std::endl
+                  << "Doing so will allow the libRoadRunner addon to validate that there are not competing mappings." << std::endl;
         std::vector<int> indices = parse_ctr_token(name);
         return indices[0] >= 0 && indices[1] >= 0;
     }
@@ -660,9 +678,6 @@ void RoadRunnerIntracellular::post_update(PhysiCell::Cell* pCell)
     }
 }
 
-RoadRunnerMapping* RoadRunnerIntracellular::find_input_mapping(std::string physicell_name, std::string sbml_species)
-{ return find_input_mapping(sbml_species); }
-
 RoadRunnerMapping* RoadRunnerIntracellular::find_input_mapping(std::string sbml_species)
 {
     for (auto mapping : input_mappings)
@@ -674,9 +689,6 @@ RoadRunnerMapping* RoadRunnerIntracellular::find_input_mapping(std::string sbml_
     }
     return nullptr;
 }
-
-RoadRunnerMapping* RoadRunnerIntracellular::find_output_mapping(std::string physicell_name, std::string sbml_species)
-{ return find_output_mapping(physicell_name); }
 
 RoadRunnerMapping* RoadRunnerIntracellular::find_output_mapping(std::string physicell_name)
 {
