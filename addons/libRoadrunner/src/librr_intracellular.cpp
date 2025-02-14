@@ -15,13 +15,37 @@ void RoadRunnerMapping::initialize_mapping( void )
         index = behavior_ind;
         if (use_for_input)
         {
-            value_map = [this](PhysiCell::Cell *pCell)
-            { pCell->phenotype.intracellular->set_parameter_value(this->sbml_species, PhysiCell::get_single_behavior(pCell, this->index)); };
+            if (is_delayed)
+            {
+                value_map = [this](PhysiCell::Cell *pCell)
+                {
+                    double value = PhysiCell::get_single_behavior(pCell, this->index);
+                    double next_value = getRoadRunnerModel(pCell)->update_input_delay_terms(value, this->sbml_species);
+                    pCell->phenotype.intracellular->set_parameter_value(this->sbml_species, next_value);
+                };
+            }
+            else
+            {
+                value_map = [this](PhysiCell::Cell *pCell)
+                { pCell->phenotype.intracellular->set_parameter_value(this->sbml_species, PhysiCell::get_single_behavior(pCell, this->index)); };
+            }
         }
         else
         {
-            value_map = [this](PhysiCell::Cell *pCell)
-            { PhysiCell::set_single_behavior(pCell, this->index, pCell->phenotype.intracellular->get_parameter_value(this->sbml_species)); };
+            if (is_delayed)
+            {
+                value_map = [this](PhysiCell::Cell *pCell)
+                {
+                    double value = pCell->phenotype.intracellular->get_parameter_value(this->sbml_species);
+                    double next_value = getRoadRunnerModel(pCell)->update_output_delay_terms(value, this->physicell_name);
+                    PhysiCell::set_single_behavior(pCell, this->index, next_value);
+                };
+            }
+            else
+            {
+                value_map = [this](PhysiCell::Cell *pCell)
+                { PhysiCell::set_single_behavior(pCell, this->index, pCell->phenotype.intracellular->get_parameter_value(this->sbml_species)); };
+            }
         }
     }
     else if (signal_ind != -1)
@@ -30,12 +54,24 @@ void RoadRunnerMapping::initialize_mapping( void )
         index = signal_ind;
         if (use_for_input)
         {
-            value_map = [this](PhysiCell::Cell *pCell)
-            { pCell->phenotype.intracellular->set_parameter_value(this->sbml_species, PhysiCell::get_single_signal(pCell, this->index)); };
+            if (is_delayed)
+            {
+                value_map = [this](PhysiCell::Cell *pCell)
+                {
+                    double value = PhysiCell::get_single_signal(pCell, this->index);
+                    double next_value = getRoadRunnerModel(pCell)->update_input_delay_terms(value, this->sbml_species);
+                    pCell->phenotype.intracellular->set_parameter_value(this->sbml_species, next_value);
+                };
+            }
+            else
+            {
+                value_map = [this](PhysiCell::Cell *pCell)
+                { pCell->phenotype.intracellular->set_parameter_value(this->sbml_species, PhysiCell::get_single_signal(pCell, this->index)); };
+            }
         }
         else
         {
-            value_map = select_signal_setter(physicell_name, sbml_species);
+            value_map = select_signal_setter(physicell_name, sbml_species, is_delayed);
         }
     }
     else if (is_physicell_phenotype_token(physicell_name))
@@ -43,11 +79,11 @@ void RoadRunnerMapping::initialize_mapping( void )
         physicell_dictionary_name = "tokens";
         if (use_for_input)
         {
-            value_map = select_phenotype_by_token_inputter(physicell_name, sbml_species);
+            value_map = select_phenotype_by_token_inputter(physicell_name, sbml_species, is_delayed);
         }
         else
         {
-            value_map = select_phenotype_by_token_outputter(physicell_name, sbml_species);
+            value_map = select_phenotype_by_token_outputter(physicell_name, sbml_species, is_delayed);
         }
     }
     else
@@ -70,7 +106,7 @@ void RoadRunnerMapping::initialize_mapping( void )
 }
 
 // PhysiCell does not have an API for setting signals, but libRoadRunner does in limited cases
-MappingFunction select_signal_setter(const std::string& name, const std::string& sbml_species)
+MappingFunction select_signal_setter(const std::string& name, const std::string& sbml_species, bool is_delayed)
 {
     // if "intracellular <substrate>" or "internalized <substrate>", set the internalized substrate amount
     if (name.find("intracellular") == 0 || name.find("internalized") == 0)
@@ -82,8 +118,26 @@ MappingFunction select_signal_setter(const std::string& name, const std::string&
             int density_index = microenvironment.find_density_index(substrate_name);
             if (density_index != -1)
             {
-                return [density_index, sbml_species](PhysiCell::Cell *pCell)
-                { pCell->phenotype.molecular.internalized_total_substrates[density_index] = pCell->phenotype.intracellular->get_parameter_value(sbml_species) * pCell->phenotype.volume.total; };
+                if (is_delayed)
+                {
+                    std::cerr << "ERROR: The libRoadRunner addon does not support delayed output to intracellular substrate concentrations." << std::endl
+                              << "    The libRoadRunner addon only supports delayed input **from** the intracellular substrate concentrations." << std::endl
+                              << "    This is because BioFVM maintains these values in the present and so this would overwrite those, creating some hybrid, time-traveling monster." << std::endl
+                              << "    Nonetheless, if you really want that, the code is here waiting for you in " << __FUNCTION__ << "()" << std::endl
+                              << "    Just remove the `exit(-1);` call. Better yet, set a custom `post_update_intracellular` function in the custom.cpp file." << std::endl
+                              << "    Or who knows? Maybe someone deleted it..." << std::endl;
+                    exit(-1);
+                    return [density_index, name, sbml_species](PhysiCell::Cell *pCell)
+                    { 
+                        double value = pCell->phenotype.intracellular->get_parameter_value(sbml_species);
+                        double next_value = getRoadRunnerModel(pCell)->update_output_delay_terms(value, name);
+                        pCell->phenotype.molecular.internalized_total_substrates[density_index] = next_value * pCell->phenotype.volume.total;
+                    };
+                }
+                {
+                    return [density_index, sbml_species](PhysiCell::Cell *pCell)
+                    { pCell->phenotype.molecular.internalized_total_substrates[density_index] = pCell->phenotype.intracellular->get_parameter_value(sbml_species) * pCell->phenotype.volume.total; };
+                }
             }
         }
         std::cerr << "ERROR: \"" << name << "\" is not a valid signal that can be set using libRoadRunner." << std::endl
@@ -95,6 +149,16 @@ MappingFunction select_signal_setter(const std::string& name, const std::string&
     // if "volume", set the cell volume
     else if (name == "volume")
     {
+        if (is_delayed)
+        {
+            std::cerr << "ERROR: The libRoadRunner addon does not support delayed output to cell volume." << std::endl
+                      << "    The libRoadRunner addon only supports delayed input **from** the cell volume." << std::endl
+                      << "    This is because BioFVM maintains these values in the present and so this would overwrite those, creating some hybrid, time-traveling monster." << std::endl
+                      << "    Nonetheless, if you really want that, similar code is here waiting for you in " << __FUNCTION__ << "()" << std::endl
+                      << "    Look at how the intracellular substrate concentrations are set for an example (if that's still there)." << std::endl
+                      << "    You're best option (in my view) is to set a custom `post_update_intracellular` function in the custom.cpp file." << std::endl;
+            exit(-1);
+        }
         std::cout << "WARNING: setting the volume using libRoadRunner will do so by rescaling ALL cell volumes, not just setting the total volume."
                   << "    To only set the total volume (or to set other components of the volume), use the `pCell->functions.post_update_intracellular`." << std::endl;
         return [sbml_species](PhysiCell::Cell *pCell)
@@ -104,8 +168,18 @@ MappingFunction select_signal_setter(const std::string& name, const std::string&
     // if "damage", set the cell damage
     else if (name == "damage")
     {
+        if (!is_delayed)
+        {
+            return [sbml_species](PhysiCell::Cell *pCell)
+            { pCell->phenotype.cell_integrity.damage = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
+        }
+
         return [sbml_species](PhysiCell::Cell *pCell)
-        { pCell->phenotype.cell_integrity.damage = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
+        {
+            double value = pCell->phenotype.intracellular->get_parameter_value(sbml_species);
+            double next_value = getRoadRunnerModel(pCell)->update_output_delay_terms(value, "damage");
+            pCell->phenotype.cell_integrity.damage = next_value;
+        };
     }
 
     // if begins with "custom", check that it is custom data and set that
@@ -208,30 +282,168 @@ std::vector<int> parse_ctr_token(const std::string &name)
 
 void throw_invalid_ctr_token(const std::string& name)
 {
-    std::cerr << "ERROR: \"" << name << "\" is not a valid token format. The available cycle tranisition rate (ctr) tokens are \"ctr_<start_index>_<end_index>\"."
-              << " For example: \"ctr_0_1\" or \"ctr_2_3\"." << std::endl;
+    std::cerr << "ERROR: \"" << name << "\" is not a valid token format." << std::endl
+              << "The available cycle tranisition rate (ctr) tokens are \"ctr_<start_index>_<end_index>\"." << std::endl
+              << "For example: \"ctr_0_1\" or \"ctr_2_3\"." << std::endl << std::endl
+              << "You may have ended up here trying to put in a signal/behavior that begins with a 'c', e.g. a custom data." << std::endl
+              << "Check your spelling and make sure that the custom data is included in the first cell definition in your model." << std::endl;
     exit(-1);
 }
 
-MappingFunction select_phenotype_by_token_inputter(const std::string& name, const std::string& sbml_species)
+MappingFunction select_phenotype_by_token_inputter(const std::string& name, const std::string& sbml_species, bool is_delayed)
+{
+    // the volume ones are not targetable by a behavior (yet?)
+    if (name[0] == 'v')
+    {
+        if (name == "vtsc")
+        {
+            if (!is_delayed)
+            {
+                return [sbml_species](PhysiCell::Cell *pCell)
+                { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.volume.target_solid_cytoplasmic); };
+            }
+            return [sbml_species](PhysiCell::Cell *pCell)
+            {
+                double value = pCell->phenotype.volume.target_solid_cytoplasmic;
+                double next_value = getRoadRunnerModel(pCell)->update_input_delay_terms(value, sbml_species);
+                pCell->phenotype.intracellular->set_parameter_value(sbml_species, next_value);
+            };
+        }
+        else if (name == "vtsn")
+        {
+            if (!is_delayed)
+            {
+                return [sbml_species](PhysiCell::Cell *pCell)
+                { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.volume.target_solid_nuclear); };
+            }
+            return [sbml_species](PhysiCell::Cell *pCell)
+            {
+                double value = pCell->phenotype.volume.target_solid_nuclear;
+                double next_value = getRoadRunnerModel(pCell)->update_input_delay_terms(value, sbml_species);
+                pCell->phenotype.intracellular->set_parameter_value(sbml_species, next_value);
+            };
+        }
+        else if (name == "vff")
+        {
+            if (!is_delayed)
+            {
+                return [sbml_species](PhysiCell::Cell *pCell)
+                { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.volume.target_fluid_fraction); };
+            }
+            return [sbml_species](PhysiCell::Cell *pCell)
+            {
+                double value = pCell->phenotype.volume.target_fluid_fraction;
+                double next_value = getRoadRunnerModel(pCell)->update_input_delay_terms(value, sbml_species);
+                pCell->phenotype.intracellular->set_parameter_value(sbml_species, next_value);
+            };
+        }
+        else
+        {
+            std::cerr<< std::endl;
+            std::cerr << "ERROR: \"" << name << "\" is not a recognized volume token. The available volume tokens are \"vtsc\", \"vtsn\", and \"vff\"." << std::endl;
+            std::cerr<< std::endl;
+            std::cerr<< std::endl;
+            exit(-1);
+        }
+    }
+    std::string behavior = behavior_from_token(name);
+    int behavior_index = PhysiCell::find_behavior_index(behavior);
+    if (!is_delayed)
+    {
+        return [sbml_species, behavior_index](PhysiCell::Cell *pCell)
+        { pCell->phenotype.intracellular->set_parameter_value(sbml_species, PhysiCell::get_single_behavior(pCell, behavior_index)); };
+    }
+    return [sbml_species, behavior_index](PhysiCell::Cell *pCell)
+    {
+        double value = PhysiCell::get_single_behavior(pCell, behavior_index);
+        double next_value = getRoadRunnerModel(pCell)->update_input_delay_terms(value, sbml_species);
+        pCell->phenotype.intracellular->set_parameter_value(sbml_species, next_value);
+    };
+}
+
+MappingFunction select_phenotype_by_token_outputter(const std::string& name, const std::string& sbml_species, bool is_delayed)
+{
+    // the volume ones are not targetable by a behavior (yet?)
+    if (name[0] == 'v')
+    {
+        if (name == "vtsc")
+        {
+            if (!is_delayed)
+            {
+                return [sbml_species](PhysiCell::Cell *pCell)
+                { pCell->phenotype.volume.target_solid_cytoplasmic = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
+            }
+            return [sbml_species, name](PhysiCell::Cell *pCell)
+            {
+                double value = pCell->phenotype.intracellular->get_parameter_value(sbml_species);
+                double next_value = getRoadRunnerModel(pCell)->update_output_delay_terms(value, name);
+                pCell->phenotype.volume.target_solid_cytoplasmic = next_value;
+            };
+        }
+        else if (name == "vtsn")
+        {
+            if (!is_delayed)
+            {
+                return [sbml_species](PhysiCell::Cell *pCell)
+                { pCell->phenotype.volume.target_solid_nuclear = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
+            }
+            return [sbml_species, name](PhysiCell::Cell *pCell)
+            {
+                double value = pCell->phenotype.intracellular->get_parameter_value(sbml_species);
+                double next_value = getRoadRunnerModel(pCell)->update_output_delay_terms(value, name);
+                pCell->phenotype.volume.target_solid_nuclear = next_value;
+            };
+        }
+        else if (name == "vff")
+        {
+            if (!is_delayed)
+            {
+                return [sbml_species](PhysiCell::Cell *pCell)
+                { pCell->phenotype.volume.target_fluid_fraction = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
+            }
+            return [sbml_species, name](PhysiCell::Cell *pCell)
+            {
+                double value = pCell->phenotype.intracellular->get_parameter_value(sbml_species);
+                double next_value = getRoadRunnerModel(pCell)->update_output_delay_terms(value, name);
+                pCell->phenotype.volume.target_fluid_fraction = next_value;
+            };
+        }
+        else
+        {
+            std::cerr<< std::endl;
+            std::cerr << "ERROR: \"" << name << "\" is not a recognized volume token. The available volume tokens are \"vtsc\", \"vtsn\", and \"vff\"." << std::endl;
+            std::cerr<< std::endl;
+            std::cerr<< std::endl;
+            exit(-1);
+        }
+    }
+    
+    // the remaining tokens are all now behaviors
+    std::string behavior = behavior_from_token(name);
+    int behavior_index = PhysiCell::find_behavior_index(behavior);
+    if (!is_delayed)
+    {
+        return [sbml_species, behavior_index](PhysiCell::Cell *pCell)
+        { PhysiCell::set_single_behavior(pCell, behavior_index, pCell->phenotype.intracellular->get_parameter_value(sbml_species)); };
+    }
+    return [name, sbml_species, behavior_index](PhysiCell::Cell *pCell)
+    {
+        double value = pCell->phenotype.intracellular->get_parameter_value(sbml_species);
+        double next_value = getRoadRunnerModel(pCell)->update_output_delay_terms(value, name);
+        PhysiCell::set_single_behavior(pCell, behavior_index, next_value);
+    };
+}
+
+std::string behavior_from_token(const std::string& name)
 {
     if (name[0] == 'm')
     {
         if (name == "mms")
-        {
-            return [sbml_species](PhysiCell::Cell *pCell)
-            { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.motility.migration_speed); };
-        }
+        { return "migration speed"; }
         else if (name == "mpt")
-        {
-            return [sbml_species](PhysiCell::Cell *pCell)
-            { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.motility.persistence_time); };
-        }
+        { return "persistence time"; }
         else if (name == "mmb")
-        {
-            return [sbml_species](PhysiCell::Cell *pCell)
-            { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.motility.migration_bias); };
-        }
+        { return "migration bias"; }
         else
         {
             std::cerr<< std::endl;
@@ -243,19 +455,7 @@ MappingFunction select_phenotype_by_token_inputter(const std::string& name, cons
     }
     else if (name[0] == 'd')
     {
-        if (name == "da")
-        {
-            int death_model_index = PhysiCell::cell_defaults.phenotype.death.find_death_model_index(PhysiCell::PhysiCell_constants::apoptosis_death_model);
-            return [sbml_species, death_model_index](PhysiCell::Cell *pCell)
-            { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.death.rates[death_model_index]); };
-        }
-        else if (name == "dn")
-        {
-            int death_model_index = PhysiCell::cell_defaults.phenotype.death.find_death_model_index(PhysiCell::PhysiCell_constants::necrosis_death_model);
-            return [sbml_species, death_model_index](PhysiCell::Cell *pCell)
-            { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.death.rates[death_model_index]); };
-        }
-        else
+        if (name != "da" && name != "dn")
         {
             std::cerr<< std::endl;
             std::cerr << "ERROR: \"" << name << "\" is not a recognized death token. The available death tokens are \"da\" and \"dn\"." << std::endl;
@@ -263,6 +463,8 @@ MappingFunction select_phenotype_by_token_inputter(const std::string& name, cons
             std::cerr<< std::endl;
             exit(-1);
         }
+
+        return name == "da" ? "apoptosis" : "necrosis";
     }
     else if (name[0] == 's')
     {
@@ -282,29 +484,17 @@ MappingFunction select_phenotype_by_token_inputter(const std::string& name, cons
         std::string token_prefix = name.substr(0, 3);
 
         if (token_prefix == "sur")
-        {
-            return [sbml_species, substrate_index](PhysiCell::Cell *pCell)
-            { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.secretion.uptake_rates[substrate_index]); };
-        }
+        { return substrate_name + " uptake"; }
         else if (token_prefix == "ssr")
-        {
-            return [sbml_species, substrate_index](PhysiCell::Cell *pCell)
-            { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.secretion.secretion_rates[substrate_index]); };
-        }
+        { return substrate_name + " secretion"; }
         else if (token_prefix == "ssd")
-        {
-            return [sbml_species, substrate_index](PhysiCell::Cell *pCell)
-            { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.secretion.saturation_densities[substrate_index]); };
-        }
+        { return substrate_name + " secretion target"; }
         else if (token_prefix == "ser")
-        {
-            return [sbml_species, substrate_index](PhysiCell::Cell *pCell)
-            { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.secretion.net_export_rates[substrate_index]); };
-        }
+        { return substrate_name + " export"; }
         else
         {
             std::cerr<< std::endl;
-            std::cerr << "ERROR: \"" << name << "\" is not a recognized secretion token. The available secretion tokens are \"sur\", \"ssr\", \"ssd\", and \"ser\"." << std::endl;
+            std::cerr << "ERROR: \"" << name << "\" is not a recognized secretion token. The available secretion tokens are \"sur\", \"ssr\", \"ssd\", and \"ser\" followed \"_<substrate_name>\"." << std::endl;
             std::cerr<< std::endl;
             std::cerr<< std::endl;
             exit(-1);
@@ -315,177 +505,7 @@ MappingFunction select_phenotype_by_token_inputter(const std::string& name, cons
         std::vector<int> indices = parse_ctr_token(name);
         int start_index = indices[0];
         int end_index = indices[1];
-        
-        return [sbml_species, start_index, end_index](PhysiCell::Cell *pCell)
-        { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.cycle.data.transition_rate(start_index, end_index)); };
-    }
-    else if (name[0] == 'v')
-    {
-        if (name == "vtsc")
-        {
-            return [sbml_species](PhysiCell::Cell *pCell)
-            { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.volume.target_solid_cytoplasmic); };
-        }
-        else if (name == "vtsn")
-        {
-            return [sbml_species](PhysiCell::Cell *pCell)
-            { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.volume.target_solid_nuclear); };
-        }
-        else if (name == "vff")
-        {
-            return [sbml_species](PhysiCell::Cell *pCell)
-            { pCell->phenotype.intracellular->set_parameter_value(sbml_species, pCell->phenotype.volume.target_fluid_fraction); };
-        }
-        else
-        {
-            std::cerr<< std::endl;
-            std::cerr << "ERROR: \"" << name << "\" is not a recognized volume token. The available volume tokens are \"vtsc\", \"vtsn\", and \"vff\"." << std::endl;
-            std::cerr<< std::endl;
-            std::cerr<< std::endl;
-            exit(-1);
-        }
-    }
-    else
-    {
-        std::cerr<< std::endl;
-        std::cerr << "ERROR: \"" << name << "\" is not a recognized token. It must start with \"m\", \"d\", \"s\", \"c\", or \"v\"." << std::endl;
-        std::cerr<< std::endl;
-        std::cerr<< std::endl;
-        exit(-1);
-    }
-}
-
-MappingFunction select_phenotype_by_token_outputter(const std::string& name, const std::string& sbml_species)
-{
-    if (name[0] == 'm')
-    {
-        if (name == "mms")
-        {
-            return [sbml_species](PhysiCell::Cell *pCell)
-            { pCell->phenotype.motility.migration_speed = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
-        }
-        else if (name == "mpt")
-        {
-            return [sbml_species](PhysiCell::Cell *pCell)
-            { pCell->phenotype.motility.persistence_time = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
-        }
-        else if (name == "mmb")
-        {
-            return [sbml_species](PhysiCell::Cell *pCell)
-            { pCell->phenotype.motility.migration_bias = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
-        }
-        else
-        {
-            std::cerr<< std::endl;
-            std::cerr << "ERROR: \"" << name << "\" is not a recognized motility token. The available motility tokens are \"mms\", \"mpt\", and \"mmb\"." << std::endl;
-            std::cerr<< std::endl;
-            std::cerr<< std::endl;
-            exit(-1);
-        }
-    }
-    else if (name[0] == 'd')
-    {
-        if (name == "da")
-        {
-            int death_model_index = PhysiCell::cell_defaults.phenotype.death.find_death_model_index(PhysiCell::PhysiCell_constants::apoptosis_death_model);
-            return [sbml_species, death_model_index](PhysiCell::Cell *pCell)
-            { pCell->phenotype.death.rates[death_model_index] = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
-        }
-        else if (name == "dn")
-        {
-            int death_model_index = PhysiCell::cell_defaults.phenotype.death.find_death_model_index(PhysiCell::PhysiCell_constants::necrosis_death_model);
-            return [sbml_species, death_model_index](PhysiCell::Cell *pCell)
-            { pCell->phenotype.death.rates[death_model_index] = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
-        }
-        else
-        {
-            std::cerr<< std::endl;
-            std::cerr << "ERROR: \"" << name << "\" is not a recognized death token. The available death tokens are \"da\" and \"dn\"." << std::endl;
-            std::cerr<< std::endl;
-            std::cerr<< std::endl;
-            exit(-1);
-        }
-    }
-    else if (name[0] == 's')
-    {
-        size_t pos = name.find("_");
-        std::string substrate_name = name.substr(pos + 1, std::string::npos);
-        int substrate_index = microenvironment.find_density_index(substrate_name);
-
-        if (substrate_index == -1)
-        {
-            std::cerr<< std::endl;
-            std::cerr << "ERROR: \"" << substrate_name << "\" is not a substrate name in this model." << std::endl;
-            std::cerr<< std::endl;
-            std::cerr<< std::endl;
-            exit(-1);
-        }
-
-        std::string token_prefix = name.substr(0, 3);
-
-        if (token_prefix == "sur")
-        {
-            return [sbml_species, substrate_index](PhysiCell::Cell *pCell)
-            { pCell->phenotype.secretion.uptake_rates[substrate_index] = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
-        }
-        else if (token_prefix == "ssr")
-        {
-            return [sbml_species, substrate_index](PhysiCell::Cell *pCell)
-            { pCell->phenotype.secretion.secretion_rates[substrate_index] = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
-        }
-        else if (token_prefix == "ssd")
-        {
-            return [sbml_species, substrate_index](PhysiCell::Cell *pCell)
-            { pCell->phenotype.secretion.saturation_densities[substrate_index] = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
-        }
-        else if (token_prefix == "ser")
-        {
-            return [sbml_species, substrate_index](PhysiCell::Cell *pCell)
-            { pCell->phenotype.secretion.net_export_rates[substrate_index] = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
-        }
-        else
-        {
-            std::cerr<< std::endl;
-            std::cerr << "ERROR: \"" << name << "\" is not a recognized secretion token. The available secretion tokens are \"sur\", \"ssr\", \"ssd\", and \"ser\"." << std::endl;
-            std::cerr<< std::endl;
-            std::cerr<< std::endl;
-            exit(-1);
-        }
-    }
-    else if (name[0] == 'c')
-    {
-        std::vector<int> indices = parse_ctr_token(name);
-        int start_index = indices[0];
-        int end_index = indices[1];
-
-        return [sbml_species, start_index, end_index](PhysiCell::Cell *pCell)
-        { pCell->phenotype.cycle.data.transition_rate(start_index, end_index) = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
-    }
-    else if (name[0] == 'v')
-    {
-        if (name == "vtsc")
-        {
-            return [sbml_species](PhysiCell::Cell *pCell)
-            { pCell->phenotype.volume.target_solid_cytoplasmic = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
-        }
-        else if (name == "vtsn")
-        {
-            return [sbml_species](PhysiCell::Cell *pCell)
-            { pCell->phenotype.volume.target_solid_nuclear = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
-        }
-        else if (name == "vff")
-        {
-            return [sbml_species](PhysiCell::Cell *pCell)
-            { pCell->phenotype.volume.target_fluid_fraction = pCell->phenotype.intracellular->get_parameter_value(sbml_species); };
-        }
-        else
-        {
-            std::cerr<< std::endl;
-            std::cerr << "ERROR: \"" << name << "\" is not a recognized volume token. The available volume tokens are \"vtsc\", \"vtsn\", and \"vff\"." << std::endl;
-            std::cerr<< std::endl;
-            std::cerr<< std::endl;
-            exit(-1);
-        }
+        return "exit from cycle phase " + std::to_string(start_index);
     }
     else
     {
@@ -523,6 +543,8 @@ RoadRunnerIntracellular::RoadRunnerIntracellular(RoadRunnerIntracellular* copy)
     input_mappings = copy->input_mappings;
     output_mappings = copy->output_mappings;
     mappings_initialized = copy->mappings_initialized;
+    input_delay_terms = copy->input_delay_terms;
+    output_delay_terms = copy->output_delay_terms;
 }
 
 void RoadRunnerIntracellular::initialize_intracellular_from_pugixml(pugi::xml_node& node)
@@ -558,13 +580,14 @@ void RoadRunnerIntracellular::initialize_intracellular_from_pugixml(pugi::xml_no
         std::string physicell_name = node_map.attribute( "physicell_name" ).value();
         std::string sbml_species = node_map.attribute( "sbml_species" ).value();
 
+        std::vector<bool> delays = parse_delay_terms(node_map, physicell_name, sbml_species, io_type);
         if (io_type == "input" || io_type == "io")
         {
-            new_input_mappings.push_back(new RoadRunnerMapping(physicell_name, sbml_species, "input"));
+            new_input_mappings.push_back(new RoadRunnerMapping(physicell_name, sbml_species, "input", delays[0]));
         }
         if (io_type == "output" || io_type == "io")
         {
-            new_output_mappings.push_back(new RoadRunnerMapping(physicell_name, sbml_species, "output"));
+            new_output_mappings.push_back(new RoadRunnerMapping(physicell_name, sbml_species, "output", delays[1]));
         }
 
         node_map = node_map.next_sibling("map");
@@ -731,8 +754,130 @@ void RoadRunnerIntracellular::set_parameter_value(std::string species_name, doub
     rrc::freeVector(vptr);
 }
 
+std::vector<bool> RoadRunnerIntracellular::parse_delay_terms(pugi::xml_node &node_map, std::string physicell_name, std::string sbml_species, std::string io_type)
+{
+    pugi::xml_node node_delay = node_map.child("delay");
+    bool input_is_delayed = false;
+    bool output_is_delayed = false;
+    while (node_delay)
+    {
+        if (node_delay.attribute("enabled").empty())
+        {
+            std::cerr << "ERROR: The delay model is missing the \"enabled\" attribute in the XML file." << std::endl
+                      << "    Update the delay element as follows:" << std::endl << std::endl;
+            display_sample_delay_element(std::cerr);
+            exit(-1);
+        }
+        if (!node_delay.attribute("enabled").as_bool())
+        {
+            node_delay = node_delay.next_sibling("delay");
+            continue;
+        }
+        pugi::xml_attribute attribute_type = node_delay.attribute("type");
+        std::string attribute_type_value = attribute_type.value();
+        bool io_type_is_io = io_type=="io";
+        // map is io and the delay type is either not set or is not set properly (input or output), then throw error
+        if (io_type_is_io && (!attribute_type || (attribute_type_value != "input" && attribute_type_value != "output")))
+        {
+            std::cerr << "ERROR: The delay type is not specified for the delay model in the XML file." << std::endl
+                      << "    The mapping is both input and output, so the type of delay (input or output) must be specified." << std::endl
+                      << "    Update the delay element as follows if, for example, the input is delayed:" << std::endl << std::endl;
+            display_sample_delay_element(std::cerr);
+            exit(-1);
+        }
+
+        std::string delay_io_type = io_type_is_io ? attribute_type_value : io_type;
+        std::deque<double>* delay_vector_ptr = nullptr;
+        if (delay_io_type == "input")
+        {
+            if (input_delay_terms.find(sbml_species) != input_delay_terms.end())
+            {
+                std::cerr << "ERROR: The input delay terms for " << sbml_species << " are multiply defined." << std::endl
+                          << "    Update the XML file to remove the duplicate delay terms." << std::endl;
+                exit(-1);
+            }
+            input_is_delayed = true;
+            delay_vector_ptr = &input_delay_terms[sbml_species];
+        }
+        else
+        {
+            if (output_delay_terms.find(physicell_name) != output_delay_terms.end())
+            {
+                std::cerr << "ERROR: The output delay terms for " << physicell_name << " are multiply defined." << std::endl
+                          << "    Update the XML file to remove the duplicate delay terms." << std::endl;
+                exit(-1);
+            }
+            output_is_delayed = true;
+            delay_vector_ptr = &output_delay_terms[physicell_name];
+        }
+
+        pugi::xml_node node_delay_time = node_delay.child("delay_time");
+        if (!node_delay_time)
+        {
+            std::cerr << "ERROR: delay_time is not specified for the delay model in the XML file." << std::endl
+                      << "    Update the delay element with the 'delay_time' element as in this example:" << std::endl << std::endl;
+            display_sample_delay_element(std::cerr);
+            exit(-1);
+        }
+        double delay_time = PhysiCell::xml_get_my_double_value(node_delay_time);
+
+        double initial_value = 0.0; // default to 0.0's being in this vector
+        pugi::xml_node node_initial_values = node_delay.child("initial_values");
+        if (node_initial_values)
+        {
+            initial_value = PhysiCell::xml_get_my_double_value(node_initial_values);
+        }
+
+        int n_terms = static_cast<int> (round(delay_time/update_time_step));
+        double tolerance = 1e-3; // make sure we're within this tolerance of the time step
+        if (fabs(delay_time - n_terms * update_time_step) > tolerance)
+        {
+            std::cerr << "ERROR: The delay time is not a multiple of the intracellular dt for this model." << std::endl
+                      << "  - delay_time: " << delay_time << std::endl
+                      << "  - update_time_step: " << update_time_step << std::endl
+                      << "  - num terms to be saved: " << n_terms << std::endl
+                      << "  - effective delay (update_time_step * n_terms): " << n_terms * update_time_step << std::endl << std::endl
+                      << "Update these time scales so they meet this criterion." << std::endl << std::endl;
+            exit(-1);
+        }
+
+        for (int i = 0; i < n_terms; i++)
+        {
+            (*delay_vector_ptr).push_back(initial_value);
+        }
+        node_delay = node_delay.next_sibling("delay");
+    }
+    return {input_is_delayed, output_is_delayed};
+}
+
+void display_sample_delay_element(std::ostream& os)
+{
+    os << "<delay type=\"input\" enabled=\"true\">" << std::endl
+       << "    <delay_time>10.0</delay_time>" << std::endl
+       << "    <initial_values>0.0</initial_values>" << std::endl
+       << "</delay>" << std::endl;
+}
+
+double RoadRunnerIntracellular::update_input_delay_terms(double value, std::string sbml_species)
+{ return update_delay_terms(input_delay_terms[sbml_species], value); }
+
+double RoadRunnerIntracellular::update_output_delay_terms(double value, std::string physicell_name)
+{ return update_delay_terms(output_delay_terms[physicell_name], value); }
+
+double update_delay_terms(std::deque<double> &delay_vector, double value)
+{
+    double next_value = delay_vector.front();
+    delay_vector.pop_front();
+    delay_vector.push_back(value);
+    return next_value;
+}
+
 RoadRunnerIntracellular* getRoadRunnerModel(PhysiCell::Phenotype& phenotype) {
 	return static_cast<RoadRunnerIntracellular*>(phenotype.intracellular);
+}
+
+RoadRunnerIntracellular* getRoadRunnerModel(PhysiCell::Cell* pCell) {
+    return getRoadRunnerModel(pCell->phenotype);
 }
 
 void RoadRunnerIntracellular::save_libRR(std::string path, std::string index)
@@ -816,7 +961,7 @@ void RoadRunnerIntracellular::validate_SBML_species(std::vector<std::string> all
         if (std::find(all_species.begin(), all_species.end(), mapping->sbml_species) == all_species.end())
         {
             std::cerr<< std::endl;
-            std::cerr << "ERROR: The specified SBML species in the name of \"" << mapping->sbml_species << "\" at " << mapping->io_type << " mapping. Please take a look SBML species specifications." << std::endl;
+            std::cerr << "ERROR: The SBML species \"" << mapping->sbml_species << "\" is not present in the given model." << std::endl;
             std::cerr<< std::endl;
             std::cerr<< std::endl;
             exit(-1);

@@ -320,6 +320,18 @@
 					<map type="output" physicell_name="custom:intra_lac" sbml_species="Lactate"></map>
 					<map type="output" physicell_name="custom:intra_glu" sbml_species="Glucose"></map>
 					<map type="output" physicell_name="custom:intra_energy" sbml_species="Energy"></map>
+					<map type="input" physicell_name="intracellular oxygen" sbml_species="Delayed_Oxygen">
+						<delay type="input" enabled="true">
+							<delay_time units="min">10</delay_time>
+							<initial_values>80.0</initial_values>
+						</delay>
+					</map>
+					<map type="output" physicell_name="custom:delayed_oxygen" sbml_species="Delayed_Oxygen">
+						<delay enabled="true">
+							<delay_time units="min">20</delay_time>
+							<initial_values>0.0</initial_values>
+						</delay>
+					</map>
 				</intracellular>
                 
 				<molecular />
@@ -329,6 +341,7 @@
                 <intra_glu units="mM">15.0</intra_glu>
                 <intra_lac units="mM">0.0</intra_lac>
                 <intra_energy units="dimensionless">450.0</intra_energy>
+				<delayed_oxygen units="mmHg">0.0</delayed_oxygen>
 			</custom_data>
 		</cell_definition>
 	</cell_definitions>

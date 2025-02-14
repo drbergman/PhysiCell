@@ -4,26 +4,19 @@
 #include <string>
 #include <map>
 #include <iomanip>   // for setw
+#include <deque>
 
 #include "../../../core/PhysiCell.h"
 #include "../../../core/PhysiCell_phenotype.h"
 #include "../../../core/PhysiCell_cell.h"
 #include "../../../modules/PhysiCell_pugixml.h"
-// #include "maboss_network.h"
 
-// #ifdef ADDON_ROADRUNNER
-// These are for C
-// #define STATIC_RRC
-// #include "rrc_api.h"
-// #include "rrc_types.h"
 #include "../roadrunner/include/rr/C/rrc_api.h"
 #include "../roadrunner/include/rr/C/rrc_types.h"
 #include <functional>
 #include <algorithm>
 
-// #include "rrc_utilities.h"
 extern "C" rrc::RRHandle createRRInstance();
-// #endif
 
 typedef std::function<void(PhysiCell::Cell* pCell)> MappingFunction;
 
@@ -33,23 +26,27 @@ public:
 	std::string physicell_name;
 	std::string sbml_species;
 	std::string io_type;
+	bool is_delayed = false;
+
 	std::string physicell_dictionary_name;
 	int index;
 	MappingFunction value_map = [] (PhysiCell::Cell *pCell) {}; // default to a function that does nothing
 	bool mapping_initialized = false;
 
 	RoadRunnerMapping() {};
-	RoadRunnerMapping(std::string physicell_name, std::string sbml_species, std::string io_type)
-		: physicell_name(physicell_name), sbml_species(sbml_species), io_type(io_type) {};
+	RoadRunnerMapping(std::string physicell_name, std::string sbml_species, std::string io_type, bool is_delayed)
+		: physicell_name(physicell_name), sbml_species(sbml_species), io_type(io_type), is_delayed(is_delayed) {};
 
 	void initialize_mapping(void);
 };
 
-MappingFunction select_signal_setter(const std::string& name, const std::string& sbml_species);
+// setting mapping functions
+MappingFunction select_signal_setter(const std::string& name, const std::string& sbml_species, bool is_delayed);
 
 bool is_physicell_phenotype_token(const std::string& name);
-MappingFunction select_phenotype_by_token_inputter(const std::string& name, const std::string& sbml_species);
-MappingFunction select_phenotype_by_token_outputter(const std::string& name, const std::string& sbml_species);
+MappingFunction select_phenotype_by_token_inputter(const std::string& name, const std::string& sbml_species, bool is_delayed);
+MappingFunction select_phenotype_by_token_outputter(const std::string& name, const std::string& sbml_species, bool is_delayed);
+std::string behavior_from_token(const std::string& name);
 
 void validate_mappings(std::vector<RoadRunnerMapping*> mappings);
 
@@ -71,6 +68,9 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 	std::vector<RoadRunnerMapping *> input_mappings;
 	std::vector<RoadRunnerMapping *> output_mappings;
 	std::map<std::string, int> species_result_column_index;
+
+	std::map<std::string, std::deque<double>> input_delay_terms;
+	std::map<std::string, std::deque<double>> output_delay_terms;
 	
     rrc::RRHandle rrHandle;
 	rrc::RRCDataPtr result = 0;  // start time, end time, and number of points
@@ -131,6 +131,11 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 	double get_parameter_value(std::string name);
 	void set_parameter_value(std::string name, double value);
 	
+	// delay terms
+	std::vector<bool> parse_delay_terms(pugi::xml_node &node_map, std::string physicell_name, std::string sbml_species, std::string io_type);
+	double update_input_delay_terms(double value, std::string name);
+	double update_output_delay_terms(double value, std::string name);
+
 	std::string get_state();
 	void display(std::ostream&os) {}
     // for now, define dummy methods for these in the abstract parent class
@@ -142,6 +147,13 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 	static void save_libRR(std::string path, std::string index);
 };
 
+// delay functions
+void display_sample_delay_element(std::ostream& os);
+double update_delay_terms(std::deque<double> &delay_vector, double value);
+
+// cast to RoadRunnerIntracellular functions
 RoadRunnerIntracellular* getRoadRunnerModel(PhysiCell::Phenotype& phenotype);
+RoadRunnerIntracellular* getRoadRunnerModel(PhysiCell::Cell* pCell);
+
 
 #endif
