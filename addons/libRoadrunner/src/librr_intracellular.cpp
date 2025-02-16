@@ -569,17 +569,18 @@ void RoadRunnerIntracellular::initialize_intracellular_from_pugixml(pugi::xml_no
 
         node_map = node_map.next_sibling("map");
     }
-    validate_mappings(new_input_mappings);
-    validate_mappings(new_output_mappings);
+    validate_mappings(new_input_mappings, true);
+    validate_mappings(new_output_mappings, false);
 
     input_mappings = std::move(new_input_mappings);
     output_mappings = std::move(new_output_mappings);
 }
 
-void validate_mappings(std::vector<RoadRunnerMapping*> mappings)
+void validate_mappings(std::vector<RoadRunnerMapping *> mappings, bool is_inputs)
 {
+    if (mappings.empty())
+    { return; }
     std::vector<std::string> values_already_set;
-    bool is_inputs = mappings[0]->io_type=="input";
     std::string name_to_add;
     for (auto mapping : mappings)
     {

@@ -51,7 +51,7 @@ bool is_physicell_phenotype_token(const std::string& name);
 MappingFunction select_phenotype_by_token_inputter(const std::string& name, const std::string& sbml_species);
 MappingFunction select_phenotype_by_token_outputter(const std::string& name, const std::string& sbml_species);
 
-void validate_mappings(std::vector<RoadRunnerMapping*> mappings);
+void validate_mappings(std::vector<RoadRunnerMapping *> mappings, bool is_inputs);
 
 std::vector<int> parse_ctr_token(const std::string &name);
 void throw_invalid_ctr_token(const std::string& name);
