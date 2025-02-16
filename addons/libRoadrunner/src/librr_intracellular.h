@@ -48,7 +48,7 @@ MappingFunction select_phenotype_by_token_inputter(const std::string& name, cons
 MappingFunction select_phenotype_by_token_outputter(const std::string& name, const std::string& sbml_species, bool is_delayed);
 std::string behavior_from_token(const std::string& name);
 
-void validate_mappings(std::vector<RoadRunnerMapping*> mappings);
+validate_mappings(std::vector<RoadRunnerMapping *> mappings, bool is_inputs);
 
 std::vector<int> parse_ctr_token(const std::string &name);
 void throw_invalid_ctr_token(const std::string& name);
