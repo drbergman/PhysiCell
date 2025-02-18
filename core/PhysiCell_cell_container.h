@@ -104,7 +104,9 @@ class Cell_Container : public BioFVM::Agent_Container
 	void update_all_cells(double t);
 	void update_all_cells(double t, double dt);
 	void update_all_cells(double t, double phenotype_dt, double mechanics_dt);
-	void update_all_cells(double t, double phenotype_dt, double mechanics_dt, double diffusion_dt ); 
+	void update_all_cells(double t, double phenotype_dt, double mechanics_dt, double diffusion_dt );
+
+	void update_all_cells_intracellular( void );
 
 	void register_agent( Cell* agent );
 	void add_agent_to_outer_voxel(Cell* agent);
