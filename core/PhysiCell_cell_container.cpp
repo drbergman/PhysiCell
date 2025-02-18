@@ -142,24 +142,7 @@ void Cell_Container::update_all_cells(double t, double phenotype_dt_ , double me
 	}
 
 	// intracellular update. called for every diffusion_dt, but actually depends on the intracellular_dt of each cell (as it can be noisy)
-
-	#pragma omp parallel for 
-	for( int i=0; i < (*all_cells).size(); i++ )
-	{
-		if( (*all_cells)[i]->is_out_of_domain == false ) {
-
-			if( (*all_cells)[i]->phenotype.intracellular != NULL  && (*all_cells)[i]->phenotype.intracellular->need_update())
-			{
-				if ((*all_cells)[i]->functions.pre_update_intracellular != NULL)
-					(*all_cells)[i]->functions.pre_update_intracellular( (*all_cells)[i], (*all_cells)[i]->phenotype , diffusion_dt_ );
-
-				(*all_cells)[i]->phenotype.intracellular->update( (*all_cells)[i], (*all_cells)[i]->phenotype , diffusion_dt_ );
-
-				if ((*all_cells)[i]->functions.post_update_intracellular != NULL)
-					(*all_cells)[i]->functions.post_update_intracellular( (*all_cells)[i], (*all_cells)[i]->phenotype , diffusion_dt_ );
-			}
-		}
-	}
+	update_all_cells_intracellular();
 	
 	if( time_for_phenotype )
 	{
@@ -298,6 +281,48 @@ void Cell_Container::update_all_cells(double t, double phenotype_dt_ , double me
 
 
 	return;
+}
+
+void Cell_Container::update_all_cells_intracellular( void )
+{
+	bool anything_to_update = false;
+	std::vector<bool> ready_to_update_intracellular = std::vector<bool>( (*all_cells).size(), false );
+	#pragma omp parallel for 
+	for( int i=0; i < (*all_cells).size(); i++ )
+	{
+		if( (*all_cells)[i]->is_out_of_domain == false ) {
+			if( (*all_cells)[i]->phenotype.intracellular != NULL  && (*all_cells)[i]->phenotype.intracellular->need_update())
+			{
+				ready_to_update_intracellular[i] = true;
+				anything_to_update = true;
+				if ((*all_cells)[i]->functions.pre_update_intracellular != NULL)
+				{
+					(*all_cells)[i]->functions.pre_update_intracellular((*all_cells)[i], (*all_cells)[i]->phenotype, diffusion_dt);
+				}
+			}
+		}
+	}
+
+	if (!anything_to_update)
+	{ return; }
+	
+	#pragma omp parallel for
+	for ( int i=0; i < (*all_cells).size(); i++ )
+	{
+		if (ready_to_update_intracellular[i])
+		{
+			(*all_cells)[i]->phenotype.intracellular->update((*all_cells)[i], (*all_cells)[i]->phenotype, diffusion_dt);
+		}
+	}
+	
+	#pragma omp parallel for
+	for ( int i=0; i < (*all_cells).size(); i++ )
+	{
+		if (ready_to_update_intracellular[i] && (*all_cells)[i]->functions.post_update_intracellular != NULL)
+		{
+			(*all_cells)[i]->functions.post_update_intracellular((*all_cells)[i], (*all_cells)[i]->phenotype, diffusion_dt);
+		}
+	}
 }
 
 void Cell_Container::register_agent( Cell* agent )
