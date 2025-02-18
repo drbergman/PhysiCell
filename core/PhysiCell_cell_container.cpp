@@ -141,27 +141,62 @@ void Cell_Container::update_all_cells(double t, double phenotype_dt_ , double me
 
 	// intracellular update. called for every diffusion_dt, but actually depends on the intracellular_dt of each cell (as it can be noisy)
 
+	std::vector<bool> ready_to_update_intracellular = std::vector<bool>( (*all_cells).size(), false );
 	#pragma omp parallel for 
 	for( int i=0; i < (*all_cells).size(); i++ )
 	{
 		if( (*all_cells)[i]->is_out_of_domain == false && initialzed ) {
-
 			if( (*all_cells)[i]->phenotype.intracellular != NULL  && (*all_cells)[i]->phenotype.intracellular->need_update())
 			{
+				ready_to_update_intracellular[i] = true;
 				if ((*all_cells)[i]->functions.pre_update_intracellular != NULL)
 				{
 					(*all_cells)[i]->functions.pre_update_intracellular((*all_cells)[i], (*all_cells)[i]->phenotype, diffusion_dt_);
 				}
-
-				(*all_cells)[i]->phenotype.intracellular->update( (*all_cells)[i], (*all_cells)[i]->phenotype , diffusion_dt_ );
-
-				if ((*all_cells)[i]->functions.post_update_intracellular != NULL)
-				{
-					(*all_cells)[i]->functions.post_update_intracellular((*all_cells)[i], (*all_cells)[i]->phenotype, diffusion_dt_);
-				}
 			}
 		}
 	}
+
+	#pragma omp parallel for
+	for ( int i=0; i < (*all_cells).size(); i++ )
+	{
+		if (ready_to_update_intracellular[i])
+		{
+			(*all_cells)[i]->phenotype.intracellular->update((*all_cells)[i], (*all_cells)[i]->phenotype, diffusion_dt_);
+		}
+	}
+	
+	#pragma omp parallel for
+	for ( int i=0; i < (*all_cells).size(); i++ )
+	{
+		if (ready_to_update_intracellular[i] && (*all_cells)[i]->functions.post_update_intracellular != NULL)
+		{
+			(*all_cells)[i]->functions.post_update_intracellular((*all_cells)[i], (*all_cells)[i]->phenotype, diffusion_dt_);
+		}
+	}
+
+	// #pragma omp parallel for 
+	// for( int i=0; i < (*all_cells).size(); i++ )
+	// {
+	// 	if( (*all_cells)[i]->is_out_of_domain == false && initialzed ) {
+
+	// 		if( (*all_cells)[i]->phenotype.intracellular != NULL  && (*all_cells)[i]->phenotype.intracellular->need_update())
+	// 		{
+	// 			if ((*all_cells)[i]->functions.pre_update_intracellular != NULL)
+	// 			{
+	// 				(*all_cells)[i]->functions.pre_update_intracellular((*all_cells)[i], (*all_cells)[i]->phenotype, diffusion_dt_);
+	// 			}
+
+	// 			(*all_cells)[i]->phenotype.intracellular->update( (*all_cells)[i], (*all_cells)[i]->phenotype , diffusion_dt_ );
+
+	// 			if ((*all_cells)[i]->functions.post_update_intracellular != NULL)
+	// 			{
+	// 				(*all_cells)[i]->functions.post_update_intracellular((*all_cells)[i], (*all_cells)[i]->phenotype, diffusion_dt_);
+	// 			}
+	// 		}
+	// 	}
+	// }
+
 
 	if( time_since_last_cycle > phenotype_dt_ - 0.5 * diffusion_dt_ || !initialzed )
 	{

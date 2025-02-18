@@ -48,7 +48,7 @@ MappingFunction select_phenotype_by_token_inputter(const std::string& name, cons
 MappingFunction select_phenotype_by_token_outputter(const std::string& name, const std::string& sbml_species, bool is_delayed);
 std::string behavior_from_token(const std::string& name);
 
-validate_mappings(std::vector<RoadRunnerMapping *> mappings, bool is_inputs);
+void validate_mappings(std::vector<RoadRunnerMapping *> mappings, bool is_inputs);
 
 std::vector<int> parse_ctr_token(const std::string &name);
 void throw_invalid_ctr_token(const std::string& name);
@@ -133,6 +133,7 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 	
 	// delay terms
 	std::vector<bool> parse_delay_terms(pugi::xml_node &node_map, std::string physicell_name, std::string sbml_species, std::string io_type);
+	int num_delay_terms(double delay_time);
 	double update_input_delay_terms(double value, std::string name);
 	double update_output_delay_terms(double value, std::string name);
 

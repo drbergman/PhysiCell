@@ -599,7 +599,7 @@ void RoadRunnerIntracellular::initialize_intracellular_from_pugixml(pugi::xml_no
     output_mappings = std::move(new_output_mappings);
 }
 
-validate_mappings(std::vector<RoadRunnerMapping *> mappings, bool is_inputs)
+void validate_mappings(std::vector<RoadRunnerMapping *> mappings, bool is_inputs)
 {
     if (mappings.empty())
     { return; }
@@ -829,18 +829,7 @@ std::vector<bool> RoadRunnerIntracellular::parse_delay_terms(pugi::xml_node &nod
             initial_value = PhysiCell::xml_get_my_double_value(node_initial_values);
         }
 
-        int n_terms = static_cast<int> (round(delay_time/update_time_step));
-        double tolerance = 1e-3; // make sure we're within this tolerance of the time step
-        if (fabs(delay_time - n_terms * update_time_step) > tolerance)
-        {
-            std::cerr << "ERROR: The delay time is not a multiple of the intracellular dt for this model." << std::endl
-                      << "  - delay_time: " << delay_time << std::endl
-                      << "  - update_time_step: " << update_time_step << std::endl
-                      << "  - num terms to be saved: " << n_terms << std::endl
-                      << "  - effective delay (update_time_step * n_terms): " << n_terms * update_time_step << std::endl << std::endl
-                      << "Update these time scales so they meet this criterion." << std::endl << std::endl;
-            exit(-1);
-        }
+        int n_terms = num_delay_terms(delay_time);
 
         for (int i = 0; i < n_terms; i++)
         {
@@ -849,6 +838,25 @@ std::vector<bool> RoadRunnerIntracellular::parse_delay_terms(pugi::xml_node &nod
         node_delay = node_delay.next_sibling("delay");
     }
     return {input_is_delayed, output_is_delayed};
+}
+
+int RoadRunnerIntracellular::num_delay_terms(double delay_time)
+{
+    int n_terms = static_cast<int>(round(delay_time / update_time_step));
+    double tolerance = 1e-3; // make sure we're within this tolerance of the time step
+    if (fabs(delay_time - n_terms * update_time_step) > tolerance)
+    {
+        std::cerr << "ERROR: The delay time is not a multiple of the intracellular dt for this model." << std::endl
+                  << "  - delay_time: " << delay_time << std::endl
+                  << "  - update_time_step: " << update_time_step << std::endl
+                  << "  - num terms to be saved: " << n_terms << std::endl
+                  << "  - effective delay (update_time_step * n_terms): " << n_terms * update_time_step << std::endl
+                  << std::endl
+                  << "Update these time scales so they meet this criterion." << std::endl
+                  << std::endl;
+        exit(-1);
+    }
+    return n_terms;
 }
 
 void display_sample_delay_element(std::ostream& os)
