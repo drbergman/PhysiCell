@@ -66,6 +66,7 @@
 */
  
 #include <sys/stat.h>
+#include <algorithm>
 #include "./PhysiCell_settings.h"
 
 using namespace BioFVM; 
@@ -1046,12 +1047,11 @@ void ArgumentParser::parse(int argc, char **argv)
 		{"ic-ecm", required_argument, 0, 'e'},
 		{"ic-dc", required_argument, 0, 'd'},
 		{"rules", required_argument, 0, 'r'},
+		{"intracellular", required_argument, 0, 'n'},
 		{"output", required_argument, 0, 'o'},
 		{0, 0, 0, 0}};
 
-	std::string usage = "Usage: " + std::string(argv[0]) + " [-c path_to_config_file] [-i path_to_ic_cells_file] [-s path_to_ic_substrate_file] [-e path_to_ic_ecm_file] [-d path_to_ic_dc_file] [-o path_to_output_folder]\n" + "   Or: " + std::string(argv[0]) + " path_to_config_file [-i path_to_ic_cells_file] [-s path_to_ic_substrate_file] [-e path_to_ic_ecm_file] [-d path_to_ic_dc_file] [-o path_to_output_folder]";
-
-	while ((opt = getopt_long(argc, argv, "c:i:s:e:d:r:o:", long_options, NULL)) != -1)
+	while ((opt = getopt_long(argc, argv, "c:i:s:e:d:r:n:o:", long_options, NULL)) != -1)
 	{
 		switch (opt)
 		{
@@ -1074,12 +1074,15 @@ void ArgumentParser::parse(int argc, char **argv)
 		case 'r':
 			path_to_rules_file = optarg;
 			break;
+		case 'n':
+			path_to_intracellular_mappings_file = optarg;
+			break;
 		case 'o':
 			path_to_output_folder = optarg;
 			break;
 		default:
-			std::cerr << usage << std::endl;
-			exit(EXIT_FAILURE);
+			print_usage(std::cerr, argv[0]);
+			exit(-1);
 		}
 	}
 
@@ -1089,9 +1092,161 @@ void ArgumentParser::parse(int argc, char **argv)
 	}
 	else if (optind < argc - 1 || (optind == argc - 1 && config_file_flagged)) // too many unflagged arguments OR config file passed in as both flagged and unflagged arguments
 	{
-		std::cerr << usage << std::endl;
-		exit(EXIT_FAILURE);
+		print_usage(std::cerr, argv[0]);
+		exit(-1);
 	}
 }
 
+void ArgumentParser::print_usage(std::ostream& os, const char* program_name)
+{
+	std::string options_requiring_flag = "[-i path_to_ic_cells_file] [-s path_to_ic_substrate_file] [-e path_to_ic_ecm_file] [-d path_to_ic_dc_file] [-r path_to_rules_file] [-n path_to_intracellular_file] [-o path_to_output_folder]";
+	os << "Usage:" << std::endl
+	   << "   " << program_name << " [-c path_to_config_file] " << options_requiring_flag << std::endl << std::endl
+	   << "Or:" << std::endl
+	   << "   " << program_name << " path_to_config_file " << options_requiring_flag << std::endl;
+}
+
+void ArgumentParser::read_intracellular_files(pugi::xml_node& node_config_intracellular, const std::string &cell_definition, const std::string &intracellular_type)
+{
+	if (path_to_intracellular_mappings_file=="")
+	{ return; }
+
+	pugi::xml_document physicell_intracellular_mappings_doc;
+
+	pugi::xml_parse_result result = physicell_intracellular_mappings_doc.load_file( path_to_intracellular_mappings_file.c_str() );
+	if( result.status != pugi::xml_parse_status::status_ok )
+	{
+		std::cerr << "ERROR: loading " << path_to_intracellular_mappings_file << " failed!" << std::endl; 
+		exit(-1);
+	}
+
+	pugi::xml_node mappings_root = physicell_intracellular_mappings_doc.child("PhysiCell_intracellular_mappings");
+	pugi::xml_node node_cell_definitions = mappings_root.child("cell_definitions");
+	if (!node_cell_definitions)
+	{
+		std::cerr << "ERROR: No cell_definitions node found in " << path_to_intracellular_mappings_file << "!" << std::endl;
+		exit(-1);
+	}
+	pugi::xml_node node_cell_definition = node_cell_definitions.child("cell_definition");
+	pugi::xml_node node_this_cell_definition;
+	bool found = false;
+	while (node_cell_definition)
+	{
+		std::string cell_definition_name = node_cell_definition.attribute("name").value();
+		if (cell_definition_name == cell_definition)
+		{
+			if (found)
+			{
+				std::cerr << "ERROR: Multiple elements for cell definition " << cell_definition << " found in " << path_to_intracellular_mappings_file << "!" << std::endl;
+				exit(-1);
+			}
+			node_this_cell_definition = node_cell_definition;
+			found = true;
+		}
+		node_cell_definition = node_cell_definition.next_sibling("cell_definition");
+	}
+
+	if (!found)
+	{ return; }
+
+	pugi::xml_node node_intracellular_ids = node_this_cell_definition.child("intracellular_ids");
+	if (!node_intracellular_ids)
+	{
+		std::cerr << "ERROR: No intracellulars node found for cell definition " << cell_definition << " in " << path_to_intracellular_mappings_file << "!" << std::endl;
+		exit(-1);
+	}
+	pugi::xml_node node_ID = node_intracellular_ids.child("ID");
+	bool one_id_found = false; // for now, we will enforce only one intracellular mapping per cell type
+	std::vector<std::string> intracellular_ids;
+	while (node_ID)
+	{
+		if (one_id_found)
+		{
+			std::cerr << "ERROR: Multiple intracellular IDs found for cell definition " << cell_definition << " in " << path_to_intracellular_mappings_file << "! This is not (yet) allowed." << std::endl;
+			exit(-1);
+		}
+		one_id_found = true;
+		intracellular_ids.push_back(node_ID.text().get());
+		node_ID = node_ID.next_sibling("ID");
+	}
+
+	if (!one_id_found)
+	{ return; }
+
+	pugi::xml_node node_intracellulars = mappings_root.child("intracellulars");
+	if (!node_intracellulars)
+	{
+		std::cerr << "ERROR: No intracellulars node found in " << path_to_intracellular_mappings_file << "!" << std::endl;
+		exit(-1);
+	}
+
+	pugi::xml_node node_intracellular = node_intracellulars.child("intracellular");
+	pugi::xml_node node_this_intracellular;
+	found = false;
+	while (node_intracellular)
+	{
+		std::string node_intracellular_type = node_intracellular.attribute("type").value();
+		if (node_intracellular_type != intracellular_type)
+		{
+			node_intracellular = node_intracellular.next_sibling("intracellular");
+			continue;
+		}
+
+		std::string intracellular_id = node_intracellular.attribute("ID").value();
+		if (std::find(intracellular_ids.begin(), intracellular_ids.end(), intracellular_id) == intracellular_ids.end()) // probably need to restructure if/when we allow multiple models per cell type
+		{
+			node_intracellular = node_intracellular.next_sibling("intracellular");
+			continue;
+		}
+
+		if (found)
+		{
+			std::cerr << "ERROR: Multiple intracellular elements with ID " << intracellular_id << " found in " << path_to_intracellular_mappings_file << "!" << std::endl;
+			exit(-1);
+		}
+
+		node_this_intracellular = node_intracellular;
+		found = true;
+		node_intracellular = node_intracellular.next_sibling("intracellular");
+	}
+
+	if (!found)
+	{
+		std::cerr << "ERROR: No intracellular element with ID " << intracellular_ids[0] << " found in " << path_to_intracellular_mappings_file << "!" << std::endl;
+		exit(-1);
+	}
+
+	std::string base_path_to_filename = path_to_intracellular_mappings_file.substr(0, path_to_intracellular_mappings_file.find_last_of(".")) + "_" + cell_definition + "_ID" + intracellular_ids[0];
+	set_intracellular_files(node_config_intracellular, node_this_intracellular, base_path_to_filename, intracellular_type);
+}
+
+void set_intracellular_files(pugi::xml_node &node_config_intracellular, const pugi::xml_node &node_this_intracellular, const std::string &base_path_to_filename, const std::string &intracellular_type)
+{
+	if (intracellular_type == "maboss")
+	{
+		// base_path_to_filename will not just used just to append .xml as below
+		std::cerr << "ERROR: MABOSS intracellular model in intracellular mappings file not yet supported!" << std::endl;
+		exit(-1);
+	}
+	else if (intracellular_type == "roadrunner" || intracellular_type == "dfba")
+	{
+		pugi::xml_node node_rr_root = node_this_intracellular.child("sbml");
+		pugi::xml_document rr_doc;
+		rr_doc.append_copy(node_rr_root);
+		std::string rr_filename = base_path_to_filename + "_" + intracellular_type + ".xml";
+		rr_doc.save_file(rr_filename.c_str());
+		if (!node_config_intracellular.child("sbml_filename").first_child().set_value(rr_filename.c_str()))
+		{
+			std::cerr << "ERROR: Failed to set sbml_filename in config file!" << std::endl;
+			exit(-1);
+		}
+		std::cout << "sbml_filename = " << xml_get_string_value(node_config_intracellular, "sbml_filename") << std::endl;
+	}
+	else
+	{
+		std::cerr << "ERROR: Intracellular model type " << intracellular_type << " not recognized!" << std::endl;
+		exit(-1);
+	}
+	return;
+}
 }; 

@@ -3139,16 +3139,16 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 
 	node = cd_node.child( "phenotype" );
 
-		// intracellular
+	// intracellular
 	node = cd_node.child( "phenotype" );
 	node = node.child( "intracellular" ); 
 	if( node )
 	{
 		std::string model_type = node.attribute( "type" ).value(); 
-		
 
 #ifdef ADDON_PHYSIBOSS
 		if (model_type == "maboss") {
+			argument_parser.read_intracellular_files(node, pCD->name, model_type);
 			// If it has already be copied
 			if (pParent != NULL && pParent->phenotype.intracellular != NULL) {
 				pCD->phenotype.intracellular->initialize_intracellular_from_pugixml(node);
@@ -3164,6 +3164,7 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 #ifdef ADDON_ROADRUNNER
 		if (model_type == "roadrunner") 
         {
+			argument_parser.read_intracellular_files(node, pCD->name, model_type);
 			// If it has already be copied
 			if (pParent != NULL && pParent->phenotype.intracellular != NULL) 
             {
@@ -3182,6 +3183,7 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 
 #ifdef ADDON_PHYSIDFBA
 		if (model_type == "dfba") {
+			argument_parser.read_intracellular_files(node, pCD->name, model_type);
 			// If it has already be copied
 			if (pParent != NULL && pParent->phenotype.intracellular != NULL) {
 				pCD->phenotype.intracellular->initialize_intracellular_from_pugixml(node);
