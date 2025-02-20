@@ -567,6 +567,10 @@ void RoadRunnerIntracellular::initialize_intracellular_from_pugixml(pugi::xml_no
     std::vector<RoadRunnerMapping*> new_input_mappings;
     std::vector<RoadRunnerMapping*> new_output_mappings;
 
+    // delay terms will be appended to these below. make sure they do not retain values from previous cell definitions
+    input_delay_terms.clear();
+    output_delay_terms.clear();
+
     pugi::xml_node node_map = node.child( "map" );
     while ( node_map )
     {
