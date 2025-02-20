@@ -1235,7 +1235,13 @@ void set_intracellular_files(pugi::xml_node &node_config_intracellular, const pu
 		rr_doc.append_copy(node_rr_root);
 		std::string rr_filename = base_path_to_filename + "_" + intracellular_type + ".xml";
 		rr_doc.save_file(rr_filename.c_str());
-		if (!node_config_intracellular.child("sbml_filename").first_child().set_value(rr_filename.c_str()))
+		pugi::xml_node node_sbml_filename = node_config_intracellular.child("sbml_filename");
+		if (!node_sbml_filename)
+		{
+			node_sbml_filename = node_config_intracellular.append_child("sbml_filename");
+			node_sbml_filename.append_child( pugi::node_pcdata );
+		}
+		if (!node_sbml_filename.first_child().set_value(rr_filename.c_str()))
 		{
 			std::cerr << "ERROR: Failed to set sbml_filename in config file!" << std::endl;
 			exit(-1);
