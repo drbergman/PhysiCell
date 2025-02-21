@@ -307,7 +307,6 @@
 				</cell_transformations>
 
 				<intracellular type="roadrunner">
-					<sbml_filename>./config/Toy_Metabolic_Model.xml</sbml_filename>
 					<intracellular_dt>0.1</intracellular_dt>
                     <map type="io" physicell_name="intracellular oxygen" sbml_species="Oxygen"></map >
                     <map type="io" physicell_name="intracellular lactate" sbml_species="Lactate"></map >

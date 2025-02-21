@@ -248,15 +248,21 @@ public:
 	std::string path_to_ic_ecm_file = "";
 	std::string path_to_ic_dc_file = "";
 	std::string path_to_rules_file = "";
+	std::string path_to_intracellular_mappings_file = "";
 	std::string path_to_output_folder = "";
 
     void parse(int argc, char* argv[]);
 
 	ArgumentParser() {};
+
+	void read_intracellular_files(pugi::xml_node& node_config_intracellular, const std::string &cell_definition, const std::string &intracellular_type);
+
+	void print_usage(std::ostream& os, const char* program_name);
 };
 
 extern ArgumentParser argument_parser;
 
+void set_intracellular_files(pugi::xml_node &node_config_intracellular, const pugi::xml_node &node_this_intracellular, const std::string &base_path_to_filename, const std::string &intracellular_type);
 }
 
 #endif 
