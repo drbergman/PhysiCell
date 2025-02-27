@@ -263,6 +263,13 @@ jobs:
         rm -fr config/PhysiCell_settings-backup.xml
         tar -zcvf ${{ matrix.projects.short_name }}-macos.tar.gz ${{ matrix.projects.binary }} Makefile main.cpp config/ custom_modules/
         
+    - name: Upload artifact
+      if: github.event_name != 'release'
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.projects.short_name }}-macos.tar.gz
+        path: ${{ github.workspace }}/${{ matrix.projects.short_name }}-macos.tar.gz
+        
     - uses: actions/upload-release-asset@v1
       if: github.event_name == 'release'
       env:
