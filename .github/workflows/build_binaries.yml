@@ -265,7 +265,7 @@ jobs:
         
     - name: Upload artifact
       if: github.event_name != 'release'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.projects.short_name }}-macos.tar.gz
         path: ${{ github.workspace }}/${{ matrix.projects.short_name }}-macos.tar.gz
