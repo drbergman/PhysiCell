@@ -145,15 +145,20 @@ void setup_tissue( void )
     {
         pCell = create_cell(get_cell_definition("default")); 
         pCell->assign_position( positions[i] );
-
-        double cell_volume = pCell->phenotype.volume.total;
-        
-        pCell->phenotype.molecular.internalized_total_substrates[oxygen_substrate_index]= get_single_signal( pCell, "custom:intra_oxy") * cell_volume;
-        pCell->phenotype.molecular.internalized_total_substrates[glucose_substrate_index]= get_single_signal( pCell, "custom:intra_glu") * cell_volume;
-        pCell->phenotype.molecular.internalized_total_substrates[lactate_substrate_index]= get_single_signal( pCell, "custom:intra_lac") * cell_volume;
-        pCell->phenotype.intracellular->set_parameter_value("Energy",get_single_signal( pCell, "custom:intra_energy"));
-    }
-
+	}
+	
+	load_initial_cells();
+	
+	for (int i=0; i<(*all_cells).size(); i++)
+	{
+		pCell = (*all_cells)[i];
+		double cell_volume = pCell->phenotype.volume.total;
+		pCell->phenotype.molecular.internalized_total_substrates[oxygen_substrate_index]= get_single_signal( pCell, "custom:intra_oxy") * cell_volume;
+		pCell->phenotype.molecular.internalized_total_substrates[glucose_substrate_index]= get_single_signal( pCell, "custom:intra_glu") * cell_volume;
+		pCell->phenotype.molecular.internalized_total_substrates[lactate_substrate_index]= get_single_signal( pCell, "custom:intra_lac") * cell_volume;
+		pCell->phenotype.intracellular->set_parameter_value("Energy",get_single_signal( pCell, "custom:intra_energy"));
+	}
+	
 	return; 
 }
 
