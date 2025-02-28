@@ -32,6 +32,11 @@ def disable_automated_spring_adhesions(root):
 def run_sample(myexec, xml_file, max_time):
 
     print("\n\n------------   ",myexec, "   ----------------------------------")
+
+    print("Environment variables:")
+    print("LD_LIBRARY_PATH=", os.environ.get("LD_LIBRARY_PATH"))
+    os.environ["LD_LIBRARY_PATH"] = os.environ.get("LD_LIBRARY_PATH", "") + ":./addons/libRoadrunner/roadrunner/lib"
+    print("LD_LIBRARY_PATH=", os.environ.get("LD_LIBRARY_PATH"))
     # update max_time and omp_num_threads (=1)
     tree = ET.parse(xml_file)
     root = tree.getroot()
