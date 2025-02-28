@@ -35,6 +35,7 @@ jobs:
           {project: "rules-sample", name: "PhysiCell rules sample", binary: "rules_sample", config: "config/PhysiCell_settings.xml", max_time: 120, output_folder: ""},
           {project: "asymmetric-division-sample", name: "PhysiCell asymmetric division", binary: "project", config: "config/PhysiCell_settings.xml", max_time: 120, output_folder: ""},
           {project: "episode-sample", name: "PhysiCell Episode", binary: "project", max_time: 120, config: "config/PhysiCell_settings.xml", output_folder: ""},
+          {project: "ode-energy-sample", name: "PhysiCell ODE energy", binary: "ode_energy", max_time: 120, config: "config/PhysiCell_settings.xml", output_folder: ""},
         ]
         
     name: Testing ${{ matrix.projects.name }} on ${{ matrix.os.name }}
@@ -54,14 +55,22 @@ jobs:
         update: true
         install: mingw-w64-x86_64-binutils mingw-w64-x86_64-gcc mingw-w64-x86_64-headers-git mingw-w64-x86_64-gcc-libs mingw-w64-x86_64-libwinpthread-git mingw-w64-x86_64-lapack mingw-w64-x86_64-openblas mingw-w64-x86_64-libxml2 mingw-w64-x86_64-bzip2 mingw-w64-x86_64-python mingw-w64-x86_64-python-zstandard mingw-w64-x86_64-python-cffi make bison flex mingw-w64-x86_64-ca-certificates mingw-w64-x86_64-diffutils
     
+    - if: matrix.os.name == 'Ubuntu' && matrix.projects.project == 'ode-energy-sample'
+      run: |
+        python3 beta/setup_libroadrunner.py
+
     - name: Build ${{ matrix.projects.name }} project 
       run: |
         make data-cleanup && make ${{ matrix.projects.project }} && make PHYSICELL_CPP=${{ matrix.os.compiler }} PROGRAM_NAME=${{ matrix.projects.binary }}
-        
+      env:
+        LD_LIBRARY_PATH: ./addons/libRoadrunner/roadrunner/lib        
+
     - name: Run ${{ matrix.projects.name }} project
       run: |
         python beta/test_run_sample.py ${{ matrix.projects.binary }} ${{ matrix.projects.config }} ${{ matrix.projects.max_time }}
-    
+      env:
+        LD_LIBRARY_PATH: ./addons/libRoadrunner/roadrunner/lib
+
     - name: Check ${{ matrix.projects.name }} project simulation results
       if: matrix.projects.output_folder != ''
       run: |
