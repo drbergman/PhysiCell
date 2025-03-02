@@ -58,7 +58,8 @@ jobs:
     - if: matrix.os.name == 'Ubuntu' && matrix.projects.project == 'ode-energy-sample'
       run: |
         sudo apt-get update
-        sudo apt-get install -y libncurses6
+        wget http://security.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.3-2ubuntu0.1_amd64.deb
+        sudo apt install ./libtinfo5_6.3-2ubuntu0.1_amd64.deb
         python3 beta/setup_libroadrunner.py
 
     - name: Build ${{ matrix.projects.name }} project 
