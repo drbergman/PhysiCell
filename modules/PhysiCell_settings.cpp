@@ -1237,6 +1237,13 @@ bool ArgumentParser::read_intracellular_files(pugi::xml_node& node_config_intrac
 		exit(-1);
 	}
 
+	if (intracellular_type == "maboss")
+	{
+		std::cerr << "ERROR: MaBoSS intracellular model in intracellular mappings file not yet supported!" << std::endl
+				  << "You must remove the MaBoSS model from the mappings file and use the config file to specify the MaBoSS model." << std::endl;
+		exit(-1);
+	}
+
 	std::string base_path_to_filename = path_to_intracellular_mappings_file.substr(0, path_to_intracellular_mappings_file.find_last_of(".")) + "_" + cell_definition + "_ID" + intracellular_ids[0];
 	set_intracellular_files(node_config_intracellular, node_this_intracellular, base_path_to_filename, intracellular_type);
 	return true; // intracellular mappings found for this cell type, so we will use them
@@ -1268,7 +1275,6 @@ void set_intracellular_files(pugi::xml_node &node_config_intracellular, const pu
 			std::cerr << "ERROR: Failed to set sbml_filename in config file!" << std::endl;
 			exit(-1);
 		}
-		std::cout << "sbml_filename = " << xml_get_string_value(node_config_intracellular, "sbml_filename") << std::endl;
 	}
 	else
 	{
