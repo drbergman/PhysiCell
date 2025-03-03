@@ -1106,10 +1106,31 @@ void ArgumentParser::print_usage(std::ostream& os, const char* program_name)
 	   << "   " << program_name << " path_to_config_file " << options_requiring_flag << std::endl;
 }
 
-void ArgumentParser::read_intracellular_files(pugi::xml_node& node_config_intracellular, const std::string &cell_definition, const std::string &intracellular_type)
+
+/**
+ * @brief Reads intracellular files based on the provided configuration and cell definition.
+ *
+ * This function attempts to read intracellular mappings from an XML file specified by the 
+ * `path_to_intracellular_mappings_file`. If the file is not provided, it will look in the 
+ * configuration node as usual. It ensures that there is only one intracellular mapping per 
+ * cell type and sets the intracellular files accordingly. If this file is found and a mapping
+ * is found for the given cell definition and intracellular type, the function will set the
+ * intracellular files, but not the parameters which are set in the config file.
+ *
+ * @param node_config_intracellular The XML node containing the intracellular configuration.
+ * @param cell_definition The name of the cell definition to look for in the mappings file.
+ * @param intracellular_type The type of intracellular model to look for.
+ * @return true if either no intracellular file was passed in at the command line or intracellular
+ *         mappings are found and set, false otherwise.
+ *
+ * @throws std::runtime_error if there are errors in loading or parsing the XML file, or if 
+ *         multiple mappings are found where only one is expected.
+ */
+bool ArgumentParser::read_intracellular_files(pugi::xml_node& node_config_intracellular, const std::string &cell_definition, const std::string &intracellular_type)
 {
-	if (path_to_intracellular_mappings_file=="")
-	{ return; }
+	bool uses_intracellular = path_to_intracellular_mappings_file==""; // if an intracellular file was not passed in at the command line, then go ahead and look in the config as normal
+	if (uses_intracellular)
+	{ return uses_intracellular; }
 
 	pugi::xml_document physicell_intracellular_mappings_doc;
 
@@ -1147,7 +1168,7 @@ void ArgumentParser::read_intracellular_files(pugi::xml_node& node_config_intrac
 	}
 
 	if (!found)
-	{ return; }
+	{ return false; } // no intracellular mappings for this cell type
 
 	pugi::xml_node node_intracellular_ids = node_this_cell_definition.child("intracellular_ids");
 	if (!node_intracellular_ids)
@@ -1171,7 +1192,7 @@ void ArgumentParser::read_intracellular_files(pugi::xml_node& node_config_intrac
 	}
 
 	if (!one_id_found)
-	{ return; }
+	{ return false; } // reaching here (currently) means that there are no intracellular mappings for this cell type. above, we handle the case of finding 2+
 
 	pugi::xml_node node_intracellulars = mappings_root.child("intracellulars");
 	if (!node_intracellulars)
@@ -1216,8 +1237,16 @@ void ArgumentParser::read_intracellular_files(pugi::xml_node& node_config_intrac
 		exit(-1);
 	}
 
+	if (intracellular_type == "maboss")
+	{
+		std::cerr << "ERROR: MaBoSS intracellular model in intracellular mappings file not yet supported!" << std::endl
+				  << "You must remove the MaBoSS model from the mappings file and use the config file to specify the MaBoSS model." << std::endl;
+		exit(-1);
+	}
+
 	std::string base_path_to_filename = path_to_intracellular_mappings_file.substr(0, path_to_intracellular_mappings_file.find_last_of(".")) + "_" + cell_definition + "_ID" + intracellular_ids[0];
 	set_intracellular_files(node_config_intracellular, node_this_intracellular, base_path_to_filename, intracellular_type);
+	return true; // intracellular mappings found for this cell type, so we will use them
 }
 
 void set_intracellular_files(pugi::xml_node &node_config_intracellular, const pugi::xml_node &node_this_intracellular, const std::string &base_path_to_filename, const std::string &intracellular_type)
@@ -1246,7 +1275,6 @@ void set_intracellular_files(pugi::xml_node &node_config_intracellular, const pu
 			std::cerr << "ERROR: Failed to set sbml_filename in config file!" << std::endl;
 			exit(-1);
 		}
-		std::cout << "sbml_filename = " << xml_get_string_value(node_config_intracellular, "sbml_filename") << std::endl;
 	}
 	else
 	{
