@@ -292,6 +292,8 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 void initialize_cell_definitions_from_pugixml( pugi::xml_node root ); 
 void initialize_cell_definitions_from_pugixml( void );
 
+void parse_intracellular_model(pugi::xml_node node, Cell_Definition* pCD, Cell_Definition* pParent);
+
 extern std::vector<double> (*cell_division_orientation)(void);
 
 void attach_cells( Cell* pCell_1, Cell* pCell_2 );

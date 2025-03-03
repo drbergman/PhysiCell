@@ -2318,7 +2318,6 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 	// otherwise, modify properties of that model 
 	
 	// set up the death models 
-//	int death_model_index = 0; 
 	node = cd_node.child( "phenotype" );
 	node = node.child( "death" ); 
 	if( node )
@@ -2412,9 +2411,6 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 				if( node_temp )
 				{ death_params.lysed_fluid_change_rate = xml_get_my_double_value( node_temp ); }
 
-	//			death_params.time_units = 
-	//				get_string_attribute_value( node, "unlysed_fluid_change_rate", "units" ); 
-				
 				node = node.parent(); 
 			}
 					
@@ -2422,7 +2418,6 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 			// if the model already exists, just overwrite the parameters 
             if (model == PhysiCell_constants::apoptosis_death_model) 
             {
-//					pCD->phenotype.death.add_death_model( rate , &apoptosis , apoptosis_parameters );
                 if( death_model_already_exists == false )
                 {
                     pCD->phenotype.death.add_death_model( rate , &apoptosis , death_params ); 
@@ -2437,7 +2432,6 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
             else if (model == PhysiCell_constants::necrosis_death_model) 
             {
                 // set necrosis parameters 
-//					pCD->phenotype.death.add_death_model( rate , &necrosis , necrosis_parameters );
                 if( death_model_already_exists == false )
                 {
                     pCD->phenotype.death.add_death_model( rate , &necrosis , death_params ); 
@@ -2960,11 +2954,7 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 			// pCI->dead_phagocytosis_rate = xml_get_my_double_value(node_dpr); 
 			dead_phagocytosis_rate = xml_get_my_double_value(node_dpr); 
 		}
-/*
-		pCI->apoptotic_phagocytosis_rate = pCI->dead_phagocytosis_rate; 
-		pCI->necrotic_phagocytosis_rate = pCI->dead_phagocytosis_rate; 
-		pCI->other_dead_phagocytosis_rate = pCI->dead_phagocytosis_rate; 
-*/
+
 		pCI->apoptotic_phagocytosis_rate = dead_phagocytosis_rate; 
 		pCI->necrotic_phagocytosis_rate = dead_phagocytosis_rate; 
 		pCI->other_dead_phagocytosis_rate = dead_phagocytosis_rate; 
@@ -3141,64 +3131,14 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 
 	// intracellular
 	node = cd_node.child( "phenotype" );
-	node = node.child( "intracellular" ); 
-	if( node )
+	node = node.child("intracellular");
+	if (node)
 	{
-		std::string model_type = node.attribute( "type" ).value(); 
-
-#ifdef ADDON_PHYSIBOSS
-		if (model_type == "maboss") {
-			argument_parser.read_intracellular_files(node, pCD->name, model_type);
-			// If it has already be copied
-			if (pParent != NULL && pParent->phenotype.intracellular != NULL) {
-				pCD->phenotype.intracellular->initialize_intracellular_from_pugixml(node);
-				
-			// Otherwise we need to create a new one
-			} else {
-				MaBoSSIntracellular* pIntra = new MaBoSSIntracellular(node);
-				pCD->phenotype.intracellular = pIntra->getIntracellularModel();
-			}
-		}
-#endif
-
-#ifdef ADDON_ROADRUNNER
-		if (model_type == "roadrunner") 
-        {
-			argument_parser.read_intracellular_files(node, pCD->name, model_type);
-			// If it has already be copied
-			if (pParent != NULL && pParent->phenotype.intracellular != NULL) 
-            {
-				pCD->phenotype.intracellular->initialize_intracellular_from_pugixml(node);
-            }	
-			// Otherwise we need to create a new one
-			else 
-            {
-				RoadRunnerIntracellular* pIntra = new RoadRunnerIntracellular(node);
-				pCD->phenotype.intracellular = pIntra->getIntracellularModel();
-			}
-			pCD->phenotype.intracellular->validate_PhysiCell_tokens(pCD->phenotype);
-			pCD->phenotype.intracellular->validate_SBML_species();
-		}
-#endif
-
-#ifdef ADDON_PHYSIDFBA
-		if (model_type == "dfba") {
-			argument_parser.read_intracellular_files(node, pCD->name, model_type);
-			// If it has already be copied
-			if (pParent != NULL && pParent->phenotype.intracellular != NULL) {
-				pCD->phenotype.intracellular->initialize_intracellular_from_pugixml(node);
-			// Otherwise we need to create a new one
-			} else {
-				dFBAIntracellular* pIntra = new dFBAIntracellular(node);
-				pCD->phenotype.intracellular = pIntra->getIntracellularModel();
-			}
-		}
-#endif
-
-	} else{
-
+		parse_intracellular_model(node, pCD, pParent);
+	}
+	else
+	{
 		pCD->phenotype.intracellular = NULL;
-
 	}
 
 	// set up custom data 
@@ -3283,8 +3223,88 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 		exit(-1);
 #endif
 	}
-	
+
 	return pCD;
+}
+
+void parse_intracellular_model(pugi::xml_node node, Cell_Definition* pCD, Cell_Definition* pParent)
+{
+	std::string model_type = node.attribute( "type" ).value(); 
+	bool uses_intracellular = argument_parser.read_intracellular_files(node, pCD->name, model_type);
+	if (!uses_intracellular) {
+		return;
+	}
+
+	if (model_type == "maboss")
+	{
+#ifdef ADDON_PHYSIBOSS
+		// If it has already be copied
+		if (pParent != NULL && pParent->phenotype.intracellular != NULL)
+		{
+			pCD->phenotype.intracellular->initialize_intracellular_from_pugixml(node);
+
+			// Otherwise we need to create a new one
+		}
+		else
+		{
+			MaBoSSIntracellular *pIntra = new MaBoSSIntracellular(node);
+			pCD->phenotype.intracellular = pIntra->getIntracellularModel();
+		}
+#else
+		std::cerr << "ERROR: MaBoSS intracellular model is not supported in this build." << std::endl
+				  << "\tMake sure to compile with the -D ADDON_PHYSIBOSS flag." << std::endl;
+		exit(-1);
+#endif
+	}
+
+	else if (model_type == "roadrunner")
+	{
+#ifdef ADDON_ROADRUNNER
+		// If it has already be copied
+		if (pParent != NULL && pParent->phenotype.intracellular != NULL)
+		{
+			pCD->phenotype.intracellular->initialize_intracellular_from_pugixml(node);
+		}
+		// Otherwise we need to create a new one
+		else
+		{
+			RoadRunnerIntracellular *pIntra = new RoadRunnerIntracellular(node);
+			pCD->phenotype.intracellular = pIntra->getIntracellularModel();
+		}
+		pCD->phenotype.intracellular->validate_PhysiCell_tokens(pCD->phenotype);
+		pCD->phenotype.intracellular->validate_SBML_species();
+#else
+		std::cerr << "ERROR: RoadRunner intracellular model is not supported in this build." << std::endl
+				  << "\tMake sure to compile with the -D ADDON_ROADRUNNER flag." << std::endl;
+		exit(-1);
+#endif
+	}
+
+	else if (model_type == "dfba")
+	{
+#ifdef ADDON_PHYSIDFBA
+		// If it has already be copied
+		if (pParent != NULL && pParent->phenotype.intracellular != NULL)
+		{
+			pCD->phenotype.intracellular->initialize_intracellular_from_pugixml(node);
+			// Otherwise we need to create a new one
+		}
+		else
+		{
+			dFBAIntracellular *pIntra = new dFBAIntracellular(node);
+			pCD->phenotype.intracellular = pIntra->getIntracellularModel();
+		}
+#else
+		std::cerr << "ERROR: dFBA intracellular model is not supported in this build." << std::endl
+				  << "\tMake sure to compile with the -D ADDON_PHYSIDFBA flag." << std::endl;
+#endif
+	}
+
+	else
+	{
+		std::cerr << "ERROR: Intracellular model type " << model_type << " is not supported." << std::endl;
+		exit(-1);
+	}
 }
 
 void initialize_cell_definitions_from_pugixml( pugi::xml_node root )

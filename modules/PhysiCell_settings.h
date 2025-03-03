@@ -255,7 +255,7 @@ public:
 
 	ArgumentParser() {};
 
-	void read_intracellular_files(pugi::xml_node& node_config_intracellular, const std::string &cell_definition, const std::string &intracellular_type);
+	bool read_intracellular_files(pugi::xml_node& node_config_intracellular, const std::string &cell_definition, const std::string &intracellular_type);
 
 	void print_usage(std::ostream& os, const char* program_name);
 };
