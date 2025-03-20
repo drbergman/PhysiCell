@@ -390,7 +390,6 @@ void apply_behavior_ruleset( Cell* pCell )
 
 void parse_xml_behavior_rules(const std::string filename)
 {
-	bool physicell_rules_dom_initialized = false;
 	pugi::xml_document physicell_rules_doc;
 	pugi::xml_node physicell_rules_root;
 	std::cout << "Using rules file " << filename << " ... " << std::endl;
@@ -403,7 +402,6 @@ void parse_xml_behavior_rules(const std::string filename)
 	}
 
 	physicell_rules_root = physicell_rules_doc.child("behavior_rulesets");
-	physicell_rules_dom_initialized = true;
 
 	pugi::xml_node ruleset_node;
 	ruleset_node = xml_find_node(physicell_rules_root, "behavior_ruleset");
@@ -413,15 +411,12 @@ void parse_xml_behavior_rules(const std::string filename)
 	{
 		std::string cell_type = ruleset_node.attribute("name").value();
 		// check if cell_type has already had a ruleset defined for it
-		for (int i = 0; i < cell_definitions_ruled.size(); i++)
+		if (std::find(cell_definitions_ruled.begin(), cell_definitions_ruled.end(), cell_type) != cell_definitions_ruled.end())
 		{
-			if (cell_type == cell_definitions_ruled[i])
-			{
-				std::cerr << "XML Rules ERROR: Two rulesets for " << cell_type << " found." << std::endl
-						  << "\tCombine them into a single ruleset please :)" << std::endl
-						  << "\tSupport for rules across multiple files for the same cell type not yet supported." << std::endl;
-				exit(-1);
-			}
+			std::cerr << "XML Rules ERROR: Two rulesets for " << cell_type << " found." << std::endl
+					  << "\tCombine them into a single ruleset please :)" << std::endl
+					  << "\tSupport for rules across multiple files for the same cell type not yet supported." << std::endl;
+			exit(-1);
 		}
 		cell_definitions_ruled.push_back(cell_type);
 
@@ -432,14 +427,11 @@ void parse_xml_behavior_rules(const std::string filename)
 		while (behavior_node)
 		{
 			std::string behavior = behavior_node.attribute("name").value();
-			for (int i = 0; i < behaviors_ruled.size(); i++)
+			if (std::find(behaviors_ruled.begin(), behaviors_ruled.end(), behavior) != behaviors_ruled.end())
 			{
-				if (behavior == behaviors_ruled[i])
-				{
-					std::cerr << "XML Rules ERROR: The behavior " << behavior << " is being set again for " << cell_type << "." << std::endl
-							  << "\tSelect only one to keep. :)" << std::endl;
-					exit(-1);
-				}
+				std::cerr << "XML Rules ERROR: The behavior " << behavior << " is being set again for " << cell_type << "." << std::endl
+						  << "\tSelect only one to keep. :)" << std::endl;
+				exit(-1);
 			}
 			behaviors_ruled.push_back(behavior);
 
@@ -482,7 +474,6 @@ std::unique_ptr<BehaviorRule> parse_behavior(std::string cell_type, std::string 
 
 std::unique_ptr<AbstractSignal> parse_abstract_signal(pugi::xml_node node)
 {
-	// idea: also start with mediator. if only one of increasing or decreasing provided, then can scrap the mediator and use either an elementary signal or an aggregator
 	if (signal_is_mediator(node))
 	{
 		return parse_mediator_signal(node);
@@ -550,7 +541,7 @@ std::unique_ptr<AbstractSignal> parse_mediator_signal(pugi::xml_node mediator_no
 	if (decreasing_signals_node)
 	{
 		pDecreasingSignal = parse_aggregator_signal(decreasing_signals_node);
-		if (decreasing_signals_node.child("max_response"))
+		if (decreasing_signals_node.child("max_response")) // note that even if the min value = base value, a decreasing signal can counteract an increasing signal
 		{
 			min_value = xml_get_double_value(decreasing_signals_node, "max_response");
 		}
@@ -563,7 +554,7 @@ std::unique_ptr<AbstractSignal> parse_mediator_signal(pugi::xml_node mediator_no
 	if (increasing_signals_node)
 	{
 		pIncreasingSignal = parse_aggregator_signal(increasing_signals_node);
-		if (increasing_signals_node.child("max_response"))
+		if (increasing_signals_node.child("max_response")) // note that even if the max value = base value, an increasing signal can counteract a decreasing signal
 		{
 			max_value = xml_get_double_value(increasing_signals_node, "max_response");
 		}
@@ -594,8 +585,8 @@ std::unique_ptr<AbstractSignal> parse_mediator_signal(pugi::xml_node mediator_no
 		}
 		else
 		{
-			std::cerr << "ERROR: Mediator not recognized: " << mediator_fn << std::endl;
-			std::cerr << "Must be one of: 'decreasing dominant', 'increasing dominant', 'neutral'" << std::endl;
+			std::cerr << "ERROR: Mediator not recognized: " << mediator_fn << std::endl
+			          << "Must be one of: 'decreasing dominant', 'increasing dominant', 'neutral'" << std::endl;
 			exit(-1);
 		}
 	}
@@ -664,25 +655,27 @@ std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementar
 	std::string name = elementary_node.attribute("name").value();
 	std::string type = elementary_node.attribute("type").value();
 	std::unique_ptr<AbstractSignal> pAS;
-	if (type == "Hill")
+	if (type == "Hill" || type == "hill")
 	{
 		pAS = parse_hill_signal(name, elementary_node);
 	}
-	else if (type == "PartialHill")
+	else if (type == "PartialHill" || type == "partialhill" || type == "partial_hill")
 	{
 		pAS = parse_partial_hill_signal(name, elementary_node);
 	}
-	else if (type == "Linear")
+	else if (type == "Linear" || type = "linear")
 	{
 		pAS = parse_linear_signal(name, elementary_node);
 	}
-	else if (type == "Heaviside" || type == "Step" || type == "Switch")
+	else if (type == "Heaviside" || type == "Step" || type == "Switch" || type == "heaviside" || type == "step" || type == "switch")
 	{
 		pAS = parse_heaviside_signal(name, elementary_node);
 	}
 	else
 	{
-		std::cerr << "ERROR: Elementary signal type not recognized: " << type << std::endl;
+		std::cerr << "ERROR: Elementary signal type not recognized: " << type << std::endl
+		          << "Must be one of: 'Hill', 'PartialHill', 'Linear', 'Heaviside'."
+				  << "Note: each of these options has alternative capitalizations and/or synonyms."
 		exit(-1);
 	}
 	pugi::xml_node reference_node = xml_find_node(elementary_node, "reference");
@@ -696,7 +689,8 @@ std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementar
 		}
 		else
 		{
-			std::cerr << "ERROR: Reference defined for a Signal that is not an ElementarySignal." << std::endl;
+			std::cerr << "ERROR: Reference defined for a Signal that is not a relative signal." << std::endl
+					  << "Relative signals include: 'PartialHill' and 'Hill'."
 			exit(-1);
 		}
 	}
@@ -825,7 +819,7 @@ void parse_behavior_rules_from_pugixml( void )
 		}
 		else
 		{
-			std::cout << "\tRuleset disabled ... " << std::endl;
+			std::cout << "\tA ruleset is disabled ... " << std::endl;
 		}
 		node = node.next_sibling("ruleset");
 	}
@@ -853,7 +847,7 @@ void parse_behavior_rules_from_file(std::string path_to_file, std::string format
 	if (format == "CSV" || format == "csv")
 	{
 		std::cerr << "Error: CSV format not supported for behavior rules. Quitting!" << std::endl;
-		throw std::runtime_error("CSV format not supported for behavior rules.");
+		exit(-1);
 	}
 	else if (format == "XML" || format == "xml")
 	{

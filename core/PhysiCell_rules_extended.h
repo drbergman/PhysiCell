@@ -12,6 +12,7 @@
 
 namespace PhysiCell{
 
+// aggregator functions
 double sum_aggregator(std::vector<double> signals_in);
 double multivariate_hill_aggregator(std::vector<double> partial_hill_signals);
 double product_aggregator(std::vector<double> signals_in);
@@ -31,8 +32,10 @@ public:
 
 class AbstractAggregatorSignal : public AbstractSignal
 {
-public:
+private:
     virtual std::vector<double> get_signals(Cell *pCell) = 0;
+    
+public:
     std::function<double(std::vector<double>)> aggregator;
 
     double evaluate(Cell *pCell)
@@ -81,12 +84,12 @@ private:
     std::unique_ptr<PhysiCell::AbstractSignal>decreasing_signal;
     std::unique_ptr<PhysiCell::AbstractSignal>increasing_signal;
 
-public:
     // values that the aggregator can use to calculate the output
     double min_value = 0.1;
     double base_value = 1;
     double max_value = 10;
 
+public:
     std::vector<double> get_signals(Cell *pCell)
     {
         return {decreasing_signal->evaluate(pCell), increasing_signal->evaluate(pCell)};
@@ -107,16 +110,13 @@ public:
     MediatorSignal(std::unique_ptr<PhysiCell::AbstractSignal> pDecreasingSignal, std::unique_ptr<PhysiCell::AbstractSignal> pIncreasingSignal, double min = 0.1, double base = 1, double max = 10)
         : decreasing_signal(std::move(pDecreasingSignal)), increasing_signal(std::move(pIncreasingSignal)), min_value(min), base_value(base), max_value(max)
     {
-        if (decreasing_signal == nullptr || increasing_signal == nullptr)
+        if (decreasing_signal == nullptr)
         {
-            if (decreasing_signal == nullptr)
-            {
-                throw std::invalid_argument("Null pointer passed to MediatorSignal constructor for decreasing signal");
-            }
-            if (increasing_signal == nullptr)
-            {
-                throw std::invalid_argument("Null pointer passed to MediatorSignal constructor for increasing signal");
-            }
+            throw std::invalid_argument("Null pointer passed to MediatorSignal constructor for decreasing signal");
+        }
+        if (increasing_signal == nullptr)
+        {
+            throw std::invalid_argument("Null pointer passed to MediatorSignal constructor for increasing signal");
         }
         aggregator = [this](std::vector<double> signals_in)
         { return this->decreasing_dominant_mediator(signals_in); };
@@ -128,9 +128,13 @@ public:
 
 class ElementarySignal : public AbstractSignal
 {
-public:
+private:
+
+protected:
     std::string signal_name;
     bool applies_to_dead_cells;
+
+public:
 
     virtual double transformer( double signal )
     {
@@ -145,9 +149,16 @@ public:
 
 class SignalReference
 {
-public:
+private:
+
+protected:
     double reference_value = 0;
+
+public:
     virtual double coordinate_transform(double signal) = 0;
+
+    SignalReference(double reference_value_) : reference_value(reference_value_) {}
+
     virtual ~SignalReference() {}
 };
 
@@ -162,12 +173,12 @@ public:
         }
         return signal - reference_value;
     }
+
+    using SignalReference::SignalReference; // Inherit constructors from SignalReference
+    
     IncreasingSignalReference();
 
-    IncreasingSignalReference(double reference_value_)
-    {
-        reference_value = reference_value_;
-    }
+    IncreasingSignalReference(double reference_value_) : SignalReference(reference_value_) {}
 };
 
 class DecreasingSignalReference : public SignalReference
@@ -181,12 +192,12 @@ public:
         }
         return reference_value - signal;
     }
+
+    using SignalReference::SignalReference; // Inherit constructors from SignalReference
+    
     DecreasingSignalReference();
 
-    DecreasingSignalReference(double reference_value_)
-    {
-        reference_value = reference_value_;
-    }
+    DecreasingSignalReference(double reference_value_) : SignalReference(reference_value_) {}
 };
 
 class RelativeSignal : public ElementarySignal
@@ -196,16 +207,19 @@ protected:
 
 public:
     virtual void add_reference(std::unique_ptr<SignalReference> pSR) = 0;
+
     double evaluate(Cell *pCell);
+
     using ElementarySignal::ElementarySignal; // Inherit constructors from ElementarySignal
 };
 
 class AbstractHillSignal : public RelativeSignal
 {
-public:
+private:
     double half_max;
     double hill_power;
 
+public:
     void add_reference(std::unique_ptr<SignalReference> pSR)
     {
         signal_reference = std::move(pSR);
@@ -256,21 +270,22 @@ public:
 class AbsoluteSignal : public ElementarySignal
 {
 protected:
-    double evaluate(Cell *pCell);
 
 public:
+    double evaluate(Cell *pCell);
     using ElementarySignal::ElementarySignal; // Inherit constructors from ElementarySignal
 };
 
 class LinearSignal : public AbsoluteSignal
 {
+private:
+
 protected:
+    double signal_min;
+    double signal_max;
     double signal_range;
 
 public:
-    double signal_min;
-    double signal_max;
-
     LinearSignal(std::string signal_name, bool applies_to_dead_cells, double signal_min, double signal_max)
         : AbsoluteSignal(signal_name, applies_to_dead_cells), signal_min(signal_min), signal_max(signal_max)
     {
@@ -316,8 +331,12 @@ class DecreasingLinearSignal : public LinearSignal
 
 class HeavisideSignal : public AbsoluteSignal
 {
-public:
+private:
+
+protected:
     double threshold;
+
+public:
 
     HeavisideSignal(std::string signal_name, bool applies_to_dead_cells, double threshold)
         : AbsoluteSignal(signal_name, applies_to_dead_cells), threshold(threshold) {}
@@ -363,9 +382,13 @@ public:
 
 class BehaviorRule
 {
-public:
+private:
+
+protected:
     std::string behavior;
     std::unique_ptr<AbstractSignal> signal;
+
+public:
 
     virtual void apply(Cell* pCell) = 0;
 
@@ -407,10 +430,11 @@ public:
 
 class BehaviorAccumulator : public BehaviorRule
 {
-public:
+private:
     double base_value;
     double saturation_value;
 
+public:
     void apply(Cell* pCell);
 
     BehaviorAccumulator(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_value)
@@ -425,10 +449,11 @@ public:
 
 class BehaviorAttenuator : public BehaviorRule
 {
-public:
+private:
     double base_value;
     double saturation_value;
 
+public:
     void apply(Cell* pCell);
 
     BehaviorAttenuator(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_value)
