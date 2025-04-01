@@ -130,7 +130,7 @@ void create_cell_types( void )
        Cell rule definitions 
 	*/
 
-	setup_cell_rules(); 
+	setup_behavior_rules(); 
 
 
 

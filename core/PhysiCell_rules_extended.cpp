@@ -258,7 +258,7 @@ void apply_behavior_ruleset( Cell* pCell )
 //     base_value = get_single_base_behavior(pCell_Definition, behavior_name);
 // }
 
-// void BehaviorRule::append_signal(std::string, std::string response)
+// void BehaviorRule::add_signal(std::string, std::string response)
 // {
 // 	PartialHillSignal *pDecreasingSignal = new PartialHillSignal();
 // 	PartialHillSignal *pIncreasingSignal = new PartialHillSignal();
@@ -663,7 +663,7 @@ std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementar
 	{
 		pAS = parse_partial_hill_signal(name, elementary_node);
 	}
-	else if (type == "Linear" || type = "linear")
+	else if (type == "Linear" || type == "linear")
 	{
 		pAS = parse_linear_signal(name, elementary_node);
 	}
@@ -675,7 +675,7 @@ std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementar
 	{
 		std::cerr << "ERROR: Elementary signal type not recognized: " << type << std::endl
 		          << "Must be one of: 'Hill', 'PartialHill', 'Linear', 'Heaviside'."
-				  << "Note: each of these options has alternative capitalizations and/or synonyms."
+				  << "Note: each of these options has alternative capitalizations and/or synonyms.";
 		exit(-1);
 	}
 	pugi::xml_node reference_node = xml_find_node(elementary_node, "reference");
@@ -690,7 +690,7 @@ std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementar
 		else
 		{
 			std::cerr << "ERROR: Reference defined for a Signal that is not a relative signal." << std::endl
-					  << "Relative signals include: 'PartialHill' and 'Hill'."
+					  << "Relative signals include: 'PartialHill' and 'Hill'.";
 			exit(-1);
 		}
 	}
@@ -846,14 +846,13 @@ void parse_behavior_rules_from_file(std::string path_to_file, std::string format
 
 	if (format == "CSV" || format == "csv")
 	{
-		std::cerr << "Error: CSV format not supported for behavior rules. Quitting!" << std::endl;
-		exit(-1);
+		std::cout << "\tFormat: CSV" << std::endl;
+		parse_csv_behavior_rules(path_to_file, protocol, version);
 	}
 	else if (format == "XML" || format == "xml")
 	{
 		std::cout << "\tFormat: XML" << std::endl;
 		parse_xml_behavior_rules(path_to_file);
-		PhysiCell_settings.rules_enabled = true;
 	}
 	else
 	{
@@ -864,4 +863,188 @@ void parse_behavior_rules_from_file(std::string path_to_file, std::string format
 	return; 
 }
 
+// loading rules from CSV files
+void parse_csv_behavior_rules(std::string path_to_file, std::string protocol, double version)
+{
+	std::fstream fs( path_to_file, std::ios::in );
+	if( !fs )
+	{
+		std::cout << "Warning: Rules file " << path_to_file << " failed to open." << std::endl; 
+		return; 
+	}
+
+	std::cout << "Processing rules in file " << path_to_file << " ... " << std::endl; 
+
+	while( fs.eof() == false )
+	{
+		std::string line; 	
+		std::getline( fs , line, '\n'); 
+		if( line.size() > 0 )
+		{ parse_csv_behavior_rule(line); }
+	}
+
+	fs.close(); 
+
+	std::cout << "Done!" << std::endl << std::endl; 
+
+	return; 
+}
+
+void parse_csv_behavior_rule(std::string line)
+{
+	std::vector<std::string> tokenized_string; 
+	split_csv( line , tokenized_string , ','); 
+
+	// Make sure it was truly comma-separated. 
+	// If not, try tab.
+	if( tokenized_string.size() != 8 )
+	{ split_csv( line , tokenized_string , '\t');  }
+
+	// check for comment 
+	if(tokenized_string[0][0] == '/' && tokenized_string[0][1] == '/' )
+	{ std::cout << "Skipping commented rule (" << line << ")" << std::endl; return; }	
+
+	if (is_csv_rule_misformed(tokenized_string))
+	{
+		std::cout << "Warning: Misformed rule (likely from an empty rules file). Skipping." << std::endl; 
+
+		for( int n=0 ; n < tokenized_string.size(); n++ )
+		{
+			std::cout << n << " : " << tokenized_string[n] << std::endl; 
+		}
+
+		return; 
+	}
+	std::string temp = csv_strings_to_English_v3(tokenized_string, false); // need a v1 version of this
+	// string portions of the rule
+	std::string cell_type = tokenized_string[0];
+	std::string signal = tokenized_string[1];
+	std::string response = tokenized_string[2];
+	std::string behavior = tokenized_string[3];
+
+	double max_response = std::atof( tokenized_string[4].c_str() ); 
+	double half_max  = std::atof( tokenized_string[5].c_str() );
+	double hill_power = std::atof( tokenized_string[6].c_str() );
+	bool use_for_dead = (bool) std::atof( tokenized_string[7].c_str() );
+
+	std::cout << "Adding rule for " << cell_type << " cells:\n\t";
+	std::cout << temp << std::endl;
+
+	Cell_Definition* pCD = find_cell_definition(cell_type);
+	if (pCD == NULL)
+	{
+		std::cout << "Error: Cell type " << cell_type << " not found." << std::endl;
+		exit(-1);
+	}
+	double ref_base_value = get_single_base_behavior(pCD, behavior);
+
+	BehaviorRule *pBR = behavior_rulesets[pCD]->find_behavior(behavior);
+
+	if (pBR == nullptr)
+	{
+		std::unique_ptr<BehaviorSetter> newRule(new BehaviorSetter(behavior));
+		pBR = newRule.get();
+		behavior_rulesets[pCD]->add_behavior_rule(std::move(newRule));
+	}
+	
+	MediatorSignal* pMS = dynamic_cast<MediatorSignal*>(pBR->signal.get());
+	pMS->set_base_value(ref_base_value);
+	AggregatorSignal* pAS = nullptr;
+	if (response == "decreases")
+	{
+		pAS = dynamic_cast<AggregatorSignal*>(pMS->get_decreasing_signal());
+		pMS->set_min_value(max_response); // set the min value for the decreasing signal
+	}
+	else
+	{
+		pAS = dynamic_cast<AggregatorSignal*>(pMS->get_increasing_signal());
+		pMS->set_max_value(max_response); // set the min value for the decreasing signal
+	}
+	std::unique_ptr<PartialHillSignal> pPHS(new PartialHillSignal(signal, use_for_dead, half_max, hill_power));
+	pAS->add_signal(std::move(pPHS));
+	return;
+}
+
+bool is_csv_rule_misformed(std::vector<std::string> input)
+{
+	if (input.size() != 8)
+	{
+		return true;
+	}
+	// if any empty strings, skip
+	for (int n = 0; n < input.size(); n++)
+	{
+		if (input[n].empty() == true)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void split_csv( std::string input , std::vector<std::string>& output , char delim )
+{
+	output.resize(0); 
+
+	std::istringstream is(input);
+	std::string part;
+	while( getline(is, part, delim ) )
+	{ output.push_back(part); }
+
+	return; 
+}
+
+
+std::string csv_strings_to_English_v3( std::vector<std::string> strings , bool include_cell_header )
+{
+	std::string output = ""; 
+
+	if( include_cell_header )
+	{
+		output += "In "; 
+		output += strings[0]; 
+		output += " cells:\n\t"; // In {cell type X} cells: 
+	}
+
+	output += strings[1] ; // {signal}
+	output += " ";
+
+	output += strings[2] ; // {increases/decreases}
+	output += " ";
+
+	output += strings[3] ; // {behavior}
+
+
+//	output += " from "; // {base}
+//	output += strings[4]; 
+
+	output += " towards ";
+	output += strings[4]; 
+
+	output += " with a Hill response, with half-max "; 
+	output += strings[5]; 
+
+	output += " and Hill power "; 
+	output += strings[6]; 
+
+	output += "."; 
+	bool use_when_dead = false; 
+	char start_char = toupper( strings[7][0] ); 
+	if( start_char == 'T' || start_char == '1' )
+	{ output += " Rule applies to dead cells."; }
+	
+	return output; 
+}
+
+BehaviorRule *BehaviorRuleset::find_behavior(std::string behavior)
+{
+	for (auto &rule : rules)
+	{
+		if (rule->behavior == behavior)
+		{
+			return rule.get();
+		}
+	}
+	return nullptr;
+}
 };

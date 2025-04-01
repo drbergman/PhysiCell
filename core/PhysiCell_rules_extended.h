@@ -62,7 +62,7 @@ public:
         return signal_values;
     }
 
-    void append_signal(std::unique_ptr<PhysiCell::AbstractSignal> pSignal)
+    void add_signal(std::unique_ptr<PhysiCell::AbstractSignal> pSignal)
     {
         signals.push_back(std::move(pSignal));
     }
@@ -101,10 +101,19 @@ public:
 
     MediatorSignal()
     {
+        decreasing_signal = std::unique_ptr<PhysiCell::AbstractSignal>(new AggregatorSignal());
+        increasing_signal = std::unique_ptr<PhysiCell::AbstractSignal>(new AggregatorSignal());
         aggregator = [this](std::vector<double> signals_in)
         {
             return this->decreasing_dominant_mediator(signals_in);
         };
+    }
+
+    MediatorSignal(double val) : MediatorSignal()
+    {
+        min_value = val;
+        base_value = val;
+        max_value = val;
     }
 
     MediatorSignal(std::unique_ptr<PhysiCell::AbstractSignal> pDecreasingSignal, std::unique_ptr<PhysiCell::AbstractSignal> pIncreasingSignal, double min = 0.1, double base = 1, double max = 10)
@@ -121,6 +130,16 @@ public:
         aggregator = [this](std::vector<double> signals_in)
         { return this->decreasing_dominant_mediator(signals_in); };
     }
+
+    AbstractSignal* get_decreasing_signal() { return decreasing_signal.get(); }
+    AbstractSignal* get_increasing_signal() { return increasing_signal.get(); }
+
+    void set_decreasing_signal(std::unique_ptr<PhysiCell::AbstractSignal> pSignal) { decreasing_signal = std::move(pSignal); }
+    void set_increasing_signal(std::unique_ptr<PhysiCell::AbstractSignal> pSignal) { increasing_signal = std::move(pSignal); }
+    
+    void set_min_value(double val) { min_value = val; }
+    void set_base_value(double val) { base_value = val; }
+    void set_max_value(double val) { max_value = val; }
 
     void use_increasing_dominant_mediator();
     void use_neutral_mediator();
@@ -385,17 +404,24 @@ class BehaviorRule
 private:
 
 protected:
+
+public:
     std::string behavior;
     std::unique_ptr<AbstractSignal> signal;
 
-public:
-
     virtual void apply(Cell* pCell) = 0;
+
+    BehaviorRule(std::string behavior)
+        : behavior(behavior)
+    {
+        signal = std::unique_ptr<AbstractSignal>(new MediatorSignal());
+    }
 
     BehaviorRule(std::string behavior, std::unique_ptr<AbstractSignal> pSignal)
         : behavior(behavior), signal(std::move(pSignal)) {}
 
     virtual ~BehaviorRule() {}
+
     // std::string cell_type;
     // Cell_Definition *pCell_Definition;
 
@@ -406,7 +432,7 @@ public:
     // void sync_to_cell_definition(Cell_Definition *pCD);
 
 
-    // void append_signal(std::string, std::string response);
+    // void add_signal(std::string, std::string response);
 
 
     /* to do
@@ -479,6 +505,8 @@ public:
 
     BehaviorRuleset() {}
 
+    BehaviorRule *find_behavior(std::string behavior);
+
     // std::string cell_type;
     // Cell_Definition *pCell_Definition;
 
@@ -540,6 +568,14 @@ void parse_behavior_rules_from_file(std::string path_to_file, std::string format
 
 double euler_direct_solve(double current, double rate, double target);
 double exponential_solve(double current, double rate, double target);
+
+// loading rules from CSV files
+void parse_csv_behavior_rules(std::string path_to_file, std::string protocol, double version);
+void parse_csv_behavior_rule(std::string line);
+bool is_csv_rule_misformed(std::vector<std::string> input);
+void split_csv( std::string input , std::vector<std::string>& output , char delim );
+std::string csv_strings_to_English_v3( std::vector<std::string> strings , bool include_cell_header );
+
 };
 
 #endif
