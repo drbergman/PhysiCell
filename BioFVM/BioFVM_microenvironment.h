@@ -241,8 +241,8 @@ class Microenvironment
 	void fix_substrate_at_voxels( int substrate_index, std::vector<int>& voxel_indices, double new_value );
 	void fix_substrate_at_voxels( int substrate_index, std::vector<int>& voxel_indices, std::vector<double>& new_values );
 	void fix_substrate_at_voxels( int substrate_index, std::vector<int>& voxel_indices );
-	void fix_substrates_at_voxel( int voxel_ind, std::vector<double>& new_values );
-	void fix_substrates_at_voxel( int voxel_ind );
+	void fix_substrates_at_voxel( int voxel_index, std::vector<double>& new_values );
+	void fix_substrates_at_voxel( int voxel_index );
 
 	void unfix_substrate_at_voxel( std::string substrate, int voxel_index );
 	void unfix_substrate_at_voxels( std::string substrate, std::vector<int>& voxel_indices );

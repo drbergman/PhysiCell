@@ -232,6 +232,11 @@ void Microenvironment::fix_substrate_at_voxel( int substrate_index, int voxel_in
 
 void Microenvironment::fix_substrates_at_voxel( int voxel_index , std::vector<double>& new_values )
 {
+	if (new_values.size() != dirichlet_value_vectors[voxel_index].size())
+	{
+		std::cerr << "Error: Incorrect number of values passed in to fix_substrates_at_voxel. Expected " << dirichlet_value_vectors[voxel_index].size() << " values, but got " << new_values.size() << "." << std::endl;
+		return;
+	}
 	dirichlet_value_vectors[voxel_index] = new_values;
 	return fix_substrates_at_voxel( voxel_index );
 }
@@ -258,7 +263,7 @@ void Microenvironment::fix_substrate_at_voxels( int substrate_index, std::vector
 {
 	if (new_values.size() != voxel_indices.size())
 	{
-		std::cerr << "Error: new_values size does not match voxel_indices size in Microenvironment::fix_substrate_at_voxels" << std::endl;
+		std::cerr << "Error: new_values size (" << new_values.size() << ") does not match voxel_indices size (" << voxel_indices.size() << ") in Microenvironment::fix_substrate_at_voxels" << std::endl;
 		return;
 	}
 	for( unsigned int i=0 ; i < voxel_indices.size() ; i++ )
@@ -730,7 +735,7 @@ int Microenvironment::find_existing_density_index( std::string name )
 	int i = find_density_index( name );
 	if( i != -1 )
 	{ return i; }
-	std::cout << "Error: density named " << name << " not found." << std::endl;
+	std::cerr << "Error: density named " << name << " not found." << std::endl;
 	exit(-1); 
 }
 
