@@ -304,16 +304,17 @@ void Cell_Container::update_all_cells(double t, double phenotype_dt_ , double me
 
 void Cell_Container::update_all_cells_intracellular( void )
 {
-	bool anything_to_update = false;
+	bool anything_to_update = false; // Use a simple boolean for reduction
 	std::vector<bool> ready_to_update_intracellular = std::vector<bool>( (*all_cells).size(), false );
-	#pragma omp parallel for 
+
+	#pragma omp parallel for reduction(||:anything_to_update)
 	for( int i=0; i < (*all_cells).size(); i++ )
 	{
 		if( (*all_cells)[i]->is_out_of_domain == false ) {
 			if( (*all_cells)[i]->phenotype.intracellular != NULL  && (*all_cells)[i]->phenotype.intracellular->need_update())
 			{
 				ready_to_update_intracellular[i] = true;
-				anything_to_update = true;
+				anything_to_update = true; // Set to true if any cell needs an update
 				if ((*all_cells)[i]->functions.pre_update_intracellular != NULL)
 				{
 					(*all_cells)[i]->functions.pre_update_intracellular((*all_cells)[i], (*all_cells)[i]->phenotype, diffusion_dt);
@@ -324,7 +325,7 @@ void Cell_Container::update_all_cells_intracellular( void )
 
 	if (!anything_to_update)
 	{ return; }
-	
+
 	#pragma omp parallel for
 	for ( int i=0; i < (*all_cells).size(); i++ )
 	{
