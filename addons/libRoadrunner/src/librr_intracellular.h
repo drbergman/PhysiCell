@@ -104,8 +104,7 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 
 	bool need_update();
 
-    // Need 'int' return type to avoid bizarre compile errors.
-	void update() {};
+	void update() {}; // needed because the base class has this function
 	void update(PhysiCell::Cell* cell, PhysiCell::Phenotype& phenotype, double dt);
 
 	void pre_update(PhysiCell::Cell* cell);
@@ -116,11 +115,11 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 	// These find_<IO>_mapping functions are not currently used, but since I made them, we'll keep them around.
 	RoadRunnerMapping *find_input_mapping(std::string sbml_species); // sbml_species is unique for inputs (below is for convenience)
 	RoadRunnerMapping *find_input_mapping(std::string physicell_name, std::string sbml_species)
-	{ return find_input_mapping(sbml_species); } // sbml_species is unique for inputs (above is for convenience)}
+	{ return find_input_mapping(sbml_species); } // sbml_species is unique for inputs
 
-	RoadRunnerMapping *find_output_mapping(std::string sbml_species); // sbml_species is unique for outputs (below is for convenience)
+	RoadRunnerMapping *find_output_mapping(std::string physicell_name); // physicell_name is unique for outputs (below is for convenience)
 	RoadRunnerMapping *find_output_mapping(std::string physicell_name, std::string sbml_species)
-	{ return find_output_mapping(physicell_name); } // sbml_species is unique for outputs (above is for convenience)}
+	{ return find_output_mapping(physicell_name); } // physicell_name is unique for outputs
 
 	int update_phenotype_parameters(PhysiCell::Phenotype& phenotype) {return 0;}; // all handled within update
     int validate_PhysiCell_tokens(PhysiCell::Phenotype& phenotype);
