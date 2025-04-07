@@ -736,6 +736,10 @@ RoadRunnerIntracellular* getRoadRunnerModel(PhysiCell::Phenotype& phenotype) {
 	return static_cast<RoadRunnerIntracellular*>(phenotype.intracellular);
 }
 
+RoadRunnerIntracellular* getRoadRunnerModel(PhysiCell::Cell* pCell) {
+    return getRoadRunnerModel(pCell->phenotype);
+}
+
 void RoadRunnerIntracellular::save_libRR(std::string path, std::string index)
 {
 	std::string state_file_name = path + "/states_" + index + ".dat";

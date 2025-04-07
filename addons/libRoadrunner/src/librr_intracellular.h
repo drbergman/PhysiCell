@@ -142,5 +142,5 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 };
 
 RoadRunnerIntracellular* getRoadRunnerModel(PhysiCell::Phenotype& phenotype);
-
+RoadRunnerIntracellular* getRoadRunnerModel(PhysiCell::Cell* pCell);
 #endif
