@@ -165,7 +165,6 @@ public:
     virtual ~ElementarySignal() {}
 };
 
-
 class SignalReference
 {
 private:
