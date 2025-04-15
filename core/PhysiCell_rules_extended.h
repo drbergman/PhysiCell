@@ -13,15 +13,26 @@
 namespace PhysiCell{
 
 // aggregator functions
+/** This function returns the first signal from the input vector. */
+double first_aggregator(std::vector<double> signals_in);
+/** This function returns the sum of all signals in the input vector. */
 double sum_aggregator(std::vector<double> signals_in);
+/** This function returns the multivariate hill aggregation of the input signals. */
 double multivariate_hill_aggregator(std::vector<double> partial_hill_signals);
+/** This function returns the product of all signals in the input vector. */
 double product_aggregator(std::vector<double> signals_in);
+/** This function returns the mean of all signals in the input vector. */
 double mean_aggregator(std::vector<double> signals_in);
-double max_aggretator(std::vector<double> signals_in);
+/** This function returns the maximum signal from the input vector. */
+double max_aggregator(std::vector<double> signals_in);
+/** This function returns the minimum signal from the input vector. */
 double min_aggregator(std::vector<double> signals_in);
+/** This function returns the median signal from the input vector. */
 double median_aggregator(std::vector<double> signals_in);
+/** This function returns the geometric mean of all signals in the input vector. */
 double geometric_mean_aggregator(std::vector<double> signals_in);
 
+/** This class serves as the base for all signal types. */
 class AbstractSignal
 {
 public:
@@ -30,6 +41,11 @@ public:
     virtual ~AbstractSignal() {}
 };
 
+/** 
+ * @brief Abstract Class for all signals that are aggregators of other signals.
+ * 
+ * Combines 1+ signals into a single signal using a specified aggregation function.
+ */
 class AbstractAggregatorSignal : public AbstractSignal
 {
 private:
@@ -38,7 +54,7 @@ private:
 public:
     std::function<double(std::vector<double>)> aggregator;
 
-    double evaluate(Cell *pCell)
+    double evaluate(Cell *pCell) override
     {
         return aggregator(get_signals(pCell));
     }
@@ -46,13 +62,16 @@ public:
     virtual ~AbstractAggregatorSignal() {}
 };
 
+/** 
+ * @brief Concrete class that (typically) handles signals in the same direction (e.g., all increasing).
+ */
 class AggregatorSignal : public AbstractAggregatorSignal
 {
 private:
     std::vector<std::unique_ptr<PhysiCell::AbstractSignal>> signals;
 
 public:
-    std::vector<double> get_signals(Cell *pCell)
+    std::vector<double> get_signals(Cell *pCell) override
     {
         std::vector<double> signal_values(signals.size());
         for (size_t i = 0; i < signals.size(); ++i)
@@ -78,6 +97,15 @@ public:
     }
 };
 
+/** 
+ * @brief Concrete class that specifically mediates between decreasing and increasing signals.
+ * 
+ * This class is used to combine two signals, one decreasing and one increasing, into a single signal.
+ * The two input signals can be of any type, but they are typically AggregatorSignals.
+ * 
+ * The class also includes slots for the minimum, base, and maximum values of the output signal.
+ * These are automatically used in the class methods to calculate the output signal.
+ */
 class MediatorSignal : public AbstractAggregatorSignal
 {
 private:
@@ -90,7 +118,7 @@ private:
     double max_value = 10;
 
 public:
-    std::vector<double> get_signals(Cell *pCell)
+    std::vector<double> get_signals(Cell *pCell) override
     {
         return {decreasing_signal->evaluate(pCell), increasing_signal->evaluate(pCell)};
     }
@@ -145,6 +173,12 @@ public:
     void use_neutral_mediator();
 };
 
+/** 
+ * @brief Abstract Class for all signals that come from a single, measured signal in PhysiCell.
+ * 
+ * Instances of this class must have a single signal that will determine how they read the PhysiCell simulation.
+ * A transformer function is used to transform the signal before outputting it to the next layer up the signal chain.
+ */
 class ElementarySignal : public AbstractSignal
 {
 private:
@@ -154,17 +188,20 @@ protected:
     bool applies_to_dead_cells;
 
 public:
+    virtual double evaluate(Cell *pCell) override = 0;
 
-    virtual double transformer( double signal )
-    {
-        return signal;
-    }
+    virtual double transformer(double signal) = 0;
 
     ElementarySignal(std::string signal_name, bool applies_to_dead_cells) : signal_name(signal_name), applies_to_dead_cells(applies_to_dead_cells) {}
 
     virtual ~ElementarySignal() {}
 };
 
+/**
+ * @brief Concrete class that sets a reference for a RelativeSignal.
+ * 
+ * The reference is applied to the signal before passing it to the transformer function.
+ */
 class SignalReference
 {
 private:
@@ -180,10 +217,16 @@ public:
     virtual ~SignalReference() {}
 };
 
+/**
+ * @brief Concrete class for a reference that sets the minimum value for a signal to have effect.
+ * 
+ * If a RelativeSignal reads a signal that is less than the reference value, it will be set to 0.
+ * Otherwise, the amount above the reference value is passed to the transformer function.
+ */
 class IncreasingSignalReference : public SignalReference
 {
 public:
-    double coordinate_transform(double signal)
+    double coordinate_transform(double signal) override
     {
         if (signal <= reference_value)
         {
@@ -193,16 +236,18 @@ public:
     }
 
     using SignalReference::SignalReference; // Inherit constructors from SignalReference
-    
-    IncreasingSignalReference();
-
-    IncreasingSignalReference(double reference_value_) : SignalReference(reference_value_) {}
 };
 
+/**
+ * @brief Concrete class for a reference that sets the maximum value for a signal to have effect.
+ * 
+ * If a RelativeSignal reads a signal that is greater than the reference value, it will be set to 0.
+ * Otherwise, the amount below the reference value is passed to the transformer function.
+ */
 class DecreasingSignalReference : public SignalReference
 {
 public:
-    double coordinate_transform(double signal)
+    double coordinate_transform(double signal) override
     {
         if (signal >= reference_value)
         {
@@ -212,25 +257,38 @@ public:
     }
 
     using SignalReference::SignalReference; // Inherit constructors from SignalReference
-    
-    DecreasingSignalReference();
-
-    DecreasingSignalReference(double reference_value_) : SignalReference(reference_value_) {}
 };
 
+/**
+ * @brief Abstract Class for all signals that are relative to a reference signal.
+ * 
+ * This class is used to create signals that are relative to a reference signal.
+ * The reference signal is set using a SignalReference object, which is passed to the add_reference function.
+ * The add_reference method will update internals of the signal to use the reference value.
+ */
 class RelativeSignal : public ElementarySignal
 {
 protected:
     std::unique_ptr<SignalReference> signal_reference = nullptr;
 
 public:
+    virtual double transformer(double signal) override = 0;
     virtual void add_reference(std::unique_ptr<SignalReference> pSR) = 0;
 
-    double evaluate(Cell *pCell);
+    double evaluate(Cell *pCell) override;
 
     using ElementarySignal::ElementarySignal; // Inherit constructors from ElementarySignal
+
+    virtual ~RelativeSignal() {}
 };
 
+/**
+ * @brief Abstract Class for all signals that are based on a Hill function.
+ * 
+ * Holds the two parameters of the Hill function: half_max and hill_power.
+ * If a non-trivial reference is set, the half_max value is updated to be relative to the reference.
+ * This avoids repeating calculations in the transformer function.
+ */
 class AbstractHillSignal : public RelativeSignal
 {
 private:
@@ -238,7 +296,8 @@ private:
     double hill_power;
 
 public:
-    void add_reference(std::unique_ptr<SignalReference> pSR)
+    virtual double transformer(double signal) override = 0;
+    void add_reference(std::unique_ptr<SignalReference> pSR) override
     {
         signal_reference = std::move(pSR);
         half_max = signal_reference->coordinate_transform(half_max);
@@ -258,10 +317,17 @@ public:
         : RelativeSignal(signal_name, applies_to_dead_cells), half_max(half_max), hill_power(hill_power) {}
 };
 
+/**
+ * @brief Concrete class that is a partial Hill function signal.
+ * 
+ * The partial Hill function is defined as (signal / half_max)^hill_power.
+ * This is typically used to compute the multivariate Hill function.
+ * Importantly, the output of this signal is on [0, ∞).
+ */
 class PartialHillSignal : public AbstractHillSignal
 {
 public:
-    double transformer(double signal)
+    double transformer(double signal) override
     {
         return rescale(signal);
     }
@@ -270,13 +336,19 @@ public:
         : AbstractHillSignal(signal_name, applies_to_dead_cells, half_max, hill_power) {}
 };
 
+/**
+ * @brief Concrete class that is a Hill function signal.
+ * 
+ * The Hill function is defined as x / (1 + x) where x is (signal / half_max)^hill_power.
+ * The output of this signal is on [0, 1).
+ */
 class HillSignal : public AbstractHillSignal
 {
 public:
-    double transformer(double signal)
+    double transformer(double signal) override
     {
         signal = rescale(signal);
-        signal /= 1+signal;
+        signal /= 1 + signal;
         return signal;
     }
 
@@ -284,16 +356,55 @@ public:
         : AbstractHillSignal(signal_name, applies_to_dead_cells, half_max, hill_power) {}
 };
 
+/**
+ * @brief Concrete class that is an identity signal.
+ * 
+ * This signal does not transform the input signal.
+ * An alternative would be a PartialHillSignal with a half_max of 1 and a hill_power of 1.
+ * A reference value can be set.
+ */
+class IdentitySignal : public RelativeSignal
+{
+public:
+    double transformer(double signal) override
+    {
+        return signal;
+    }
+
+    void add_reference(std::unique_ptr<SignalReference> pSR) override
+    {
+        signal_reference = std::move(pSR);
+    }
+
+    IdentitySignal(std::string signal_name, bool applies_to_dead_cells)
+        : RelativeSignal(signal_name, applies_to_dead_cells) {}
+};
+
 // AbsoluteSignals do not have need of a reference value
+/**
+ * @brief Abstract Class for all signals that are absolute.
+ * 
+ * Absolute signals cannot have a reference value.
+ */
 class AbsoluteSignal : public ElementarySignal
 {
 protected:
 
 public:
-    double evaluate(Cell *pCell);
+    double evaluate(Cell *pCell) override;
+    virtual double transformer(double signal) override = 0;
     using ElementarySignal::ElementarySignal; // Inherit constructors from ElementarySignal
+
+    virtual ~AbsoluteSignal() {}
 };
 
+/**
+ * @brief Abstract Class for all signals that are linear.
+ * 
+ * Linear signals are defined by a minimum and maximum signal.
+ * Between these two values, the signal changes linearly between 0 and 1.
+ * Outside of this range, the signal is set to 0 or 1.
+ */
 class LinearSignal : public AbsoluteSignal
 {
 private:
@@ -304,16 +415,25 @@ protected:
     double signal_range;
 
 public:
+    virtual double transformer(double signal) override = 0;
     LinearSignal(std::string signal_name, bool applies_to_dead_cells, double signal_min, double signal_max)
         : AbsoluteSignal(signal_name, applies_to_dead_cells), signal_min(signal_min), signal_max(signal_max)
     {
         signal_range = signal_max - signal_min;
     }
+
+    virtual ~LinearSignal() {}
 };
 
+/**
+ * @brief Concrete class that is an increasing linear signal.
+ * 
+ * Increases from 0 (at signal_min) to 1 (at signal_max).
+ * The increasing linear signal is defined as (signal - signal_min) / (signal_max - signal_min).
+ */
 class IncreasingLinearSignal : public LinearSignal
 {
-    double transformer(double signal)
+    double transformer(double signal) override
     {
         if (signal <= signal_min) {
             return 0;
@@ -329,9 +449,15 @@ class IncreasingLinearSignal : public LinearSignal
     using LinearSignal::LinearSignal;
 };
 
+/**
+ * @brief Concrete class that is a decreasing linear signal.
+ * 
+ * Decreases from 1 (at signal_min) to 0 (at signal_max).
+ * The decreasing linear signal is defined as (signal_max - signal) / (signal_max - signal_min).
+ */
 class DecreasingLinearSignal : public LinearSignal
 {
-    double transformer(double signal)
+    double transformer(double signal) override
     {
         if (signal <= signal_min) {
             return 1;
@@ -347,6 +473,13 @@ class DecreasingLinearSignal : public LinearSignal
     using LinearSignal::LinearSignal;
 };
 
+/**
+ * @brief Abstract Class for all signals that are Heaviside functions.
+ * 
+ * Heaviside functions are defined by a threshold value.
+ * If the signal is at or beyond the threshold, the output is 1.
+ * Otherwise, the output is 0.
+ */
 class HeavisideSignal : public AbsoluteSignal
 {
 private:
@@ -355,15 +488,23 @@ protected:
     double threshold;
 
 public:
+    virtual double transformer(double signal) override = 0;
 
     HeavisideSignal(std::string signal_name, bool applies_to_dead_cells, double threshold)
         : AbsoluteSignal(signal_name, applies_to_dead_cells), threshold(threshold) {}
+
+    virtual ~HeavisideSignal() {}
 };
 
+/**
+ * @brief Concrete class that is an increasing Heaviside signal.
+ * 
+ * The increasing Heaviside signal is 0 below the threshold and 1 at or above the threshold.
+ */
 class IncreasingHeavisideSignal : public HeavisideSignal
 {
 public:
-    double transformer(double signal)
+    double transformer(double signal) override
     {
         if (signal < threshold)
         {
@@ -379,10 +520,15 @@ public:
         : HeavisideSignal(signal_name, applies_to_dead_cells, threshold) {}
 };
 
+/**
+ * @brief Concrete class that is a decreasing Heaviside signal.
+ * 
+ * The decreasing Heaviside signal is 0 above the threshold and 1 at or below the threshold.
+ */
 class DecreasingHeavisideSignal : public HeavisideSignal
 {
 public:
-    double transformer(double signal)
+    double transformer(double signal) override
     {
         if (signal > threshold)
         {
@@ -398,6 +544,12 @@ public:
         : HeavisideSignal(signal_name, applies_to_dead_cells, threshold) {}
 };
 
+/**
+ * @brief Abstract Class for all behavior rules.
+ * 
+ * This class sets the behavior targeted and the signal that is used to set it.
+ * Typically, this signal is a MediatorSignal, but it can be any signal type.
+ */
 class BehaviorRule
 {
 private:
@@ -446,24 +598,67 @@ public:
     */
 };
 
+/**
+ * @brief Concrete class that sets a behavior for a cell.
+ * 
+ * This class is the standard way to set a behavior for a cell.
+ * After evaluating the signals, the behavior is set to the value of the signal.
+ */
 class BehaviorSetter : public BehaviorRule
 {
 public:
-    void apply(Cell* pCell);
+    void apply(Cell* pCell) override;
     using BehaviorRule::BehaviorRule; // Inherit constructors from BehaviorRule
 };
 
-class BehaviorAccumulator : public BehaviorRule
+/**
+ * @brief Abstract class for behavior rules that gradually change behaviors toward saturation values.
+ * 
+ * This class serves as the base for both BehaviorAccumulator and BehaviorAttenuator classes,
+ * which implement behaviors that change according to ODE dynamics rather than being set directly.
+ * 
+ * The two derived classes are BehaviorAccumulator and BehaviorAttenuator.
+ * Both classes allow a behavior to increase or decrease over time, respectively, so long as the input signal is sufficiently strong.
+ * If the input signal is not strong enough, the behavior will relax back to the base value.
+ * 
+ * The base_value field is the value that the behavior will return to if the input signal is not strong enough.
+ * The saturation_value field is the value that the behavior will approach if the input signal is strong enough.
+ * 
+ * The output of the signal is the rate of change of the behavior.
+ * If the rate is positive, the behavior will approach the saturation value.
+ * If the rate is negative, the behavior will approach the base value.
+ * Thus, users should make sure that the output of the signal can be positive or negative.
+ */
+class BehaviorRateSetter : public BehaviorRule
 {
-private:
+protected:
     double base_value;
     double saturation_value;
 
 public:
-    void apply(Cell* pCell);
+    virtual void apply(Cell* pCell) override = 0;
+    
+    BehaviorRateSetter(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_value)
+        : BehaviorRule(behavior, std::move(pSignal)), base_value(base_value), saturation_value(saturation_value) {}
+    
+    virtual ~BehaviorRateSetter() {}
+};
+
+/**
+ * @brief Concrete class that accumulates a behavior over time.
+ * 
+ * This class allows for a behavior to increase over time if the input signal is sufficiently strong.
+ * Otherwise, it will relax back to the base value.
+ * 
+ * See BehaviorRateSetter for more details.
+ */
+class BehaviorAccumulator : public BehaviorRateSetter
+{
+public:
+    void apply(Cell* pCell) override;
 
     BehaviorAccumulator(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_value)
-        : BehaviorRule(behavior, std::move(pSignal)), base_value(base_value), saturation_value(saturation_value) 
+        : BehaviorRateSetter(behavior, std::move(pSignal), base_value, saturation_value) 
     {
         if (saturation_value < base_value)
         {
@@ -472,17 +667,21 @@ public:
     }
 };
 
-class BehaviorAttenuator : public BehaviorRule
+/**
+ * @brief Concrete class that attenuates a behavior over time.
+ * 
+ * This class allows for a behavior to decrease over time if the input signal is sufficiently strong.
+ * Otherwise, it will relax back to the saturation value.
+ * 
+ * See BehaviorRateSetter for more details.
+ */
+class BehaviorAttenuator : public BehaviorRateSetter
 {
-private:
-    double base_value;
-    double saturation_value;
-
 public:
-    void apply(Cell* pCell);
+    void apply(Cell* pCell) override;
 
     BehaviorAttenuator(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_value)
-        : BehaviorRule(behavior, std::move(pSignal)), base_value(base_value), saturation_value(saturation_value) 
+        : BehaviorRateSetter(behavior, std::move(pSignal), base_value, saturation_value) 
     {
         if (saturation_value > base_value)
         {
@@ -491,6 +690,12 @@ public:
     }
 };
 
+/**
+ * @brief Class that holds a set of behavior rules for a cell type.
+ * 
+ * This class is used to apply behavior rules to a cell.
+ * It holds a vector of BehaviorRule objects and applies them to the cell.
+ */
 class BehaviorRuleset
 {
 private:

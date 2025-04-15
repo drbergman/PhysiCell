@@ -7,6 +7,11 @@ namespace PhysiCell{
 #define __PhysiCell_rules_extended_cpp__
 #endif
 
+double first_aggregator(std::vector<double> signals_in)
+{
+	return signals_in[0];
+}
+
 double sum_aggregator(std::vector<double> signals_in)
 {
     double signal_sum = 0;
