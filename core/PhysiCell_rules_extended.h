@@ -49,14 +49,14 @@ public:
 class AbstractAggregatorSignal : public AbstractSignal
 {
 private:
-    virtual std::vector<double> get_signals(Cell *pCell) = 0;
+    virtual std::vector<double> evaluate_signals(Cell *pCell) = 0;
     
 public:
     std::function<double(std::vector<double>)> aggregator;
 
     double evaluate(Cell *pCell) override
     {
-        return aggregator(get_signals(pCell));
+        return aggregator(evaluate_signals(pCell));
     }
 
     virtual ~AbstractAggregatorSignal() {}
@@ -71,7 +71,7 @@ private:
     std::vector<std::unique_ptr<PhysiCell::AbstractSignal>> signals;
 
 public:
-    std::vector<double> get_signals(Cell *pCell) override
+    std::vector<double> evaluate_signals(Cell *pCell) override
     {
         std::vector<double> signal_values(signals.size());
         for (size_t i = 0; i < signals.size(); ++i)
@@ -94,6 +94,16 @@ public:
     AggregatorSignal(std::vector<std::unique_ptr<PhysiCell::AbstractSignal>> pSignals) : AggregatorSignal()
     {
         signals = std::move(pSignals);
+    }
+
+    void use_custom_aggregator( void )
+    {
+        aggregator = [](std::vector<double> signals_in)
+        {
+            std::cerr << "ERROR: Custom aggregator not set! Make sure to set one in custom.cpp if using a custom aggregator." << std::endl;
+            exit(-1);
+            return -1;
+        };
     }
 };
 
@@ -118,7 +128,7 @@ private:
     double max_value = 10;
 
 public:
-    std::vector<double> get_signals(Cell *pCell) override
+    std::vector<double> evaluate_signals(Cell *pCell) override
     {
         return {decreasing_signal->evaluate(pCell), increasing_signal->evaluate(pCell)};
     }
@@ -169,8 +179,21 @@ public:
     void set_base_value(double val) { base_value = val; }
     void set_max_value(double val) { max_value = val; }
 
+    double get_min_value() const { return min_value; }
+    double get_base_value() const { return base_value; }
+    double get_max_value() const { return max_value; }
+
     void use_increasing_dominant_mediator();
     void use_neutral_mediator();
+    void use_custom_mediator()
+    {
+        aggregator = [](std::vector<double> signals_in)
+        {
+            std::cerr << "ERROR: Custom mediator not set! Make sure to set one in custom.cpp if using a custom mediator." << std::endl;
+            exit(-1);
+            return -1;
+        };
+    }
 };
 
 /** 
@@ -767,6 +790,7 @@ std::unique_ptr<AbstractSignal> parse_heaviside_signal(std::string name, pugi::x
 void parse_reference(pugi::xml_node reference_node, RelativeSignal *pRelSig);
 
 void setup_behavior_rules( void );
+BehaviorRuleset* find_behavior_ruleset( Cell_Definition* pCD );
 void parse_behavior_rules_from_pugixml( void );
 void parse_behavior_rules_from_file(std::string path_to_file, std::string format, std::string protocol, double version); // see PhysiCell_rules.h for default values of format, protocol, and version
 
@@ -780,6 +804,11 @@ bool is_csv_rule_misformed(std::vector<std::string> input);
 void split_csv( std::string input , std::vector<std::string>& output , char delim );
 std::string csv_strings_to_English_v3( std::vector<std::string> strings , bool include_cell_header );
 
+typedef double (*mediator_function_t)(MediatorSignal*, std::vector<double>);
+void set_custom_mediator(const std::string &cell_definition_name, const std::string &behavior_name, double (*mediator_function)(std::vector<double>));
+void set_custom_mediator(const std::string &cell_definition_name, const std::string &behavior_name, double (*mediator_function)(MediatorSignal*, std::vector<double>));
+void set_custom_aggregator(const std::string &cell_definition_name, const std::string &behavior_name, const std::string &response, double (*aggregator_function)(std::vector<double>));
+MediatorSignal* get_top_level_mediator(const std::string &cell_definition_name, const std::string &behavior_name);
 };
 
 #endif

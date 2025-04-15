@@ -14,3 +14,6 @@ x,y,z,type,volume,cycle entry,custom:GFP,custom:sample
 50,-20,0.0,mean_aggregator
 -65,-60,0.0,accumulator
 -35,-60,0.0,attenuator
+30,-60,0.0,custom_mediator
+50,-60,0.0,custom_mediator_with_values
+70,-60,0.0,custom_aggregator

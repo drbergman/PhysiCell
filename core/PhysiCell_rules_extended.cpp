@@ -247,6 +247,9 @@ void setup_behavior_rules( void )
 	return; 
 }
 
+BehaviorRuleset* find_behavior_ruleset( Cell_Definition* pCD )
+{ return behavior_rulesets[pCD].get(); }
+
 void apply_behavior_ruleset( Cell* pCell )
 {
 	Cell_Definition* pCD = find_cell_definition( pCell->type_name ); 
@@ -588,10 +591,14 @@ std::unique_ptr<AbstractSignal> parse_mediator_signal(pugi::xml_node mediator_no
 		{
 			pMS->use_neutral_mediator();
 		}
+		else if (mediator_fn == "custom")
+		{
+			pMS->use_custom_mediator();
+		}
 		else
 		{
 			std::cerr << "ERROR: Mediator not recognized: " << mediator_fn << std::endl
-			          << "Must be one of: 'decreasing dominant', 'increasing dominant', 'neutral'" << std::endl;
+			          << "Must be one of: 'decreasing dominant', 'increasing dominant', 'neutral', 'custom'" << std::endl;
 			exit(-1);
 		}
 	}
@@ -645,10 +652,18 @@ std::unique_ptr<AbstractSignal> parse_aggregator_signal(pugi::xml_node aggregato
 		{
 			pAS->aggregator = geometric_mean_aggregator;
 		}
+		else if (aggregator_fn == "first")
+		{
+			pAS->aggregator = first_aggregator;
+		}
+		else if (aggregator_fn == "custom")
+		{
+			pAS->use_custom_aggregator();
+		}
 		else
 		{
 			std::cerr << "ERROR: Aggregator not recognized: " << aggregator_fn << std::endl;
-			std::cerr << "Must be one of: 'sum', 'product', 'multivariate hill', 'mean', 'max', 'min', 'median', 'geometric mean'" << std::endl;
+			std::cerr << "Must be one of: 'sum', 'product', 'multivariate hill', 'mean', 'max', 'min', 'median', 'geometric mean', 'custom'" << std::endl;
 			exit(-1);
 		}
 	}
@@ -1051,5 +1066,73 @@ BehaviorRule *BehaviorRuleset::find_behavior(std::string behavior)
 		}
 	}
 	return nullptr;
+}
+
+void set_custom_mediator(const std::string &cell_definition_name, const std::string &behavior_name, double (*mediator_function)(std::vector<double>))
+{
+	MediatorSignal *pMS = get_top_level_mediator(cell_definition_name, behavior_name);
+	pMS->aggregator = mediator_function;
+	return;
+}
+
+void set_custom_mediator(const std::string &cell_definition_name, const std::string &behavior_name, double (*mediator_function)(MediatorSignal*, std::vector<double>))
+{
+	MediatorSignal *pMS = get_top_level_mediator(cell_definition_name, behavior_name);
+	pMS->aggregator = [pMS, mediator_function](std::vector<double> signals_in)
+	{
+		return mediator_function(pMS, signals_in);
+	};
+	return;
+}
+
+void set_custom_aggregator(const std::string &cell_definition_name, const std::string &behavior_name, const std::string &response, double (*aggregator_function)(std::vector<double>))
+{
+	MediatorSignal *pMS = get_top_level_mediator(cell_definition_name, behavior_name);
+	AggregatorSignal *pAS;
+	if (response == "decreases")
+	{
+		pAS = dynamic_cast<AggregatorSignal *>(pMS->get_decreasing_signal());
+	}
+	else if (response == "increases")
+	{
+		pAS = dynamic_cast<AggregatorSignal *>(pMS->get_increasing_signal());
+	}
+	else
+	{
+		std::cerr << "Error: Response type not recognized: " << response << std::endl;
+		exit(-1);
+	}
+	pAS->aggregator = aggregator_function;
+	return;
+}
+
+MediatorSignal* get_top_level_mediator(const std::string &cell_definition_name, const std::string &behavior_name)
+{
+	Cell_Definition *pCD = find_cell_definition(cell_definition_name);
+	if (pCD == NULL)
+	{
+		std::cerr << "Error: Cell type " << cell_definition_name << " not found." << std::endl;
+		exit(-1);
+	}
+	BehaviorRuleset *pBR = find_behavior_ruleset(pCD);
+	if (pBR == NULL)
+	{
+		std::cerr << "Error: Behavior ruleset for cell type " << cell_definition_name << " not found." << std::endl;
+		exit(-1);
+	}
+	BehaviorRule* pBRule = pBR->find_behavior(behavior_name);
+	if (pBRule == nullptr)
+	{
+		std::cerr << "Error: Behavior " << behavior_name << " not found in ruleset for cell type " << cell_definition_name << "." << std::endl;
+		exit(-1);
+	}
+	auto pMS = dynamic_cast<MediatorSignal *>(pBRule->signal.get());
+	if (pMS == nullptr)
+	{
+		std::cerr << "Error: Signal is not of type MediatorSignal for cell definition '"
+				  << cell_definition_name << "' and behavior '" << behavior_name << "'." << std::endl;
+		exit(-1);
+	}
+	return pMS;
 }
 };

@@ -90,3 +90,6 @@ void custom_function( Cell* pCell, Phenotype& phenotype , double dt );
 
 void contact_function( Cell* pMe, Phenotype& phenoMe , Cell* pOther, Phenotype& phenoOther , double dt ); 
 
+double custom_mediator( std::vector<double> signals_in );
+double custom_mediator_with_values(MediatorSignal *pMS, std::vector<double> signals_in);
+double custom_aggregator( std::vector<double> signals_in );
