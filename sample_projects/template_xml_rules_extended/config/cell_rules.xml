@@ -241,7 +241,7 @@
     <behavior_ruleset name="accumulator">
         <behavior name="custom:sample">
             <type>accumulator</type>
-            <saturation_limit note="This is the saturation of the behavior, not the rate.">1.0</saturation_limit>
+            <behavior_saturation note="This is the saturation of the behavior, not the rate.">1.0</behavior_saturation>
             <base_value note="This is the base rate of change towards the base behavior.">-0.05</base_value>
             <increasing_signals>
                 <max_response note="This is the saturation of the rate of change towards the saturation value.">0.2</max_response>
@@ -262,7 +262,7 @@
     <behavior_ruleset name="attenuator">
         <behavior name="custom:sample">
             <type>attenuator</type>
-            <saturation_limit note="This is the saturation of the behavior, not the rate.">0.0</saturation_limit>
+            <behavior_saturation note="This is the saturation of the behavior, not the rate.">0.0</behavior_saturation>
             <base_value note="This is the base rate of change towards the base behavior.">-0.05</base_value>
             <increasing_signals>
                 <max_response note="This is the saturation of the rate of change towards the saturation value.">0.2</max_response>

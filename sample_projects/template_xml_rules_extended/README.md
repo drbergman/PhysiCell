@@ -18,10 +18,17 @@ A core design principle of this implementation is to make the original rules the
   - [Behavior `setter`s, `accumulator`s, and `attenuator`s](#behavior-setters-accumulators-and-attenuators)
     - [Accumulators and attenuators](#accumulators-and-attenuators)
     - [XML Examples](#xml-examples-4)
+- [Useful examples](#useful-examples)
+  - [Example 1: Switch behaviors](#example-1-switch-behaviors)
+  - [Example 2: Signal X AND Signal Y](#example-2-signal-x-and-signal-y)
+  - [Example 3: LOW Signal X (from $x\_0$)](#example-3-low-signal-x-from-x_0)
+  - [Example 4: Hysteresis](#example-4-hysteresis)
 - [Advanced features](#advanced-features)
 - [Automatic conversion of formats](#automatic-conversion-of-formats)
   - [From CSV to XML](#from-csv-to-xml)
   - [From XML to CSV](#from-xml-to-csv)
+- [To-dos](#to-dos)
+- [Reviewer notes](#reviewer-notes)
 
 # Key Features
 ## New signal `transformer`s
@@ -168,7 +175,7 @@ Behaviors can be a `setter` (default) in which they set the behavior value of th
 ### Accumulators and attenuators
 When a behavior is an `accumulator` or `attenuator`, the behavior value is not set directly. Instead, the behavior value is updated according to the rate of change of the behavior. The rate of change is determined by the signals. The output of the top level signal (typically a `MediatorSignal`) is used as the rate of change of the behavior. If the rate is positive, the behavior moves away from the base value. If the rate is negative, the behavior moves towards the base value. **It is therefore very important to make sure that the rate values include positive and negative values.**
 
-To explain, let $r_-<0$ be the minimum rate (what the decreasing signals drive the rate towards) and let $r_+>0$ be the maximum rate (what the increasing signals drive the rate towards). Also, let $r_0$ be the base rate (the rate in the absence of any signals). $r_0$ will often be negative indicating that without stimulus, the behavior relaxes to the base value. The user must further set a saturation limit for the behavior, $b_s$. Note: none of these values are part of PhysiCell prior to this PR and none are directly observable in the output data since they are only part of the rule, not the cell. Finally, the behavior does have a base value of $b_0$ that is part of PhysiCell, e.g. the base migration speed.
+To explain, let $r_-<0$ be the minimum rate (what the decreasing signals drive the rate towards) and let $r_+>0$ be the maximum rate (what the increasing signals drive the rate towards). Also, let $r_0$ be the base rate (the rate in the absence of any signals). $r_0$ will often be negative indicating that without stimulus, the behavior relaxes to the base value. The user must further set a saturation limit for the behavior, $b_s$. Note: none of these values are part of PhysiCell prior to this PR and none are directly observable in the output data since they are only part of the rule, not the cell. Finally, the behavior does have a base value of $b_0$ that is part of PhysiCell, e.g. the base migration speed. This can be read from the configuration file or set in the `<behavior_base>` element.
 
 Then, when the behavior is calculated, the top level mediator will balance the decreasing and increasing signals to settle on a rate, $r$, in the range $r_- \le r_0 \le r_+$. The behavior is then updated as follows:
 
@@ -187,7 +194,8 @@ In other words, the behavior is exponentially "decaying" towards the equilibrium
 <behavior name="migration speed">
     <type>accumulator</type>
     <base_value note="r₀">-0.01</base_value>
-    <saturation_limit note="bₛ">5.0</saturation_limit>
+    <behavior_base note="b₀">0.0</behavior_base>
+    <behavior_saturation note="bₛ">5.0</behavior_saturation>
     <mediator>increasing_dominant</mediator>
     <decreasing_signals>
         <max_response note="r₋">-0.1</max_response>
@@ -209,6 +217,102 @@ In other words, the behavior is exponentially "decaying" towards the equilibrium
 </behavior>
 ```
 
+# Useful examples
+## Example 1: Switch behaviors
+This is literally the purpose of including the `heaviside` transformer, but it is still worth noting that we can now do this very elegantly.
+```xml
+<signal name="pressure" type="heaviside">
+    <threshold>0.5</threshold>
+    <applies_to_dead>0</applies_to_dead>
+</signal>
+```
+
+## Example 2: Signal X AND Signal Y
+A limitation of the previous framework was that two increasing signals were combined through an OR operator, i.e., only one of X or Y needed to be high for the behavior to be increased. Now, an AND conjunction is straightforward to implement. A future goal is to make convert this into a syntax that can easily be read by the user. For now, the following is a valid XML snippet:
+```xml
+<behavior name="migration speed">
+    <base_value>0.0</base_value>
+    <increasing_signals>
+        <max_response>2.0</max_response>
+        <aggregator>product</aggregator>
+        <signal name="oxygen" type="linear">
+            <signal_min>5</signal_min>
+            <signal_max>15</signal_max>
+            <applies_to_dead>0</applies_to_dead>
+        </signal>
+        <signal name="pressure" type="linear">
+            <type>decreasing</type>
+            <signal_min>0</signal_min>
+            <signal_max>2.0</signal_max>
+            <applies_to_dead>0</applies_to_dead>
+        </signal>
+    </increasing_signals>
+</behavior>
+```
+
+The `migration speed` can be increased up to the `max_response` of 2.0 if `oxygen` is at or above 15 AND pressure is at 0. If either oxygen is below 5 or pressure is above 2.0, the `migration speed` is set to 0.0. Otherwise, the product of the two linearly-transformed signals will be on $[0,1]$; this value is then multiplied by the difference `max_response - base_value` and added to the `base_value` to get the final `migration speed`.
+
+## Example 3: LOW Signal X (from $x_0$)
+The ability to have a signal decrease result in a stronger effect is now possible, opening up rules statements like "LOW oxygen increases transform to mesenchymal". In fact, the above example showed such an example, but this is worth highlighting on its own.
+```xml
+<behavior name="transform to mesenchymal">
+    <base_value>0.0</base_value>
+    <increasing_signals>
+        <aggregator>first</aggregator>
+        <max_response>0.1</max_response>
+        <signal name="oxygen" type="hill">
+            <half_max>8.0</half_max>
+            <hill_power>4.0</hill_power>
+            <applies_to_dead>0</applies_to_dead>
+            <reference>
+                <type>decreasing</type>
+                <value>10.0</value>
+            </reference>
+        </signal>
+    </increasing_signals>
+</behavior>
+```
+
+Note that in this example, the `transform to mesenchymal` behavior is set to 0.0 when `oxygen` is above 10.0. The `half_max` of 8.0 means that the behavior will be 50% towards its max value when `oxygen` is at 8.0, i.e., it will be at 0.05. When `oxygen` is 0.0, then the behavior will be $0.1\cdot(5^4/(1+5^4)) \approx 0.09984$.
+
+## Example 4: Hysteresis
+Oftentimes, we want a signal to initiate a process that eventaully leads to change in the cell behavior. This lag between observed signal and subsequent behavior can be modeled using the `accumulator` and `attenuator` behavior types. For example, the following XML snippet shows how to implement a hysteresis effect:
+```xml
+<behavior name="damage">
+    <type>accumulator</type>
+    <base_value>-0.01</base_value>
+    <behavior_base>0.0</behavior_base>
+    <behavior_saturation>1.0</behavior_saturation>
+    <mediator>neutral</mediator>
+    <increasing_signals>
+        <max_response>0.2</max_response>
+        <aggregator>first</aggregator>
+        <signal name="chemotherapy" type="heaviside">
+            <threshold>0.5</threshold>
+            <applies_to_dead>0</applies_to_dead>
+        </signal>
+    </increasing_signals>
+    <decreasing_signals>
+        <max_response>-0.1</max_response>
+        <aggregator>first</aggregator>
+        <signal name="custom:repair_factor" type="hill">
+            <half_max>1.5</half_max>
+            <hill_power>2.0</hill_power>
+            <applies_to_dead>0</applies_to_dead>
+        </signal>
+    </decreasing_signals>
+</behavior>
+```
+
+In this example, the substrate `chemotherapy` induces the accumulation of damage to the cell.
+So long as the extracellular `chemotherapy` concentration is at or above 0.5, this signal will increase the damage accumulation rate by 0.2 - (-0.01) = 0.21. The damage will accumulate towards the saturation limit of 1.0. If the `chemotherapy` concentration drops below 0.5, the damage accumulation rate will revert back to the `base_value` defined here (-0.01). Since it is negative, that means the cell damage will exponentially "decay" towards the cell-type-defined base damage value, which in this case is set explicitly in the rules to 0.0 by the `<behavior_base>` element.
+
+If the cell has `custom:repair_factor` (perhaps defined by an intracellular model), this will decrease the damage accumulation rate towards -0.1. At the `half_max` value, 50% of the decrease in rate will be achieved so that the rate will be decreased by $0.5\cdot(-0.1-(-0.01))=-0.045$.
+
+Since a `neutral` mediator is used, the increasing and decreasing deltas will be computed separately and simply added together. Thus, at `chemotherapy` $\ge0.5$ and `custom:repair_factor` $\gg1.5$, the damage accumulation rate will be $-0.01 + (-0.045) + 0.2 = 0.145$.
+
+Note: PhysiCell has a mechanism for this already for repairing `damage`. However, this is unique to `damage` and no other behavior has this. This new framework allows for any behavior to have this hysteresis effect.
+
 # Advanced features
 The expected way for users to take advantage of this new framework is to use the previous rules structure:
 - mediate between increasing and decreasing elementary signals using the `decreasing_dominant` mediator
@@ -217,7 +321,7 @@ The expected way for users to take advantage of this new framework is to use the
 
 Users can simply swap out the mediators, aggregators, and transformers to the new ones presented here.
 
-Some users may also find value in the reference values and in the accumulator/attenuator features. These are conceptually new and, in time, the community will develop vernacular to describe them.
+Some users may also find value in the reference values and in the accumulator/attenuator features. These are conceptually new and, in time, the community will develop terminology to describe them.
 
 This framework does go deeper. Users can make any hierarchy of signals they like. In the custom code, the user can craft any behavior they want.
 
@@ -334,3 +438,12 @@ will produce the following CSV:
 //     └─decreasing to 0.0 using a multivariate_hill aggregator
 cell_type_1,pressure,decreases,cycle entry,0.0,0.5,4.0,0
 ```
+
+# To-dos
+- [ ] Export to human-readable formats
+- [ ] Read CSVs into PhysiCell with extensions
+- [ ] Integrate into studio
+- [ ] Finish adding docstrings
+
+# Reviewer notes
+The core changes are in `core/PhysiCell_rules_extended.cpp` and `core/PhysiCell_rules_extrended.h`. After just testing the sample projects, I recommend looking through those.

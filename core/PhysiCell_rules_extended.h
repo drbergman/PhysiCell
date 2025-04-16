@@ -644,8 +644,8 @@ public:
  * Both classes allow a behavior to increase or decrease over time, respectively, so long as the input signal is sufficiently strong.
  * If the input signal is not strong enough, the behavior will relax back to the base value.
  * 
- * The base_value field is the value that the behavior will return to if the input signal is not strong enough.
- * The saturation_limit field is the value that the behavior will approach if the input signal is strong enough.
+ * The behavior_base field is the value that the behavior will return to if the input signal is not strong enough.
+ * The behavior_saturation field is the value that the behavior will approach if the input signal is strong enough.
  * 
  * The output of the signal is the rate of change of the behavior.
  * If the rate is positive, the behavior will approach the saturation value.
@@ -655,14 +655,14 @@ public:
 class BehaviorRateSetter : public BehaviorRule
 {
 protected:
-    double base_value;
-    double saturation_limit;
+    double behavior_base;
+    double behavior_saturation;
 
 public:
     virtual void apply(Cell* pCell) override = 0;
     
-    BehaviorRateSetter(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_limit)
-        : BehaviorRule(behavior, std::move(pSignal)), base_value(base_value), saturation_limit(saturation_limit) {}
+    BehaviorRateSetter(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double behavior_base, double behavior_saturation)
+        : BehaviorRule(behavior, std::move(pSignal)), behavior_base(behavior_base), behavior_saturation(behavior_saturation) {}
     
     virtual ~BehaviorRateSetter() {}
 };
@@ -680,10 +680,10 @@ class BehaviorAccumulator : public BehaviorRateSetter
 public:
     void apply(Cell* pCell) override;
 
-    BehaviorAccumulator(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_limit)
-        : BehaviorRateSetter(behavior, std::move(pSignal), base_value, saturation_limit) 
+    BehaviorAccumulator(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double behavior_base, double behavior_saturation)
+        : BehaviorRateSetter(behavior, std::move(pSignal), behavior_base, behavior_saturation) 
     {
-        if (saturation_limit < base_value)
+        if (behavior_saturation < behavior_base)
         {
             throw std::invalid_argument("Saturation value must be greater than or equal to base value for an accumulator.");
         }
@@ -703,10 +703,10 @@ class BehaviorAttenuator : public BehaviorRateSetter
 public:
     void apply(Cell* pCell) override;
 
-    BehaviorAttenuator(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_limit)
-        : BehaviorRateSetter(behavior, std::move(pSignal), base_value, saturation_limit) 
+    BehaviorAttenuator(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double behavior_base, double behavior_saturation)
+        : BehaviorRateSetter(behavior, std::move(pSignal), behavior_base, behavior_saturation) 
     {
-        if (saturation_limit > base_value)
+        if (behavior_saturation > behavior_base)
         {
             throw std::invalid_argument("Saturation value must be less than or equal to base value for an attenuator.");
         }

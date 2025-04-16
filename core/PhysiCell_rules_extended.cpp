@@ -161,13 +161,13 @@ void BehaviorAccumulator::apply(Cell *pCell)
 	double current_value = get_single_behavior(pCell, behavior);
 	if (rate < 0)
 	{
-		// current_value = std::max(euler_direct_solve(current_value, -rate, base_value), base_value); // decay towards base value (note rate < 0); do not let it go below base value
-		current_value = exponential_solve(current_value, -rate, base_value);
+		// current_value = std::max(euler_direct_solve(current_value, -rate, behavior_base), behavior_base); // decay towards base value (note rate < 0); do not let it go below base value
+		current_value = exponential_solve(current_value, -rate, behavior_base);
 	}
 	else if (rate > 0)
 	{
-		// current_value = std::min(euler_direct_solve(current_value, rate, saturation_limit), saturation_limit); // grow towards saturation value (note rate > 0); do not let it go above saturation value
-		current_value = exponential_solve(current_value, rate, saturation_limit);
+		// current_value = std::min(euler_direct_solve(current_value, rate, behavior_saturation), behavior_saturation); // grow towards saturation value (note rate > 0); do not let it go above saturation value
+		current_value = exponential_solve(current_value, rate, behavior_saturation);
 	}
 	set_single_behavior(pCell, behavior, current_value);
 }
@@ -178,13 +178,13 @@ void BehaviorAttenuator::apply(Cell *pCell)
 	double current_value = get_single_behavior(pCell, behavior);
 	if (rate < 0)
 	{
-		// current_value = std::min(euler_direct_solve(current_value, -rate, base_value), base_value); // decay towards base value (note rate < 0); do not let it go below saturation value
-		current_value = exponential_solve(current_value, -rate, base_value);
+		// current_value = std::min(euler_direct_solve(current_value, -rate, behavior_base), behavior_base); // decay towards base value (note rate < 0); do not let it go below saturation value
+		current_value = exponential_solve(current_value, -rate, behavior_base);
 	}
 	else if (rate > 0)
 	{
-		// current_value = std::max(euler_direct_solve(current_value, rate, saturation_limit), saturation_limit); // grow towards saturation value (note rate > 0); do not let it go above base value
-		current_value = exponential_solve(current_value, rate, saturation_limit);
+		// current_value = std::max(euler_direct_solve(current_value, rate, behavior_saturation), behavior_saturation); // grow towards saturation value (note rate > 0); do not let it go above base value
+		current_value = exponential_solve(current_value, rate, behavior_saturation);
 	}
 	set_single_behavior(pCell, behavior, current_value);
 }
@@ -465,15 +465,23 @@ std::unique_ptr<BehaviorRule> parse_behavior(std::string cell_type, std::string 
 	{
 		return std::unique_ptr<BehaviorRule>(new BehaviorSetter(behavior, std::move(pAS)));
 	}
-	double base_value = get_single_base_behavior(find_cell_definition(cell_type), behavior); // base value for the behavior (not the rate) that negative rates will return the cell to
-	double saturation_limit = xml_get_double_value(node, "saturation_limit"); // saturation value for the behavior (not the rate) that positive rates will move the cell to
+	double behavior_base;
+	if (xml_find_node(node, "behavior_base"))
+	{
+		behavior_base = xml_get_double_value(node, "behavior_base");
+	}
+	else
+	{
+		behavior_base = get_single_base_behavior(find_cell_definition(cell_type), behavior); // base value for the behavior (not the rate) that negative rates will return the cell to
+	}
+	double behavior_saturation = xml_get_double_value(node, "behavior_saturation"); // saturation value for the behavior (not the rate) that positive rates will move the cell to
 	if (type=="accumulator")
 	{
-		return std::unique_ptr<BehaviorRule>(new BehaviorAccumulator(behavior, std::move(pAS), base_value, saturation_limit));
+		return std::unique_ptr<BehaviorRule>(new BehaviorAccumulator(behavior, std::move(pAS), behavior_base, behavior_saturation));
 	}
 	else if (type=="attenuator")
 	{
-		return std::unique_ptr<BehaviorRule>(new BehaviorAttenuator(behavior, std::move(pAS), base_value, saturation_limit));
+		return std::unique_ptr<BehaviorRule>(new BehaviorAttenuator(behavior, std::move(pAS), behavior_base, behavior_saturation));
 	}
 	std::cerr << "ERROR: Behavior type not recognized: " << type << std::endl;
 	std::cerr << "Must be one of: setter (or omitted), accumulator, attenuator" << std::endl;
