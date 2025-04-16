@@ -118,7 +118,7 @@ void MediatorSignal::use_neutral_mediator()
 
 double RelativeSignal::evaluate(Cell *pCell)
 {
-	if (!applies_to_dead_cells && pCell->phenotype.death.dead)
+	if (!applies_to_dead && pCell->phenotype.death.dead)
 	{
 		return 0;
 	}
@@ -132,7 +132,7 @@ double RelativeSignal::evaluate(Cell *pCell)
 
 double AbsoluteSignal::evaluate(Cell *pCell)
 {
-	if (!applies_to_dead_cells && pCell->phenotype.death.dead)
+	if (!applies_to_dead && pCell->phenotype.death.dead)
 	{
 		return 0;
 	}
@@ -166,8 +166,8 @@ void BehaviorAccumulator::apply(Cell *pCell)
 	}
 	else if (rate > 0)
 	{
-		// current_value = std::min(euler_direct_solve(current_value, rate, saturation_value), saturation_value); // grow towards saturation value (note rate > 0); do not let it go above saturation value
-		current_value = exponential_solve(current_value, rate, saturation_value);
+		// current_value = std::min(euler_direct_solve(current_value, rate, saturation_limit), saturation_limit); // grow towards saturation value (note rate > 0); do not let it go above saturation value
+		current_value = exponential_solve(current_value, rate, saturation_limit);
 	}
 	set_single_behavior(pCell, behavior, current_value);
 }
@@ -183,8 +183,8 @@ void BehaviorAttenuator::apply(Cell *pCell)
 	}
 	else if (rate > 0)
 	{
-		// current_value = std::max(euler_direct_solve(current_value, rate, saturation_value), saturation_value); // grow towards saturation value (note rate > 0); do not let it go above base value
-		current_value = exponential_solve(current_value, rate, saturation_value);
+		// current_value = std::max(euler_direct_solve(current_value, rate, saturation_limit), saturation_limit); // grow towards saturation value (note rate > 0); do not let it go above base value
+		current_value = exponential_solve(current_value, rate, saturation_limit);
 	}
 	set_single_behavior(pCell, behavior, current_value);
 }
@@ -466,14 +466,14 @@ std::unique_ptr<BehaviorRule> parse_behavior(std::string cell_type, std::string 
 		return std::unique_ptr<BehaviorRule>(new BehaviorSetter(behavior, std::move(pAS)));
 	}
 	double base_value = get_single_base_behavior(find_cell_definition(cell_type), behavior); // base value for the behavior (not the rate) that negative rates will return the cell to
-	double saturation_value = xml_get_double_value(node, "saturation_value"); // saturation value for the behavior (not the rate) that positive rates will move the cell to
+	double saturation_limit = xml_get_double_value(node, "saturation_limit"); // saturation value for the behavior (not the rate) that positive rates will move the cell to
 	if (type=="accumulator")
 	{
-		return std::unique_ptr<BehaviorRule>(new BehaviorAccumulator(behavior, std::move(pAS), base_value, saturation_value));
+		return std::unique_ptr<BehaviorRule>(new BehaviorAccumulator(behavior, std::move(pAS), base_value, saturation_limit));
 	}
 	else if (type=="attenuator")
 	{
-		return std::unique_ptr<BehaviorRule>(new BehaviorAttenuator(behavior, std::move(pAS), base_value, saturation_value));
+		return std::unique_ptr<BehaviorRule>(new BehaviorAttenuator(behavior, std::move(pAS), base_value, saturation_limit));
 	}
 	std::cerr << "ERROR: Behavior type not recognized: " << type << std::endl;
 	std::cerr << "Must be one of: setter (or omitted), accumulator, attenuator" << std::endl;
@@ -579,15 +579,15 @@ std::unique_ptr<AbstractSignal> parse_mediator_signal(pugi::xml_node mediator_no
 	if (mediator_fn_node)
 	{
 		std::string mediator_fn = xml_get_my_string_value(mediator_fn_node);
-		if (mediator_fn == "decreasing dominant")
+		if (mediator_fn == "decreasing dominant" || mediator_fn == "decreasing_dominant")
 		{
 			// decreasing dominant mediator is the default
 		}
-		else if (mediator_fn == "increasing dominant")
+		else if (mediator_fn == "increasing dominant" || mediator_fn == "increasing_dominant")
 		{
 			pMS->use_increasing_dominant_mediator();
 		}
-		else if (mediator_fn == "neutral")
+		else if (mediator_fn == "neutral" || mediator_fn == "neutral_mediator" || mediator_fn == "neutral mediator")
 		{
 			pMS->use_neutral_mediator();
 		}
@@ -628,7 +628,7 @@ std::unique_ptr<AbstractSignal> parse_aggregator_signal(pugi::xml_node aggregato
 		{
 			pAS->aggregator = product_aggregator;
 		}
-		else if (aggregator_fn == "multivariate hill")
+		else if (aggregator_fn == "multivariate hill" || aggregator_fn == "multivariate_hill")
 		{
 			// multivariate hill is the default
 		}
@@ -648,7 +648,7 @@ std::unique_ptr<AbstractSignal> parse_aggregator_signal(pugi::xml_node aggregato
 		{
 			pAS->aggregator = median_aggregator;
 		}
-		else if (aggregator_fn == "geometric mean")
+		else if (aggregator_fn == "geometric mean" || aggregator_fn == "geometric_mean")
 		{
 			pAS->aggregator = geometric_mean_aggregator;
 		}
@@ -679,9 +679,13 @@ std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementar
 	{
 		pAS = parse_hill_signal(name, elementary_node);
 	}
-	else if (type == "PartialHill" || type == "partialhill" || type == "partial_hill")
+	else if (type == "PartialHill" || type == "partialhill" || type == "partial_hill" || type == "partial hill")
 	{
 		pAS = parse_partial_hill_signal(name, elementary_node);
+	}
+	else if (type == "Identity" || type == "identity")
+	{
+		pAS = parse_identity_signal(name, elementary_node);
 	}
 	else if (type == "Linear" || type == "linear")
 	{
@@ -721,16 +725,22 @@ std::unique_ptr<AbstractSignal> parse_hill_signal(std::string name, pugi::xml_no
 {
 	double half_max = xml_get_double_value(hill_node, "half_max");
 	double hill_power = xml_get_double_value(hill_node, "hill_power");
-	bool applies_to_dead_cells = xml_get_bool_value(hill_node, "applies_to_dead_cells");
-	return std::unique_ptr<HillSignal>(new HillSignal(name, applies_to_dead_cells, half_max, hill_power));
+	bool applies_to_dead = xml_get_bool_value(hill_node, "applies_to_dead");
+	return std::unique_ptr<HillSignal>(new HillSignal(name, applies_to_dead, half_max, hill_power));
 }
 
 std::unique_ptr<AbstractSignal> parse_partial_hill_signal(std::string name, pugi::xml_node partial_hill_node)
 {
 	double half_max = xml_get_double_value(partial_hill_node, "half_max");
 	double hill_power = xml_get_double_value(partial_hill_node, "hill_power");
-	bool applies_to_dead_cells = xml_get_bool_value(partial_hill_node, "applies_to_dead_cells");
-	return std::unique_ptr<PartialHillSignal>(new PartialHillSignal(name, applies_to_dead_cells, half_max, hill_power));
+	bool applies_to_dead = xml_get_bool_value(partial_hill_node, "applies_to_dead");
+	return std::unique_ptr<PartialHillSignal>(new PartialHillSignal(name, applies_to_dead, half_max, hill_power));
+}
+
+std::unique_ptr<AbstractSignal> parse_identity_signal(std::string name, pugi::xml_node identity_node)
+{
+	bool applies_to_dead = xml_get_bool_value(identity_node, "applies_to_dead");
+	return std::unique_ptr<IdentitySignal>(new IdentitySignal(name, applies_to_dead));
 }
 
 std::unique_ptr<AbstractSignal> parse_linear_signal(std::string name, pugi::xml_node linear_node)
@@ -738,15 +748,15 @@ std::unique_ptr<AbstractSignal> parse_linear_signal(std::string name, pugi::xml_
 	bool is_decreasing = xml_find_node(linear_node, "type") && xml_get_string_value(linear_node, "type") == "decreasing"; // default is increasing, so only switch if this is given and is set to "decreasing"
 	double signal_min = xml_get_double_value(linear_node, "signal_min");
 	double signal_max = xml_get_double_value(linear_node, "signal_max");
-	bool applies_to_dead_cells = xml_get_bool_value(linear_node, "applies_to_dead_cells");
+	bool applies_to_dead = xml_get_bool_value(linear_node, "applies_to_dead");
 	std::unique_ptr<LinearSignal> pLS;
 	if (is_decreasing)
 	{
-		pLS = std::unique_ptr<LinearSignal>(new DecreasingLinearSignal(name, applies_to_dead_cells, signal_min, signal_max));
+		pLS = std::unique_ptr<LinearSignal>(new DecreasingLinearSignal(name, applies_to_dead, signal_min, signal_max));
 	}
 	else
 	{
-		pLS = std::unique_ptr<LinearSignal>(new IncreasingLinearSignal(name, applies_to_dead_cells, signal_min, signal_max));
+		pLS = std::unique_ptr<LinearSignal>(new IncreasingLinearSignal(name, applies_to_dead, signal_min, signal_max));
 	}
 	return pLS;
 }
@@ -754,16 +764,16 @@ std::unique_ptr<AbstractSignal> parse_linear_signal(std::string name, pugi::xml_
 std::unique_ptr<AbstractSignal> parse_heaviside_signal(std::string name, pugi::xml_node heaviside_node)
 {
 	double threshold = xml_get_double_value(heaviside_node, "threshold");
-	bool applies_to_dead_cells = xml_get_bool_value(heaviside_node, "applies_to_dead_cells");
+	bool applies_to_dead = xml_get_bool_value(heaviside_node, "applies_to_dead");
 	bool is_decreasing = xml_find_node(heaviside_node, "type") && xml_get_string_value(heaviside_node, "type") == "decreasing"; // default is increasing, so only switch if this is given and is set to "decreasing"
 	std::unique_ptr<HeavisideSignal> pHS;
 	if (is_decreasing)
 	{
-		pHS = std::unique_ptr<HeavisideSignal>(new DecreasingHeavisideSignal(name, applies_to_dead_cells, threshold));
+		pHS = std::unique_ptr<HeavisideSignal>(new DecreasingHeavisideSignal(name, applies_to_dead, threshold));
 	}
 	else
 	{
-		pHS = std::unique_ptr<HeavisideSignal>(new IncreasingHeavisideSignal(name, applies_to_dead_cells, threshold));
+		pHS = std::unique_ptr<HeavisideSignal>(new IncreasingHeavisideSignal(name, applies_to_dead, threshold));
 	}
 	return pHS;
 }

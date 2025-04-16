@@ -208,14 +208,14 @@ private:
 
 protected:
     std::string signal_name;
-    bool applies_to_dead_cells;
+    bool applies_to_dead;
 
 public:
     virtual double evaluate(Cell *pCell) override = 0;
 
     virtual double transformer(double signal) = 0;
 
-    ElementarySignal(std::string signal_name, bool applies_to_dead_cells) : signal_name(signal_name), applies_to_dead_cells(applies_to_dead_cells) {}
+    ElementarySignal(std::string signal_name, bool applies_to_dead) : signal_name(signal_name), applies_to_dead(applies_to_dead) {}
 
     virtual ~ElementarySignal() {}
 };
@@ -336,8 +336,8 @@ public:
         return pow(signal, hill_power);
     }
 
-    AbstractHillSignal(std::string signal_name, bool applies_to_dead_cells, double half_max, double hill_power)
-        : RelativeSignal(signal_name, applies_to_dead_cells), half_max(half_max), hill_power(hill_power) {}
+    AbstractHillSignal(std::string signal_name, bool applies_to_dead, double half_max, double hill_power)
+        : RelativeSignal(signal_name, applies_to_dead), half_max(half_max), hill_power(hill_power) {}
 };
 
 /**
@@ -355,8 +355,8 @@ public:
         return rescale(signal);
     }
 
-    PartialHillSignal(std::string signal_name, bool applies_to_dead_cells, double half_max, double hill_power)
-        : AbstractHillSignal(signal_name, applies_to_dead_cells, half_max, hill_power) {}
+    PartialHillSignal(std::string signal_name, bool applies_to_dead, double half_max, double hill_power)
+        : AbstractHillSignal(signal_name, applies_to_dead, half_max, hill_power) {}
 };
 
 /**
@@ -375,8 +375,8 @@ public:
         return signal;
     }
 
-    HillSignal(std::string signal_name, bool applies_to_dead_cells, double half_max, double hill_power)
-        : AbstractHillSignal(signal_name, applies_to_dead_cells, half_max, hill_power) {}
+    HillSignal(std::string signal_name, bool applies_to_dead, double half_max, double hill_power)
+        : AbstractHillSignal(signal_name, applies_to_dead, half_max, hill_power) {}
 };
 
 /**
@@ -399,8 +399,8 @@ public:
         signal_reference = std::move(pSR);
     }
 
-    IdentitySignal(std::string signal_name, bool applies_to_dead_cells)
-        : RelativeSignal(signal_name, applies_to_dead_cells) {}
+    IdentitySignal(std::string signal_name, bool applies_to_dead)
+        : RelativeSignal(signal_name, applies_to_dead) {}
 };
 
 // AbsoluteSignals do not have need of a reference value
@@ -439,8 +439,8 @@ protected:
 
 public:
     virtual double transformer(double signal) override = 0;
-    LinearSignal(std::string signal_name, bool applies_to_dead_cells, double signal_min, double signal_max)
-        : AbsoluteSignal(signal_name, applies_to_dead_cells), signal_min(signal_min), signal_max(signal_max)
+    LinearSignal(std::string signal_name, bool applies_to_dead, double signal_min, double signal_max)
+        : AbsoluteSignal(signal_name, applies_to_dead), signal_min(signal_min), signal_max(signal_max)
     {
         signal_range = signal_max - signal_min;
     }
@@ -513,8 +513,8 @@ protected:
 public:
     virtual double transformer(double signal) override = 0;
 
-    HeavisideSignal(std::string signal_name, bool applies_to_dead_cells, double threshold)
-        : AbsoluteSignal(signal_name, applies_to_dead_cells), threshold(threshold) {}
+    HeavisideSignal(std::string signal_name, bool applies_to_dead, double threshold)
+        : AbsoluteSignal(signal_name, applies_to_dead), threshold(threshold) {}
 
     virtual ~HeavisideSignal() {}
 };
@@ -539,8 +539,8 @@ public:
         }
     }
 
-    IncreasingHeavisideSignal(std::string signal_name, bool applies_to_dead_cells, double threshold)
-        : HeavisideSignal(signal_name, applies_to_dead_cells, threshold) {}
+    IncreasingHeavisideSignal(std::string signal_name, bool applies_to_dead, double threshold)
+        : HeavisideSignal(signal_name, applies_to_dead, threshold) {}
 };
 
 /**
@@ -563,8 +563,8 @@ public:
         }
     }
 
-    DecreasingHeavisideSignal(std::string signal_name, bool applies_to_dead_cells, double threshold)
-        : HeavisideSignal(signal_name, applies_to_dead_cells, threshold) {}
+    DecreasingHeavisideSignal(std::string signal_name, bool applies_to_dead, double threshold)
+        : HeavisideSignal(signal_name, applies_to_dead, threshold) {}
 };
 
 /**
@@ -645,7 +645,7 @@ public:
  * If the input signal is not strong enough, the behavior will relax back to the base value.
  * 
  * The base_value field is the value that the behavior will return to if the input signal is not strong enough.
- * The saturation_value field is the value that the behavior will approach if the input signal is strong enough.
+ * The saturation_limit field is the value that the behavior will approach if the input signal is strong enough.
  * 
  * The output of the signal is the rate of change of the behavior.
  * If the rate is positive, the behavior will approach the saturation value.
@@ -656,13 +656,13 @@ class BehaviorRateSetter : public BehaviorRule
 {
 protected:
     double base_value;
-    double saturation_value;
+    double saturation_limit;
 
 public:
     virtual void apply(Cell* pCell) override = 0;
     
-    BehaviorRateSetter(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_value)
-        : BehaviorRule(behavior, std::move(pSignal)), base_value(base_value), saturation_value(saturation_value) {}
+    BehaviorRateSetter(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_limit)
+        : BehaviorRule(behavior, std::move(pSignal)), base_value(base_value), saturation_limit(saturation_limit) {}
     
     virtual ~BehaviorRateSetter() {}
 };
@@ -680,10 +680,10 @@ class BehaviorAccumulator : public BehaviorRateSetter
 public:
     void apply(Cell* pCell) override;
 
-    BehaviorAccumulator(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_value)
-        : BehaviorRateSetter(behavior, std::move(pSignal), base_value, saturation_value) 
+    BehaviorAccumulator(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_limit)
+        : BehaviorRateSetter(behavior, std::move(pSignal), base_value, saturation_limit) 
     {
-        if (saturation_value < base_value)
+        if (saturation_limit < base_value)
         {
             throw std::invalid_argument("Saturation value must be greater than or equal to base value for an accumulator.");
         }
@@ -703,10 +703,10 @@ class BehaviorAttenuator : public BehaviorRateSetter
 public:
     void apply(Cell* pCell) override;
 
-    BehaviorAttenuator(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_value)
-        : BehaviorRateSetter(behavior, std::move(pSignal), base_value, saturation_value) 
+    BehaviorAttenuator(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double base_value, double saturation_limit)
+        : BehaviorRateSetter(behavior, std::move(pSignal), base_value, saturation_limit) 
     {
-        if (saturation_value > base_value)
+        if (saturation_limit > base_value)
         {
             throw std::invalid_argument("Saturation value must be less than or equal to base value for an attenuator.");
         }
@@ -784,6 +784,7 @@ std::unique_ptr<PhysiCell::AbstractSignal>parse_elementary_signal(pugi::xml_node
 
 std::unique_ptr<AbstractSignal> parse_hill_signal(std::string name, pugi::xml_node hill_node);
 std::unique_ptr<AbstractSignal> parse_partial_hill_signal(std::string name, pugi::xml_node partial_hill_node);
+std::unique_ptr<AbstractSignal> parse_identity_signal(std::string name, pugi::xml_node identity_node);
 std::unique_ptr<AbstractSignal> parse_linear_signal(std::string name, pugi::xml_node linear_node);
 std::unique_ptr<AbstractSignal> parse_heaviside_signal(std::string name, pugi::xml_node heaviside_node);
 
@@ -804,7 +805,6 @@ bool is_csv_rule_misformed(std::vector<std::string> input);
 void split_csv( std::string input , std::vector<std::string>& output , char delim );
 std::string csv_strings_to_English_v3( std::vector<std::string> strings , bool include_cell_header );
 
-typedef double (*mediator_function_t)(MediatorSignal*, std::vector<double>);
 void set_custom_mediator(const std::string &cell_definition_name, const std::string &behavior_name, double (*mediator_function)(std::vector<double>));
 void set_custom_mediator(const std::string &cell_definition_name, const std::string &behavior_name, double (*mediator_function)(MediatorSignal*, std::vector<double>));
 void set_custom_aggregator(const std::string &cell_definition_name, const std::string &behavior_name, const std::string &response, double (*aggregator_function)(std::vector<double>));
