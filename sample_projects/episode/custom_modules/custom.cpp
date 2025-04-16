@@ -111,7 +111,7 @@ void create_cell_types( void )
 	setup_signal_behavior_dictionaries();
 
 	// initializ cell rule definitions
-	setup_cell_rules();
+	setup_behavior_rules();
 
 	// put any modifications to individual cell definitions here.
 	// this is a good place to set custom functions.

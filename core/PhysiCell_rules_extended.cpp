@@ -685,7 +685,7 @@ std::unique_ptr<AbstractSignal> parse_aggregator_signal(pugi::xml_node aggregato
 std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementary_node)
 {
 	std::string name = elementary_node.attribute("name").value();
-	std::string type = "PartialHill"; // default to partial hill
+	std::string type = "partial_hill"; // default to partial hill
 	if (elementary_node.attribute("type"))
 	{ type = elementary_node.attribute("type").value(); }
 	std::unique_ptr<AbstractSignal> pAS;
