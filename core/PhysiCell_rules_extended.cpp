@@ -85,6 +85,73 @@ double geometric_mean_aggregator(std::vector<double> signals_in)
 	return pow(product, 1.0 / signals_in.size());
 }
 
+void AggregatorSignal::set_aggregator(std::string aggregator_name)
+{
+	if (aggregator_name == "sum")
+	{
+		pAS->aggregator = sum_aggregator;
+	}
+	else if (aggregator_name == "product")
+	{
+		pAS->aggregator = product_aggregator;
+	}
+	else if (aggregator_name == "multivariate hill" || aggregator_name == "multivariate_hill")
+	{
+		pAS->aggregator = multivariate_hill_aggregator;
+	}
+	else if (aggregator_name == "mean")
+	{
+		pAS->aggregator = mean_aggregator;
+	}
+	else if (aggregator_name == "max")
+	{
+		pAS->aggregator = max_aggregator;
+	}
+	else if (aggregator_name == "min")
+	{
+		pAS->aggregator = min_aggregator;
+	}
+	else if (aggregator_name == "median")
+	{
+		pAS->aggregator = median_aggregator;
+	}
+	else if (aggregator_name == "geometric mean" || aggregator_name == "geometric_mean")
+	{
+		pAS->aggregator = geometric_mean_aggregator;
+	}
+	else if (aggregator_name == "first")
+	{
+		pAS->aggregator = first_aggregator;
+	}
+	else if (aggregator_name == "custom")
+	{
+		pAS->aggregator = [](std::vector<double> signals_in)
+		{
+			std::cerr << "ERROR: Custom aggregator not set! Make sure to set one in custom.cpp if using a custom aggregator." << std::endl;
+			exit(-1);
+			return -1;
+		};
+	}
+	else
+	{
+		std::cerr << "ERROR: Aggregator not recognized: " << aggregator_name << std::endl;
+		std::cerr << "Must be one of: 'sum', 'product', 'multivariate hill', 'mean', 'max', 'min', 'median', 'geometric mean', 'custom'" << std::endl;
+		exit(-1);
+	}
+	type = aggregator_name;
+	return;
+}
+
+void AggregatorSignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
+{
+	os << "// " << std::string(indent, '  ') << "└─" << additional_info << " using " << type << " aggregator" << std::endl;
+	for (auto &signal : signals)
+	{
+		signal->display(os, line, indent + 1);
+	}
+	return;
+}
+
 double MediatorSignal::decreasing_dominant_mediator(std::vector<double> signals_in)
 {
     return min_value * signals_in[0] + (base_value + (max_value - base_value) * signals_in[1]) * (1 - signals_in[0]);
@@ -100,8 +167,51 @@ double MediatorSignal::neutral_mediator(std::vector<double> signals_in)
     return base_value + (min_value - base_value) * signals_in[0] + (max_value - base_value) * signals_in[1];
 }
 
+void MediatorSignal::set_mediator(std::string mediator_name)
+{
+	if (mediator_name == "decreasing dominant" || mediator_name == "decreasing_dominant")
+	{
+		aggregator = [this](std::vector<double> signals_in)
+		{
+			return this->decreasing_dominant_mediator(signals_in);
+		};
+	}
+	else if (mediator_name == "increasing dominant" || mediator_name == "increasing_dominant")
+	{
+		aggregator = [this](std::vector<double> signals_in)
+		{
+			return this->increasing_dominant_mediator(signals_in);
+		};
+	}
+	else if (mediator_name == "neutral" || mediator_name == "neutral_mediator" || mediator_name == "neutral mediator")
+	{
+		aggregator = [this](std::vector<double> signals_in)
+		{
+			return this->neutral_mediator(signals_in);
+		};
+	}
+	else if (mediator_name == "custom")
+	{
+		aggregator = [](std::vector<double> signals_in)
+		{
+			std::cerr << "ERROR: Custom mediator not set! Make sure to set one in custom.cpp if using a custom mediator." << std::endl;
+			exit(-1);
+			return -1;
+		};
+	}
+	else
+	{
+		std::cerr << "ERROR: Mediator not recognized: " << mediator_name << std::endl
+				  << "Must be one of: 'decreasing dominant', 'increasing dominant', 'neutral', 'custom'" << std::endl;
+		exit(-1);
+	}
+	type = mediator_name;
+	return;
+}
+
 void MediatorSignal::use_increasing_dominant_mediator()
 {
+	type = "increasing_dominant";
 	aggregator = [this](std::vector<double> signals_in)
 	{
 		return this->increasing_dominant_mediator(signals_in);
@@ -110,10 +220,21 @@ void MediatorSignal::use_increasing_dominant_mediator()
 
 void MediatorSignal::use_neutral_mediator()
 {
+	type = "neutral";
 	aggregator = [this](std::vector<double> signals_in)
 	{
 		return this->neutral_mediator(signals_in);
 	};
+}
+
+void MediatorSignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
+{
+	os << "// " << std::string(indent, '  ') << "└─mediating between (" << min_value << ", " << base_value << ", " << max_value << ") using a " << type << " mediator" << std::endl;
+	line.response = "decreasing";
+	decreasing_signal->display(os, line, indent + 1, "decreasing");
+	line.resposne = "increasing";
+	increasing_signal->display(os, line, indent + 1, "increasing");
+	return;
 }
 
 double RelativeSignal::evaluate(Cell *pCell)
@@ -130,6 +251,38 @@ double RelativeSignal::evaluate(Cell *pCell)
 	return transformer(signal);
 }
 
+std::string RelativeSignal::construct_relative_signal_string( void )
+{
+	std::string signal = construct_relative_signal_string();
+	if (has_reference())
+	{
+		signal = "(" + signal_reference->get_type() + ") " + signal_name + " (from " + std::to_string(signal_reference->get_reference_value()) + ")";
+	}
+	else
+	{
+		signal = signal_name;
+	}
+	return signal;
+}
+
+void PartialHillSignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
+{
+	os << line.cell_type << "," << construct_relative_signal_string() << "," << line.response << "," << line.behavior << "," << line.max_response << "," << half_max << "," << hill_power << "," << applies_to_dead << std::endl;
+	return;
+}
+
+void HillSignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
+{
+	os << line.cell_type << "," << construct_relative_signal_string() << "," << line.response << " (hill)," << line.behavior << "," << line.max_response << "," << half_max << "," << hill_power << "," << applies_to_dead << std::endl;
+	return;
+}
+
+void IdentitySignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
+{
+	os << line.cell_type << "," << construct_relative_signal_string() << "," << line.response << " (identity)," << line.behavior << "," << line.max_response << "," << half_max << "," << hill_power << "," << applies_to_dead << std::endl;
+	return;
+}
+
 double AbsoluteSignal::evaluate(Cell *pCell)
 {
 	if (!applies_to_dead && pCell->phenotype.death.dead)
@@ -137,6 +290,24 @@ double AbsoluteSignal::evaluate(Cell *pCell)
 		return 0;
 	}
 	return transformer(get_single_signal(pCell, signal_name));
+}
+
+std::string AbsoluteSignal::construct_absolute_signal_string( void )
+{
+	return "(" + type + ")" + signal_name;
+}
+
+void LinearSignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
+{
+	os << line.cell_type << "," << construct_absolute_signal_string() << "," << line.response << " (linear)," << line.behavior << "," << line.max_response << "," << signal_min << "," << signal_max << "," << applies_to_dead << std::endl;
+	return;
+}
+
+void HeavisideSignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
+{
+	// Note: the two commas after threshold are intentional to make sure this has 8 columns
+	os << line.cell_type << "," << construct_absolute_signal_string() << "," << line.response << " (heaviside)," << line.behavior << "," << line.max_response << "," << threshold << ",," << applies_to_dead << std::endl;
+	return;
 }
 
 void BehaviorSetter::apply(Cell *pCell)
@@ -153,6 +324,30 @@ double euler_direct_solve(double current, double rate, double target)
 double exponential_solve(double current, double rate, double target)
 {
 	return target + (current - target) * exp(-rate * phenotype_dt);
+}
+
+BehaviorSetter::display(std::ostream &os, RuleLine line)
+{
+	os << "//   └─set " << behavior << std::endl;
+	line.behavior = behavior;
+	signal->display(os, line, 2);
+	return;
+}
+
+BehaviorAccumulator::display(std::ostream &os, RuleLine line)
+{
+	os << "//   └─accumulate " << behavior << " from " << behavior_base << " to " << behavior_saturation << std::endl;
+	line.behavior = behavior;
+	signal->display(os, line, 2);
+	return;
+}
+
+BehaviorAttenuator::display(std::ostream &os, RuleLine line)
+{
+	os << "//   └─attenuate " << behavior << " from " << behavior_saturation << " to " << behavior_base << std::endl;
+	line.behavior = behavior;
+	signal->display(os, line, 2);
+	return;
 }
 
 void BehaviorAccumulator::apply(Cell *pCell)
@@ -194,6 +389,15 @@ void BehaviorRuleset::apply(Cell *pCell)
 	for (auto &rule : rules)
 	{
 		rule->apply(pCell);
+	}
+	return;
+}
+
+void BehaviorRuleset::display(std::ostream &os, RuleLine line)
+{
+	for (auto &rule : rules)
+	{
+		rule->display(os, line);
 	}
 	return;
 }
@@ -242,8 +446,8 @@ void setup_behavior_rules( void )
 	dict_of.close(); 
 
 	// // save rules (v1)
-	// std::string rules_file = PhysiCell_settings.folder + "/cell_rules.csv"; 
-	// export_rules_csv_v1( rules_file ); 
+	std::string rules_file = PhysiCell_settings.folder + "/cell_rules_parsed.csv"; 
+	export_behavior_rules( rules_file ); 
 	return; 
 }
 
@@ -525,7 +729,7 @@ bool signal_is_aggregator(pugi::xml_node node)
 
 bool signal_is_elementary(pugi::xml_node node)
 {
-	return std::string(node.name()) == "signal" && node.attribute("name") && node.attribute("type"); // make sure it fits the template for an elementary signal
+	return std::string(node.name()) == "signal" && node.attribute("name"); // make sure it fits the template for an elementary signal
 }
 
 std::unique_ptr<AbstractSignal> parse_mediator_signal(pugi::xml_node mediator_node)
@@ -587,28 +791,7 @@ std::unique_ptr<AbstractSignal> parse_mediator_signal(pugi::xml_node mediator_no
 	if (mediator_fn_node)
 	{
 		std::string mediator_fn = xml_get_my_string_value(mediator_fn_node);
-		if (mediator_fn == "decreasing dominant" || mediator_fn == "decreasing_dominant")
-		{
-			// decreasing dominant mediator is the default
-		}
-		else if (mediator_fn == "increasing dominant" || mediator_fn == "increasing_dominant")
-		{
-			pMS->use_increasing_dominant_mediator();
-		}
-		else if (mediator_fn == "neutral" || mediator_fn == "neutral_mediator" || mediator_fn == "neutral mediator")
-		{
-			pMS->use_neutral_mediator();
-		}
-		else if (mediator_fn == "custom")
-		{
-			pMS->use_custom_mediator();
-		}
-		else
-		{
-			std::cerr << "ERROR: Mediator not recognized: " << mediator_fn << std::endl
-			          << "Must be one of: 'decreasing dominant', 'increasing dominant', 'neutral', 'custom'" << std::endl;
-			exit(-1);
-		}
+		pMS->set_mediator(mediator_fn);
 	}
 	return pMS;
 }
@@ -628,52 +811,7 @@ std::unique_ptr<AbstractSignal> parse_aggregator_signal(pugi::xml_node aggregato
 	if (aggregator_fn_node)
 	{
 		std::string aggregator_fn = xml_get_my_string_value(aggregator_fn_node);
-		if (aggregator_fn == "sum")
-		{
-			pAS->aggregator = sum_aggregator;
-		}
-		else if (aggregator_fn == "product")
-		{
-			pAS->aggregator = product_aggregator;
-		}
-		else if (aggregator_fn == "multivariate hill" || aggregator_fn == "multivariate_hill")
-		{
-			// multivariate hill is the default
-		}
-		else if (aggregator_fn == "mean")
-		{
-			pAS->aggregator = mean_aggregator;
-		}
-		else if (aggregator_fn == "max")
-		{
-			pAS->aggregator = max_aggregator;
-		}
-		else if (aggregator_fn == "min")
-		{
-			pAS->aggregator = min_aggregator;
-		}
-		else if (aggregator_fn == "median")
-		{
-			pAS->aggregator = median_aggregator;
-		}
-		else if (aggregator_fn == "geometric mean" || aggregator_fn == "geometric_mean")
-		{
-			pAS->aggregator = geometric_mean_aggregator;
-		}
-		else if (aggregator_fn == "first")
-		{
-			pAS->aggregator = first_aggregator;
-		}
-		else if (aggregator_fn == "custom")
-		{
-			pAS->use_custom_aggregator();
-		}
-		else
-		{
-			std::cerr << "ERROR: Aggregator not recognized: " << aggregator_fn << std::endl;
-			std::cerr << "Must be one of: 'sum', 'product', 'multivariate hill', 'mean', 'max', 'min', 'median', 'geometric mean', 'custom'" << std::endl;
-			exit(-1);
-		}
+		pAS->set_aggregator(aggregator_fn);
 	}
 	return pAS;
 }
@@ -681,7 +819,9 @@ std::unique_ptr<AbstractSignal> parse_aggregator_signal(pugi::xml_node aggregato
 std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementary_node)
 {
 	std::string name = elementary_node.attribute("name").value();
-	std::string type = elementary_node.attribute("type").value();
+	std::string type = "partial_hill"; // default to partial hill
+	if (elementary_node.attribute("type"))
+	{ type = elementary_node.attribute("type").value(); }
 	std::unique_ptr<AbstractSignal> pAS;
 	if (type == "Hill" || type == "hill")
 	{
@@ -864,7 +1004,7 @@ void parse_behavior_rules_from_pugixml( void )
 	return;
 }
 
-void parse_behavior_rules_from_file(std::string path_to_file, std::string format, std::string protocol, double version) // see PhysiCell_rules.h for default values of format, protocol, and version
+void parse_behavior_rules_from_file(std::string path_to_file, std::string format, std::string protocol, double version) // see PhysiCell_rules_extended.h for default values of format, protocol, and version
 {
 	std::cout << "\tProcessing ruleset in " << path_to_file << " ... " << std::endl;
 
@@ -1032,7 +1172,6 @@ void split_csv( std::string input , std::vector<std::string>& output , char deli
 	return; 
 }
 
-
 std::string csv_strings_to_English_v3( std::vector<std::string> strings , bool include_cell_header )
 {
 	std::string output = ""; 
@@ -1152,5 +1291,141 @@ MediatorSignal* get_top_level_mediator(const std::string &cell_definition_name, 
 		exit(-1);
 	}
 	return pMS;
+}
+
+void record_cell_rules( void )
+{
+	// display rules to screen
+	// display_behavior_rulesets(std::cout);
+
+	// // save annotations
+	// save_annotated_detailed_English_rules();
+	// save_annotated_detailed_English_rules_HTML();
+	// save_annotated_English_rules();
+	// save_annotated_English_rules_HTML();
+
+	// save dictionaries
+	std::string dictionary_file = "./" + PhysiCell_settings.folder + "/dictionaries.txt";
+	std::ofstream dict_of(dictionary_file, std::ios::out);
+
+	// display_signal_dictionary( dict_of ); // done 
+	display_signal_dictionary_with_synonyms( dict_of ); // 
+	// display_behavior_dictionary( dict_of ); // done 
+	display_behavior_dictionary_with_synonyms( dict_of ); // done 
+	dict_of.close(); 
+
+	// save rules (v3)
+	std::string rules_file = PhysiCell_settings.folder + "/cell_rules_parsed.csv"; 
+	export_behavior_rules( rules_file ); 
+
+	return;
+}
+
+void display_behavior_rulesets( std::ostream& os )
+{
+	for( int n=0 ; n < cell_definitions_by_index.size() ; n++ )
+	{ behavior_rulesets[ cell_definitions_by_index[n] ].display( os ); }
+
+	return; 
+}
+
+/*
+void save_annotated_detailed_English_rules( void )
+{
+	std::string filename = PhysiCell_settings.folder + "/detailed_rules.txt";
+	std::ofstream of( filename , std::ios::out );
+	stream_annotated_detailed_English_rules( of ); 
+	of.close(); 
+}
+
+void save_annotated_detailed_English_rules_HTML( void )
+{
+	std::string filename = PhysiCell_settings.folder + "/detailed_rules.html";
+	std::ofstream of( filename , std::ios::out );
+	stream_annotated_detailed_English_rules_HTML( of ); 
+	of.close(); 
+}
+
+void save_annotated_English_rules( void )
+{
+	std::string filename = PhysiCell_settings.folder + "/rules.txt";
+	std::ofstream of( filename , std::ios::out );
+	stream_annotated_English_rules( of ); 
+	of.close(); 
+}
+
+void save_annotated_English_rules_HTML( void )
+{
+	std::string filename = PhysiCell_settings.folder + "/rules.html";
+	std::ofstream of( filename , std::ios::out );
+	stream_annotated_English_rules_HTML( of ); 
+	of.close(); 
+}
+*/
+
+void export_behavior_rules( std::string filename )
+{
+	std::fstream fs( filename, std::ios::out );
+	if( !fs )
+	{
+		std::cerr << "ERROR: Rules export file " << filename << " failed to open." << std::endl; 
+		exit(-1); 
+	}
+
+	std::cout << "Exporting rules to file " << filename << std::endl; 
+	RuleLine line;
+
+	for( int n=0; n < cell_definitions_by_index.size(); n++ )
+	{
+		Cell_Definition* pCD = cell_definitions_by_index[n]; 
+		BehaviorRuleset* pBR = find_behavior_ruleset( pCD ); 
+
+		std::string cell_type = pCD->name;
+
+		fs << "// " << cell_type << std::endl;
+
+		line.cell_type = cell_type;
+
+		pBR->display(fs, line);
+	}
+
+
+	// 	for( int k=0 ; k < pBR->rules.size(); k++ ) 
+	// 	{
+	// 		std::string behavior = pHRS->rules[k]->behavior; 
+
+	// 		double min_value = pHRS->rules[k]->min_value; 
+	// 		double max_value = pHRS->rules[k]->max_value; 
+	// 		double base_value = pHRS->rules[k]->base_value; 
+	// 		for( int i=0; i < pHRS->rules[k]->signals.size() ; i++ )
+	// 		{
+	// 			std::string signal = pHRS->rules[k]->signals[i]; 
+	// 			std::string response; 
+	// 			double max_response = -9e99; 
+	// 			if( pHRS->rules[k]->responses[i] == true )
+	// 			{ response = "increases"; max_response = max_value; }
+	// 			else
+	// 			{ response = "decreases"; max_response = min_value; }
+	// 			double half_max = pHRS->rules[k]->half_maxes[i];
+	// 			double hill_power = pHRS->rules[k]->hill_powers[i];
+	// 			bool use_for_dead = pHRS->rules[k]->applies_to_dead_cells[i];
+
+	// 			// output the rule 
+	// 			fs << cell_type << "," << signal << "," << response << "," << behavior << "," // 0,1,2,3
+	// 				// << base_value << "," 
+	// 				<< max_response << "," << half_max << "," << hill_power << "," // 4,5, 6,7, 
+	// 				<< use_for_dead << std::endl; // 8 
+	// 		}
+	// 	}
+	// }
+
+/*
+ Cell type, signal, direcxtion, behavior, base, max_response, half-max, hill , dead 
+*/ 
+	fs.close(); 
+
+	// std::cout << "Done!" << std::endl << std::endl; 
+
+	return; 
 }
 };

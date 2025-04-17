@@ -12,6 +12,23 @@
 
 namespace PhysiCell{
 
+class RuleLine
+{
+public:
+    std::string cell_type = "";
+    std::string signal = "";
+    std::string response = "";
+    std::string behavior = "";
+    double max_response;
+    double p1;
+    double p2;
+    bool applies_to_dead;
+
+    RuleLine(std::string cell_type, std::string signal, std::string response, std::string behavior, double max_response, double p1, double p2, bool applies_to_dead)
+        : cell_type(cell_type), signal(signal), response(response), behavior(behavior), max_response(max_response), p1(p1), p2(p2), applies_to_dead(applies_to_dead) {}
+    RuleLine() : cell_type(""), signal(""), response(""), behavior(""), max_response(0), p1(0), p2(0), applies_to_dead(false) {}
+}
+
 // aggregator functions
 /** This function returns the first signal from the input vector. */
 double first_aggregator(std::vector<double> signals_in);
@@ -37,7 +54,7 @@ class AbstractSignal
 {
 public:
     virtual double evaluate(Cell *pCell) = 0;
-
+    virtual void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") = 0;
     virtual ~AbstractSignal() {}
 };
 
@@ -50,6 +67,9 @@ class AbstractAggregatorSignal : public AbstractSignal
 {
 private:
     virtual std::vector<double> evaluate_signals(Cell *pCell) = 0;
+
+protected:
+    std::string type;
     
 public:
     std::function<double(std::vector<double>)> aggregator;
@@ -58,6 +78,8 @@ public:
     {
         return aggregator(evaluate_signals(pCell));
     }
+
+    virtual void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override = 0;
 
     virtual ~AbstractAggregatorSignal() {}
 };
@@ -88,6 +110,7 @@ public:
 
     AggregatorSignal()
     {
+        type = "multivariate_hill";
         aggregator = multivariate_hill_aggregator;
     }
 
@@ -96,15 +119,9 @@ public:
         signals = std::move(pSignals);
     }
 
-    void use_custom_aggregator( void )
-    {
-        aggregator = [](std::vector<double> signals_in)
-        {
-            std::cerr << "ERROR: Custom aggregator not set! Make sure to set one in custom.cpp if using a custom aggregator." << std::endl;
-            exit(-1);
-            return -1;
-        };
-    }
+    void set_aggregator(std::string aggregator_name);
+
+    void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "aggregating") override;
 };
 
 /** 
@@ -139,6 +156,7 @@ public:
 
     MediatorSignal()
     {
+        type = "decreasing_dominant";
         decreasing_signal = std::unique_ptr<PhysiCell::AbstractSignal>(new AggregatorSignal());
         increasing_signal = std::unique_ptr<PhysiCell::AbstractSignal>(new AggregatorSignal());
         aggregator = [this](std::vector<double> signals_in)
@@ -159,12 +177,18 @@ public:
     {
         if (decreasing_signal == nullptr)
         {
-            throw std::invalid_argument("Null pointer passed to MediatorSignal constructor for decreasing signal");
+            // throw std::invalid_argument("Null pointer passed to MediatorSignal constructor for decreasing signal");
+            std::cerr << "ERROR: Null pointer passed to MediatorSignal constructor for decreasing signal" << std::endl;
+            exit(-1);
         }
         if (increasing_signal == nullptr)
         {
-            throw std::invalid_argument("Null pointer passed to MediatorSignal constructor for increasing signal");
+            // throw std::invalid_argument("Null pointer passed to MediatorSignal constructor for increasing signal");
+            std::cerr << "ERROR: Null pointer passed to MediatorSignal constructor for increasing signal" << std::endl;
+            exit(-1);
         }
+        validate_behavior_values(min_value, base_value, max_value);
+        type = "decreasing_dominant";
         aggregator = [this](std::vector<double> signals_in)
         { return this->decreasing_dominant_mediator(signals_in); };
     }
@@ -183,17 +207,26 @@ public:
     double get_base_value() const { return base_value; }
     double get_max_value() const { return max_value; }
 
-    void use_increasing_dominant_mediator();
-    void use_neutral_mediator();
-    void use_custom_mediator()
+    void set_mediator(std::string mediator_name);
+
+    void validate_behavior_values(double min, double base, double max)
     {
-        aggregator = [](std::vector<double> signals_in)
+        if (min > base)
         {
-            std::cerr << "ERROR: Custom mediator not set! Make sure to set one in custom.cpp if using a custom mediator." << std::endl;
+            // throw std::invalid_argument("Minimum value must be less than or equal to base value.");
+            std::cerr << "ERROR: Minimum value must be less than or equal to base value." << std::endl;
             exit(-1);
-            return -1;
-        };
+        }
+        if (base > max)
+        {
+            // throw std::invalid_argument("Base value must be less than or equal to maximum value.");
+            std::cerr << "ERROR: Base value must be less than or equal to maximum value." << std::endl;
+            exit(-1);
+        }
+        return;
     }
+
+    void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override;
 };
 
 /** 
@@ -217,6 +250,8 @@ public:
 
     ElementarySignal(std::string signal_name, bool applies_to_dead) : signal_name(signal_name), applies_to_dead(applies_to_dead) {}
 
+    virtual void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override = 0;
+
     virtual ~ElementarySignal() {}
 };
 
@@ -230,14 +265,14 @@ class SignalReference
 private:
 
 protected:
+    std::string type;
     double reference_value = 0;
 
 public:
     virtual double coordinate_transform(double signal) = 0;
-
-    SignalReference(double reference_value_) : reference_value(reference_value_) {}
-
     virtual ~SignalReference() {}
+    std::string get_type() const { return type; }
+    double get_reference_value() const { return reference_value; }
 };
 
 /**
@@ -257,8 +292,7 @@ public:
         }
         return signal - reference_value;
     }
-
-    using SignalReference::SignalReference; // Inherit constructors from SignalReference
+    IncreasingSignalReference(double reference_value_) : type("increasing"), reference_value(reference_value_) {}
 };
 
 /**
@@ -279,7 +313,7 @@ public:
         return reference_value - signal;
     }
 
-    using SignalReference::SignalReference; // Inherit constructors from SignalReference
+    DecreasingSignalReference(double reference_value_) : type("decreasing"), reference_value(reference_value_) {}
 };
 
 /**
@@ -293,14 +327,20 @@ class RelativeSignal : public ElementarySignal
 {
 protected:
     std::unique_ptr<SignalReference> signal_reference = nullptr;
+    bool has_reference_ = false;
 
 public:
     virtual double transformer(double signal) override = 0;
     virtual void add_reference(std::unique_ptr<SignalReference> pSR) = 0;
 
+    bool has_reference() const { return has_reference_; }
+
     double evaluate(Cell *pCell) override;
 
     using ElementarySignal::ElementarySignal; // Inherit constructors from ElementarySignal
+
+    std::string construct_relative_signal_string(void);
+    virtual void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override = 0;
 
     virtual ~RelativeSignal() {}
 };
@@ -326,8 +366,12 @@ public:
         half_max = signal_reference->coordinate_transform(half_max);
         if (half_max <= 0)
         {
-            throw std::invalid_argument("Half max must be in the range in which the signal has effect.");
+            // throw std::invalid_argument("Half max must be in the range in which the signal has effect.");
+            std::cerr << "ERROR: Half max must be in the range in which the signal has effect." << std::endl
+                      << "       Half max relative to reference: " << half_max << std::endl;
+            exit(-1);
         }
+        has_reference_ = true;
     }
 
     double rescale(double signal)
@@ -338,6 +382,8 @@ public:
 
     AbstractHillSignal(std::string signal_name, bool applies_to_dead, double half_max, double hill_power)
         : RelativeSignal(signal_name, applies_to_dead), half_max(half_max), hill_power(hill_power) {}
+
+    virtual void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override = 0;
 };
 
 /**
@@ -357,6 +403,8 @@ public:
 
     PartialHillSignal(std::string signal_name, bool applies_to_dead, double half_max, double hill_power)
         : AbstractHillSignal(signal_name, applies_to_dead, half_max, hill_power) {}
+
+    void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override;
 };
 
 /**
@@ -377,6 +425,8 @@ public:
 
     HillSignal(std::string signal_name, bool applies_to_dead, double half_max, double hill_power)
         : AbstractHillSignal(signal_name, applies_to_dead, half_max, hill_power) {}
+
+    void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override;
 };
 
 /**
@@ -397,10 +447,13 @@ public:
     void add_reference(std::unique_ptr<SignalReference> pSR) override
     {
         signal_reference = std::move(pSR);
+        has_reference_ = true;
     }
 
     IdentitySignal(std::string signal_name, bool applies_to_dead)
         : RelativeSignal(signal_name, applies_to_dead) {}
+
+    void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override;
 };
 
 // AbsoluteSignals do not have need of a reference value
@@ -412,12 +465,16 @@ public:
 class AbsoluteSignal : public ElementarySignal
 {
 protected:
+    std::string type;
 
 public:
     double evaluate(Cell *pCell) override;
     virtual double transformer(double signal) override = 0;
     using ElementarySignal::ElementarySignal; // Inherit constructors from ElementarySignal
 
+    std::string construct_absolute_signal_string(void);
+    virtual void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override = 0;
+    
     virtual ~AbsoluteSignal() {}
 };
 
@@ -445,6 +502,8 @@ public:
         signal_range = signal_max - signal_min;
     }
 
+    void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override = 0;
+
     virtual ~LinearSignal() {}
 };
 
@@ -469,7 +528,8 @@ class IncreasingLinearSignal : public LinearSignal
         }
     }
 
-    using LinearSignal::LinearSignal;
+    IncreasingLinearSignal(std::string signal_name, bool applies_to_dead, double signal_min, double signal_max)
+        : LinearSignal(signal_name, applies_to_dead, signal_min, signal_max), type("increasing") {}
 };
 
 /**
@@ -493,7 +553,8 @@ class DecreasingLinearSignal : public LinearSignal
         }
     }
 
-    using LinearSignal::LinearSignal;
+    DecreasingLinearSignal(std::string signal_name, bool applies_to_dead, double signal_min, double signal_max)
+        : LinearSignal(signal_name, applies_to_dead, signal_min, signal_max), type("decreasing") {}
 };
 
 /**
@@ -516,6 +577,7 @@ public:
     HeavisideSignal(std::string signal_name, bool applies_to_dead, double threshold)
         : AbsoluteSignal(signal_name, applies_to_dead), threshold(threshold) {}
 
+    void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override = 0;
     virtual ~HeavisideSignal() {}
 };
 
@@ -609,9 +671,9 @@ public:
     // void add_signal(std::string, std::string response);
 
 
+    virtual void display(std::ostream &os, std::string cell_type) override = 0; // done
     /* to do
     void reduced_display(std::ostream &os);  // done
-    void display(std::ostream &os);          // done
     void detailed_display(std::ostream &os); // done
 
     void English_display(std::ostream &os);
@@ -632,6 +694,7 @@ class BehaviorSetter : public BehaviorRule
 public:
     void apply(Cell* pCell) override;
     using BehaviorRule::BehaviorRule; // Inherit constructors from BehaviorRule
+    void display(std::ostream &os, std::string cell_type) override;
 };
 
 /**
@@ -663,7 +726,8 @@ public:
     
     BehaviorRateSetter(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double behavior_base, double behavior_saturation)
         : BehaviorRule(behavior, std::move(pSignal)), behavior_base(behavior_base), behavior_saturation(behavior_saturation) {}
-    
+
+    virtual void display(std::ostream &os, std::string cell_type) override = 0;
     virtual ~BehaviorRateSetter() {}
 };
 
@@ -685,9 +749,15 @@ public:
     {
         if (behavior_saturation < behavior_base)
         {
-            throw std::invalid_argument("Saturation value must be greater than or equal to base value for an accumulator.");
+            // throw std::invalid_argument("Saturation value must be greater than or equal to base value for an accumulator.");
+            std::cerr << "ERROR: Saturation value must be greater than or equal to base value for an accumulator." << std::endl
+                      << "       Saturation value: " << behavior_saturation << std::endl
+                      << "       Base value:       " << behavior_base << std::endl;
+            exit(-1);
         }
     }
+
+    void display(std::ostream &os, std::string cell_type) override;
 };
 
 /**
@@ -708,9 +778,15 @@ public:
     {
         if (behavior_saturation > behavior_base)
         {
-            throw std::invalid_argument("Saturation value must be less than or equal to base value for an attenuator.");
+            // throw std::invalid_argument("Saturation value must be less than or equal to base value for an attenuator.");
+            std::cerr << "ERROR: Saturation value must be less than or equal to base value for an attenuator." << std::endl
+                      << "       Saturation value: " << behavior_saturation << std::endl
+                      << "       Base value:       " << behavior_base << std::endl;
+            exit(-1);
         }
     }
+
+    void display(std::ostream &os, std::string cell_type) override;
 };
 
 /**
@@ -733,6 +809,8 @@ public:
     BehaviorRuleset() {}
 
     BehaviorRule *find_behavior(std::string behavior);
+
+    void display(std::ostream &os, std::string cell_type);
 
     // std::string cell_type;
     // Cell_Definition *pCell_Definition;
@@ -809,6 +887,14 @@ void set_custom_mediator(const std::string &cell_definition_name, const std::str
 void set_custom_mediator(const std::string &cell_definition_name, const std::string &behavior_name, double (*mediator_function)(MediatorSignal*, std::vector<double>));
 void set_custom_aggregator(const std::string &cell_definition_name, const std::string &behavior_name, const std::string &response, double (*aggregator_function)(std::vector<double>));
 MediatorSignal* get_top_level_mediator(const std::string &cell_definition_name, const std::string &behavior_name);
+
+void record_cell_rules( void );
+void display_behavior_rulesets( std::ostream& os );
+void save_annotated_detailed_English_rules( void );
+void save_annotated_detailed_English_rules_HTML( void );
+void save_annotated_English_rules( void );
+void save_annotated_English_rules_HTML( void );
+void export_behavior_rules( std::string filename );
 };
 
 #endif
