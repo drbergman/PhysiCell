@@ -870,7 +870,7 @@ void parse_behavior_rules_from_pugixml( void )
 	return;
 }
 
-void parse_behavior_rules_from_file(std::string path_to_file, std::string format, std::string protocol, double version) // see PhysiCell_rules.h for default values of format, protocol, and version
+void parse_behavior_rules_from_file(std::string path_to_file, std::string format, std::string protocol, double version) // see PhysiCell_rules_extended.h for default values of format, protocol, and version
 {
 	std::cout << "\tProcessing ruleset in " << path_to_file << " ... " << std::endl;
 

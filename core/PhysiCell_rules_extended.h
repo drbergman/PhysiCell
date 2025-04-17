@@ -793,7 +793,7 @@ void parse_reference(pugi::xml_node reference_node, RelativeSignal *pRelSig);
 void setup_behavior_rules( void );
 BehaviorRuleset* find_behavior_ruleset( Cell_Definition* pCD );
 void parse_behavior_rules_from_pugixml( void );
-void parse_behavior_rules_from_file(std::string path_to_file, std::string format, std::string protocol, double version);
+void parse_behavior_rules_from_file(std::string path_to_file, std::string format = "", std::string protocol = "", double version = -1);
 
 double euler_direct_solve(double current, double rate, double target);
 double exponential_solve(double current, double rate, double target);
