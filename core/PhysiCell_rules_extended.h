@@ -212,13 +212,17 @@ public:
         if (min > base)
         {
             // throw std::invalid_argument("Minimum value must be less than or equal to base value.");
-            std::cerr << "ERROR: Minimum value must be less than or equal to base value." << std::endl;
+            std::cerr << "ERROR: Minimum value must be less than or equal to base value." << std::endl
+                      << "       Minimum value: " << min << std::endl
+                      << "       Base value:    " << base << std::endl;
             exit(-1);
         }
         if (base > max)
         {
             // throw std::invalid_argument("Base value must be less than or equal to maximum value.");
-            std::cerr << "ERROR: Base value must be less than or equal to maximum value." << std::endl;
+            std::cerr << "ERROR: Base value must be less than or equal to maximum value." << std::endl
+                      << "       Base value:    " << base << std::endl
+                      << "       Maximum value: " << max << std::endl;
             exit(-1);
         }
         return;
