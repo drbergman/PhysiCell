@@ -18,6 +18,7 @@ A core design principle of this implementation is to make the original rules the
   - [Behavior `setter`s, `accumulator`s, and `attenuator`s](#behavior-setters-accumulators-and-attenuators)
     - [Accumulators and attenuators](#accumulators-and-attenuators)
     - [XML Examples](#xml-examples-4)
+  - [Parsed output](#parsed-output)
 - [Useful examples](#useful-examples)
   - [Example 1: Switch behaviors](#example-1-switch-behaviors)
   - [Example 2: Signal X AND Signal Y](#example-2-signal-x-and-signal-y)
@@ -217,6 +218,9 @@ In other words, the behavior is exponentially "decaying" towards the equilibrium
 </behavior>
 ```
 
+## Parsed output
+PhysiCell will create a CSV file from the parsed XML rules file and output it to `<output_folder>/cell_rules_parsed.csv`. See the [`template_xml_rules_extended`](https://github.com/drbergman/PhysiCell/blob/1.14.2-drbergman-2.1.2/sample_projects/template_xml_rules_extended/config/cell_rules_parsed.csv) sample project for an example of the output.
+
 # Useful examples
 ## Example 1: Switch behaviors
 This is literally the purpose of including the `heaviside` transformer, but it is still worth noting that we can now do this very elegantly.
@@ -367,7 +371,7 @@ In the XML, the top two levels for a given rule must be the mediator and then th
 ```
 
 # Automatic conversion of formats
-The Julia package [PhysiCellXMLRules.jl](https://github.com/drbergman/PhysiCellXMLRules.jl/tree/upgrade-to-behavior-rulesets) can convert a CSV rules file to the new XML format and convert it back. Currently, a [branch](https://github.com/drbergman/PhysiCellXMLRules.jl/tree/upgrade-to-behavior-rulesets) in that repo can also export the extensions in the new XML format to a CSV, but this conversion is currently lossy and not (yet?) readable by PhysiCell.
+The Julia package [PhysiCellXMLRules.jl](https://github.com/drbergman/PhysiCellXMLRules.jl/) can convert a CSV rules file to the new XML format and convert it back. The conversion to CSV is currently lossy and not (yet?) readable by PhysiCell.
 
 See the following for examples of the conversion from this unreleased branch.
 
@@ -440,6 +444,7 @@ cell_type_1,pressure,decreases,cycle entry,0.0,0.5,4.0,0
 ```
 
 # To-dos
+- [X] Export parsed rules to CSV
 - [ ] Export to human-readable formats
 - [ ] Read CSVs into PhysiCell with extensions
 - [ ] Integrate into studio
