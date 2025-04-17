@@ -89,43 +89,43 @@ void AggregatorSignal::set_aggregator(std::string aggregator_name)
 {
 	if (aggregator_name == "sum")
 	{
-		pAS->aggregator = sum_aggregator;
+		aggregator = sum_aggregator;
 	}
 	else if (aggregator_name == "product")
 	{
-		pAS->aggregator = product_aggregator;
+		aggregator = product_aggregator;
 	}
 	else if (aggregator_name == "multivariate hill" || aggregator_name == "multivariate_hill")
 	{
-		pAS->aggregator = multivariate_hill_aggregator;
+		aggregator = multivariate_hill_aggregator;
 	}
 	else if (aggregator_name == "mean")
 	{
-		pAS->aggregator = mean_aggregator;
+		aggregator = mean_aggregator;
 	}
 	else if (aggregator_name == "max")
 	{
-		pAS->aggregator = max_aggregator;
+		aggregator = max_aggregator;
 	}
 	else if (aggregator_name == "min")
 	{
-		pAS->aggregator = min_aggregator;
+		aggregator = min_aggregator;
 	}
 	else if (aggregator_name == "median")
 	{
-		pAS->aggregator = median_aggregator;
+		aggregator = median_aggregator;
 	}
 	else if (aggregator_name == "geometric mean" || aggregator_name == "geometric_mean")
 	{
-		pAS->aggregator = geometric_mean_aggregator;
+		aggregator = geometric_mean_aggregator;
 	}
 	else if (aggregator_name == "first")
 	{
-		pAS->aggregator = first_aggregator;
+		aggregator = first_aggregator;
 	}
 	else if (aggregator_name == "custom")
 	{
-		pAS->aggregator = [](std::vector<double> signals_in)
+		aggregator = [](std::vector<double> signals_in)
 		{
 			std::cerr << "ERROR: Custom aggregator not set! Make sure to set one in custom.cpp if using a custom aggregator." << std::endl;
 			exit(-1);
@@ -144,7 +144,7 @@ void AggregatorSignal::set_aggregator(std::string aggregator_name)
 
 void AggregatorSignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
 {
-	os << "// " << std::string(indent, '  ') << "└─" << additional_info << " using " << type << " aggregator" << std::endl;
+	os << "// " << std::string(indent*2, ' ') << "└─" << additional_info << " using " << type << " aggregator" << std::endl;
 	for (auto &signal : signals)
 	{
 		signal->display(os, line, indent + 1);
@@ -209,30 +209,12 @@ void MediatorSignal::set_mediator(std::string mediator_name)
 	return;
 }
 
-void MediatorSignal::use_increasing_dominant_mediator()
-{
-	type = "increasing_dominant";
-	aggregator = [this](std::vector<double> signals_in)
-	{
-		return this->increasing_dominant_mediator(signals_in);
-	};
-}
-
-void MediatorSignal::use_neutral_mediator()
-{
-	type = "neutral";
-	aggregator = [this](std::vector<double> signals_in)
-	{
-		return this->neutral_mediator(signals_in);
-	};
-}
-
 void MediatorSignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
 {
-	os << "// " << std::string(indent, '  ') << "└─mediating between (" << min_value << ", " << base_value << ", " << max_value << ") using a " << type << " mediator" << std::endl;
+	os << "// " << std::string(indent*2, ' ') << "└─mediating between (" << min_value << ", " << base_value << ", " << max_value << ") using a " << type << " mediator" << std::endl;
 	line.response = "decreasing";
 	decreasing_signal->display(os, line, indent + 1, "decreasing");
-	line.resposne = "increasing";
+	line.response = "increasing";
 	increasing_signal->display(os, line, indent + 1, "increasing");
 	return;
 }
@@ -279,7 +261,8 @@ void HillSignal::display(std::ostream &os, RuleLine line, int indent, std::strin
 
 void IdentitySignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
 {
-	os << line.cell_type << "," << construct_relative_signal_string() << "," << line.response << " (identity)," << line.behavior << "," << line.max_response << "," << half_max << "," << hill_power << "," << applies_to_dead << std::endl;
+	// Note: the two commas after max_response are intentional to make sure this has 8 columns
+	os << line.cell_type << "," << construct_relative_signal_string() << "," << line.response << " (identity)," << line.behavior << "," << line.max_response << ",,," << applies_to_dead << std::endl;
 	return;
 }
 
@@ -326,7 +309,7 @@ double exponential_solve(double current, double rate, double target)
 	return target + (current - target) * exp(-rate * phenotype_dt);
 }
 
-BehaviorSetter::display(std::ostream &os, RuleLine line)
+void BehaviorSetter::display(std::ostream &os, RuleLine line)
 {
 	os << "//   └─set " << behavior << std::endl;
 	line.behavior = behavior;
@@ -334,7 +317,7 @@ BehaviorSetter::display(std::ostream &os, RuleLine line)
 	return;
 }
 
-BehaviorAccumulator::display(std::ostream &os, RuleLine line)
+void BehaviorAccumulator::display(std::ostream &os, RuleLine line)
 {
 	os << "//   └─accumulate " << behavior << " from " << behavior_base << " to " << behavior_saturation << std::endl;
 	line.behavior = behavior;
@@ -342,7 +325,7 @@ BehaviorAccumulator::display(std::ostream &os, RuleLine line)
 	return;
 }
 
-BehaviorAttenuator::display(std::ostream &os, RuleLine line)
+void BehaviorAttenuator::display(std::ostream &os, RuleLine line)
 {
 	os << "//   └─attenuate " << behavior << " from " << behavior_saturation << " to " << behavior_base << std::endl;
 	line.behavior = behavior;

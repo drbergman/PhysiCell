@@ -27,7 +27,7 @@ public:
     RuleLine(std::string cell_type, std::string signal, std::string response, std::string behavior, double max_response, double p1, double p2, bool applies_to_dead)
         : cell_type(cell_type), signal(signal), response(response), behavior(behavior), max_response(max_response), p1(p1), p2(p2), applies_to_dead(applies_to_dead) {}
     RuleLine() : cell_type(""), signal(""), response(""), behavior(""), max_response(0), p1(0), p2(0), applies_to_dead(false) {}
-}
+};
 
 // aggregator functions
 /** This function returns the first signal from the input vector. */
@@ -265,10 +265,13 @@ class SignalReference
 private:
 
 protected:
-    std::string type;
+    std::string type = "increasing";
     double reference_value = 0;
 
 public:
+    SignalReference(std::string type_, double reference_value_)
+        : type(type_), reference_value(reference_value_) {}
+
     virtual double coordinate_transform(double signal) = 0;
     virtual ~SignalReference() {}
     std::string get_type() const { return type; }
@@ -292,7 +295,7 @@ public:
         }
         return signal - reference_value;
     }
-    IncreasingSignalReference(double reference_value_) : type("increasing"), reference_value(reference_value_) {}
+    IncreasingSignalReference(double reference_value_) : SignalReference("increasing", reference_value_) {}
 };
 
 /**
@@ -313,7 +316,7 @@ public:
         return reference_value - signal;
     }
 
-    DecreasingSignalReference(double reference_value_) : type("decreasing"), reference_value(reference_value_) {}
+    DecreasingSignalReference(double reference_value_) : SignalReference("decreasing", reference_value_) {}
 };
 
 /**
@@ -354,7 +357,7 @@ public:
  */
 class AbstractHillSignal : public RelativeSignal
 {
-private:
+protected:
     double half_max;
     double hill_power;
 
@@ -468,9 +471,11 @@ protected:
     std::string type;
 
 public:
+    AbsoluteSignal(std::string signal_name, bool applies_to_dead, std::string type_)
+        : ElementarySignal(signal_name, applies_to_dead), type(type_) {}
+
     double evaluate(Cell *pCell) override;
     virtual double transformer(double signal) override = 0;
-    using ElementarySignal::ElementarySignal; // Inherit constructors from ElementarySignal
 
     std::string construct_absolute_signal_string(void);
     virtual void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override = 0;
@@ -496,13 +501,13 @@ protected:
 
 public:
     virtual double transformer(double signal) override = 0;
-    LinearSignal(std::string signal_name, bool applies_to_dead, double signal_min, double signal_max)
-        : AbsoluteSignal(signal_name, applies_to_dead), signal_min(signal_min), signal_max(signal_max)
+    LinearSignal(std::string signal_name, bool applies_to_dead, double signal_min, double signal_max, std::string type_)
+        : AbsoluteSignal(signal_name, applies_to_dead, type_), signal_min(signal_min), signal_max(signal_max)
     {
         signal_range = signal_max - signal_min;
     }
 
-    void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override = 0;
+    void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override;
 
     virtual ~LinearSignal() {}
 };
@@ -515,6 +520,7 @@ public:
  */
 class IncreasingLinearSignal : public LinearSignal
 {
+public:
     double transformer(double signal) override
     {
         if (signal <= signal_min) {
@@ -529,7 +535,7 @@ class IncreasingLinearSignal : public LinearSignal
     }
 
     IncreasingLinearSignal(std::string signal_name, bool applies_to_dead, double signal_min, double signal_max)
-        : LinearSignal(signal_name, applies_to_dead, signal_min, signal_max), type("increasing") {}
+        : LinearSignal(signal_name, applies_to_dead, signal_min, signal_max, "increasing") {}
 };
 
 /**
@@ -540,6 +546,7 @@ class IncreasingLinearSignal : public LinearSignal
  */
 class DecreasingLinearSignal : public LinearSignal
 {
+public:
     double transformer(double signal) override
     {
         if (signal <= signal_min) {
@@ -554,7 +561,7 @@ class DecreasingLinearSignal : public LinearSignal
     }
 
     DecreasingLinearSignal(std::string signal_name, bool applies_to_dead, double signal_min, double signal_max)
-        : LinearSignal(signal_name, applies_to_dead, signal_min, signal_max), type("decreasing") {}
+        : LinearSignal(signal_name, applies_to_dead, signal_min, signal_max, "decreasing") {}
 };
 
 /**
@@ -574,10 +581,10 @@ protected:
 public:
     virtual double transformer(double signal) override = 0;
 
-    HeavisideSignal(std::string signal_name, bool applies_to_dead, double threshold)
-        : AbsoluteSignal(signal_name, applies_to_dead), threshold(threshold) {}
+    HeavisideSignal(std::string signal_name, bool applies_to_dead, double threshold, std::string type_)
+        : AbsoluteSignal(signal_name, applies_to_dead, type_), threshold(threshold) {}
 
-    void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override = 0;
+    void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "") override;
     virtual ~HeavisideSignal() {}
 };
 
@@ -602,7 +609,7 @@ public:
     }
 
     IncreasingHeavisideSignal(std::string signal_name, bool applies_to_dead, double threshold)
-        : HeavisideSignal(signal_name, applies_to_dead, threshold) {}
+        : HeavisideSignal(signal_name, applies_to_dead, threshold, "increasing") {}
 };
 
 /**
@@ -626,7 +633,7 @@ public:
     }
 
     DecreasingHeavisideSignal(std::string signal_name, bool applies_to_dead, double threshold)
-        : HeavisideSignal(signal_name, applies_to_dead, threshold) {}
+        : HeavisideSignal(signal_name, applies_to_dead, threshold, "decreasing") {}
 };
 
 /**
@@ -671,7 +678,7 @@ public:
     // void add_signal(std::string, std::string response);
 
 
-    virtual void display(std::ostream &os, std::string cell_type) override = 0; // done
+    virtual void display(std::ostream &os, RuleLine line) = 0; // done
     /* to do
     void reduced_display(std::ostream &os);  // done
     void detailed_display(std::ostream &os); // done
@@ -694,7 +701,7 @@ class BehaviorSetter : public BehaviorRule
 public:
     void apply(Cell* pCell) override;
     using BehaviorRule::BehaviorRule; // Inherit constructors from BehaviorRule
-    void display(std::ostream &os, std::string cell_type) override;
+    void display(std::ostream &os, RuleLine line) override;
 };
 
 /**
@@ -727,7 +734,7 @@ public:
     BehaviorRateSetter(std::string behavior, std::unique_ptr<AbstractSignal> pSignal, double behavior_base, double behavior_saturation)
         : BehaviorRule(behavior, std::move(pSignal)), behavior_base(behavior_base), behavior_saturation(behavior_saturation) {}
 
-    virtual void display(std::ostream &os, std::string cell_type) override = 0;
+    virtual void display(std::ostream &os, RuleLine line) override = 0;
     virtual ~BehaviorRateSetter() {}
 };
 
@@ -757,7 +764,7 @@ public:
         }
     }
 
-    void display(std::ostream &os, std::string cell_type) override;
+    void display(std::ostream &os, RuleLine line) override;
 };
 
 /**
@@ -786,7 +793,7 @@ public:
         }
     }
 
-    void display(std::ostream &os, std::string cell_type) override;
+    void display(std::ostream &os, RuleLine line) override;
 };
 
 /**
@@ -810,7 +817,7 @@ public:
 
     BehaviorRule *find_behavior(std::string behavior);
 
-    void display(std::ostream &os, std::string cell_type);
+    void display(std::ostream &os, RuleLine line);
 
     // std::string cell_type;
     // Cell_Definition *pCell_Definition;
