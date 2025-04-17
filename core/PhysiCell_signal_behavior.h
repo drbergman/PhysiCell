@@ -68,12 +68,14 @@
 #include <vector>
 #include <string>
 
+
 #ifndef __PhysiCell_signal_response__
 #define __PhysiCell_signal_response__
 
-#include "./PhysiCell_constants.h" 
-#include "./PhysiCell_phenotype.h" 
-#include "./PhysiCell_cell.h" 
+#include "../core/PhysiCell.h"
+// #include "./PhysiCell_constants.h" 
+// #include "./PhysiCell_phenotype.h" 
+// #include "./PhysiCell_cell.h" 
 
 namespace PhysiCell{
 
@@ -177,7 +179,6 @@ double get_single_base_behavior( Cell* pCell , int index ); // done
 double get_single_base_behavior( Cell* pCell , std::string name ); // done 
 
 double get_single_base_behavior( Cell_Definition* pCD , std::string name ); 
-
 
 }; 
 

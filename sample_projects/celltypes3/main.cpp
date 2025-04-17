@@ -87,13 +87,11 @@ int main( int argc, char* argv[] )
 {
 	// load and parse settings file(s)
 	
-	bool XML_status = false; 
-	if( argc > 1 )
-	{ XML_status = load_PhysiCell_config_file( argv[1] ); }
-	else
-	{ XML_status = load_PhysiCell_config_file( "./config/PhysiCell_settings.xml" ); }
-	if( !XML_status )
-	{ exit(-1); }
+	// read arguments
+	argument_parser.parse(argc, argv);
+
+	// load and parse settings file(s)
+	load_PhysiCell_config_file();
 	
 	// OpenMP setup
 	omp_set_num_threads(PhysiCell_settings.omp_num_threads);

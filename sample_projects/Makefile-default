@@ -42,7 +42,7 @@ BioFVM_utilities.o BioFVM_basic_agent.o BioFVM_MultiCellDS.o BioFVM_agent_contai
 
 PhysiCell_core_OBJECTS := PhysiCell_phenotype.o PhysiCell_cell_container.o PhysiCell_standard_models.o \
 PhysiCell_cell.o PhysiCell_custom.o PhysiCell_utilities.o PhysiCell_constants.o PhysiCell_basic_signaling.o \
-PhysiCell_signal_behavior.o PhysiCell_rules.o
+PhysiCell_signal_behavior.o PhysiCell_rules_extended.o
 
 PhysiCell_module_OBJECTS := PhysiCell_SVG.o PhysiCell_pathology.o PhysiCell_MultiCellDS.o PhysiCell_various_outputs.o \
 PhysiCell_pugixml.o PhysiCell_settings.o PhysiCell_geometry.o
@@ -71,11 +71,11 @@ name:
 
 # sample projects 	
 list-projects:
-	@echo "Sample projects: template template-ecm template-xml-rules biorobots-sample cancer-biorobots-sample cancer-immune-sample"
+	@echo "Sample projects: template biorobots-sample cancer-biorobots-sample cancer-immune-sample"
 	@echo "                 celltypes3-sample heterogeneity-sample pred-prey-farmer virus-macrophage-sample"
 	@echo "                 worm-sample interaction-sample mechano-sample rules-sample physimess-sample custom-division-sample"
 	@echo "                 asymmetric-division-sample immune-function-sample episode-sample"
-	@echo "					template-xml-rules template-ecm"
+	@echo "					template-ecm template-xml-rules template-xml-rules-extended"
 	@echo ""
 	@echo "Sample intracellular projects: template_BM ode-energy-sample physiboss-cell-lines-sample"
 	@echo "                 cancer-metabolism-sample physiboss-tutorial physiboss-tutorial-invasion"
@@ -90,6 +90,15 @@ template:
 	cp ./sample_projects/template/Makefile .
 	cp -r ./sample_projects/template/config/* ./config 
 
+template-ecm:
+	cp -r ./sample_projects/template-ecm/custom_modules/* ./custom_modules/
+	touch main.cpp && cp main.cpp main-backup.cpp
+	cp ./sample_projects/template-ecm/main.cpp ./main.cpp 
+	cp Makefile Makefile-backup
+	cp ./sample_projects/template-ecm/Makefile .
+	cp ./config/PhysiCell_settings.xml ./config/PhysiCell_settings-backup.xml 
+	cp -r ./sample_projects/template-ecm/config/* ./config/
+
 template-xml-rules:
 	cp -r ./sample_projects/template_xml_rules/custom_modules/* ./custom_modules/
 	touch main.cpp && cp main.cpp main-backup.cpp
@@ -99,15 +108,15 @@ template-xml-rules:
 	cp ./config/PhysiCell_settings.xml ./config/PhysiCell_settings-backup.xml 
 	cp -r ./sample_projects/template_xml_rules/config/* ./config/
 
-template-ecm:
-	cp -r ./sample_projects/template-ecm/custom_modules/* ./custom_modules/
+template-xml-rules-extended:
+	cp -r ./sample_projects/template_xml_rules_extended/custom_modules/* ./custom_modules/
 	touch main.cpp && cp main.cpp main-backup.cpp
-	cp ./sample_projects/template-ecm/main.cpp ./main.cpp 
+	cp ./sample_projects/template_xml_rules_extended/main.cpp ./main.cpp 
 	cp Makefile Makefile-backup
-	cp ./sample_projects/template-ecm/Makefile .
+	cp ./sample_projects/template_xml_rules_extended/Makefile .
 	cp ./config/PhysiCell_settings.xml ./config/PhysiCell_settings-backup.xml 
-	cp -r ./sample_projects/template-ecm/config/* ./config/
-	
+	cp -r ./sample_projects/template_xml_rules_extended/config/* ./config/
+
 # sample projects 
 
 # ---- non-intracellular projects 
@@ -466,8 +475,8 @@ PhysiCell_constants.o: ./core/PhysiCell_constants.cpp
 PhysiCell_signal_behavior.o: ./core/PhysiCell_signal_behavior.cpp
 	$(COMPILE_COMMAND) -c ./core/PhysiCell_signal_behavior.cpp 
 
-PhysiCell_rules.o: ./core/PhysiCell_rules.cpp
-	$(COMPILE_COMMAND) -c ./core/PhysiCell_rules.cpp 
+PhysiCell_rules_extended.o: ./core/PhysiCell_rules_extended.cpp
+	$(COMPILE_COMMAND) -c ./core/PhysiCell_rules_extended.cpp 
 
 # BioFVM core components (needed by PhysiCell)
 	

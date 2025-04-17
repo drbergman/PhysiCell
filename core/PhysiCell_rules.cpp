@@ -406,6 +406,7 @@ void Hypothesis_Rule::sync_to_cell_definition( Cell_Definition* pCD )
 	return; 
 }
 
+
 void Hypothesis_Rule::sync_to_cell_definition( std::string cell_name )
 { return sync_to_cell_definition( find_cell_definition(cell_name) ); }
 
@@ -722,6 +723,7 @@ Hypothesis_Ruleset::Hypothesis_Ruleset()
 	return; 
 }
 
+
 void Hypothesis_Ruleset::display( std::ostream& os )
 {
 	os << "Behavioral rules for cell type " << cell_type << ":" << std::endl; 
@@ -741,7 +743,6 @@ void Hypothesis_Ruleset::detailed_display( std::ostream& os )
 	os << std::endl; 
 	return; 
 }
-
 
 void Hypothesis_Ruleset::sync_to_cell_definition( Cell_Definition* pCD )
 {
@@ -800,12 +801,17 @@ Hypothesis_Rule* Hypothesis_Ruleset::add_behavior( std::string behavior , double
 	return pHR; 
 }
 
+
+
+
 Hypothesis_Rule* Hypothesis_Ruleset::add_behavior( std::string behavior )
 { 
 	double min_behavior = 9e99; // Min behaviour high value
 	double max_behavior = -9e99; // Max behaviour low value
 	return Hypothesis_Ruleset::add_behavior( behavior, min_behavior, max_behavior );
 }
+
+
 
 void Hypothesis_Ruleset::sync_to_cell_definition( std::string cell_name )
 { return sync_to_cell_definition( find_cell_definition(cell_name) ); }
@@ -1911,7 +1917,7 @@ void process_signals(pugi::xml_node response_node, std::string cell_type, std::s
 	std::vector<std::string> signals_set;
 
 	std::vector<std::string> input;
-	input.resize(8);
+	input.resize(9);
 	input[0] = cell_type;
 	input[2] = response;
 	input[3] = behavior;
@@ -1937,6 +1943,7 @@ void process_signals(pugi::xml_node response_node, std::string cell_type, std::s
 		input[5] = signal_node.child_value("half_max");
 		input[6] = signal_node.child_value("hill_power");
 		input[7] = signal_node.child_value("applies_to_dead");
+		input[8] = signal_node.attribute("type").value();
 		process_signal(input);
 
 		signal_node = signal_node.next_sibling("signal");
@@ -1985,6 +1992,7 @@ void process_signal(std::vector<std::string> input)
 	std::string signal = input[1]; 
 	std::string response = input[2]; 
 	std::string behavior = input[3]; 
+	std::string signal_type = input[8];
 
 	// numeric portions of the rule 
 	// double min_value  = std::atof( input[2].c_str() );
@@ -1995,16 +2003,22 @@ void process_signal(std::vector<std::string> input)
 	// hmm from here 
 	// double max_value  = std::atof( input[4].c_str() ); 
 
-	double half_max  = std::atof( input[5].c_str() );
-	double hill_power = std::atof( input[6].c_str() );
-	bool use_for_dead = (bool) std::atof( input[7].c_str() ); 
-
 	std::cout << "Adding rule for " << cell_type << " cells:\n\t"; 
 	std::cout << temp << std::endl; 
 
 	// add_rule(cell_type,signal,behavior,response);  
+	bool use_for_dead = (bool)std::atof(input[7].c_str());
 	add_rule(cell_type,signal,behavior,response,use_for_dead);  
-	set_hypothesis_parameters(cell_type,signal,behavior,half_max,hill_power);  
+	switch (0)
+	{
+	case 0: // Hill type
+	{
+		double half_max = std::atof(input[5].c_str());
+		double hill_power = std::atof(input[6].c_str());
+		set_hypothesis_parameters(cell_type, signal, behavior, half_max, hill_power);
+	}
+	}
+
 
 	return;
 }
@@ -2066,7 +2080,6 @@ void parse_rules_from_pugixml( void )
 	return;
 }
 
-
 void parse_rules_from_file(std::string path_to_file, std::string format, std::string protocol, double version) // see PhysiCell_rules.h for default values of format, protocol, and version
 {
 	std::cout << "\tProcessing ruleset in " << path_to_file << " ... " << std::endl;
@@ -2082,7 +2095,7 @@ void parse_rules_from_file(std::string path_to_file, std::string format, std::st
 	}
 	if (version == -1.0)
 	{
-		version = 2.0; // default version (at least for CSVs)
+		version = 3.0; // default version (at least for CSVs)
 	}
 
 	if (format == "CSV" || format == "csv")
@@ -2096,21 +2109,20 @@ void parse_rules_from_file(std::string path_to_file, std::string format, std::st
 		}
 
 		parse_csv_rules_v3(path_to_file); // parse all rules in a CSV file
-		PhysiCell_settings.rules_enabled = true;
 	}
 	else if (format == "XML" || format == "xml")
 	{
 		std::cout << "\tFormat: XML" << std::endl;
 		parse_xml_rules(path_to_file);
-		PhysiCell_settings.rules_enabled = true;
 	}
 	else
 	{
-		std::cout << "\tError: Unknown format (" << format << ") for ruleset " << path_to_file << ". Skipping!" << std::endl;
+		std::cerr << "\tError: Unknown format (" << format << ") for ruleset " << path_to_file << ". Quitting!" << std::endl;
 		exit(-1);
 	}
 	PhysiCell_settings.rules_enabled = true;
 	copy_file_to_output( path_to_file );
+	return;
 }
 
 void parse_rules_from_parameters_v0( void )
@@ -2161,7 +2173,6 @@ int Parameters<T>::find_index( std::string search_name )
 }
 
 */
-
 void stream_annotated_English_rules( std::ostream& os )
 {
 	os << "Cell Hypothesis Rules" << std::endl << std::endl; 

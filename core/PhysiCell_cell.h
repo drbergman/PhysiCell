@@ -78,7 +78,7 @@
 #include "../modules/PhysiCell_settings.h"
 
 #include "./PhysiCell_standard_models.h" 
-#include "./PhysiCell_rules.h"
+#include "./PhysiCell_rules_extended.h"
 
 #ifdef ADDON_PHYSIECM
 #include "../addons/PhysiECM/cell_ecm_interactions.h"
