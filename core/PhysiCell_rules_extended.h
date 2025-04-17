@@ -16,17 +16,13 @@ class RuleLine
 {
 public:
     std::string cell_type = "";
-    std::string signal = "";
     std::string response = "";
     std::string behavior = "";
     double max_response;
-    double p1;
-    double p2;
-    bool applies_to_dead;
 
-    RuleLine(std::string cell_type, std::string signal, std::string response, std::string behavior, double max_response, double p1, double p2, bool applies_to_dead)
-        : cell_type(cell_type), signal(signal), response(response), behavior(behavior), max_response(max_response), p1(p1), p2(p2), applies_to_dead(applies_to_dead) {}
-    RuleLine() : cell_type(""), signal(""), response(""), behavior(""), max_response(0), p1(0), p2(0), applies_to_dead(false) {}
+    RuleLine(std::string cell_type, std::string response, std::string behavior, double max_response)
+        : cell_type(cell_type), response(response), behavior(behavior), max_response(max_response) {}
+    RuleLine() : cell_type(""), response(""), behavior(""), max_response(0) {}
 };
 
 // aggregator functions
@@ -93,6 +89,17 @@ private:
     std::vector<std::unique_ptr<PhysiCell::AbstractSignal>> signals;
 
 public:
+    AggregatorSignal()
+    {
+        type = "multivariate_hill";
+        aggregator = multivariate_hill_aggregator;
+    }
+
+    AggregatorSignal(std::vector<std::unique_ptr<PhysiCell::AbstractSignal>> pSignals) : AggregatorSignal()
+    {
+        signals = std::move(pSignals);
+    }
+
     std::vector<double> evaluate_signals(Cell *pCell) override
     {
         std::vector<double> signal_values(signals.size());
@@ -108,18 +115,9 @@ public:
         signals.push_back(std::move(pSignal));
     }
 
-    AggregatorSignal()
-    {
-        type = "multivariate_hill";
-        aggregator = multivariate_hill_aggregator;
-    }
-
-    AggregatorSignal(std::vector<std::unique_ptr<PhysiCell::AbstractSignal>> pSignals) : AggregatorSignal()
-    {
-        signals = std::move(pSignals);
-    }
-
     void set_aggregator(std::string aggregator_name);
+
+    bool has_signals() const { return !signals.empty(); }
 
     void display(std::ostream &os, RuleLine line, int indent, std::string additional_info = "aggregating") override;
 };
@@ -895,7 +893,6 @@ void set_custom_mediator(const std::string &cell_definition_name, const std::str
 void set_custom_aggregator(const std::string &cell_definition_name, const std::string &behavior_name, const std::string &response, double (*aggregator_function)(std::vector<double>));
 MediatorSignal* get_top_level_mediator(const std::string &cell_definition_name, const std::string &behavior_name);
 
-void record_cell_rules( void );
 void display_behavior_rulesets( std::ostream& os );
 void save_annotated_detailed_English_rules( void );
 void save_annotated_detailed_English_rules_HTML( void );

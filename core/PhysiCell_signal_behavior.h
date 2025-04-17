@@ -73,9 +73,6 @@
 #define __PhysiCell_signal_response__
 
 #include "../core/PhysiCell.h"
-// #include "./PhysiCell_constants.h" 
-// #include "./PhysiCell_phenotype.h" 
-// #include "./PhysiCell_cell.h" 
 
 namespace PhysiCell{
 
@@ -97,6 +94,8 @@ void display_behavior_dictionary( std::ostream& os ); // done
 
 void display_signal_dictionary_with_synonyms( void ); // done 
 void display_behavior_dictionary_with_synonyms( void ); // done 
+void display_signal_dictionary_with_synonyms( std::ostream& os ); // done 
+void display_behavior_dictionary_with_synonyms( std::ostream& os ); // done 
 
 /* signal functions */ 
 

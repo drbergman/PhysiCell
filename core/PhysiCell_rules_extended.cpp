@@ -142,12 +142,17 @@ void AggregatorSignal::set_aggregator(std::string aggregator_name)
 	return;
 }
 
-void AggregatorSignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
+void AggregatorSignal::display(std::ostream &os, RuleLine rule_line, int indent, std::string additional_info)
 {
+	if (!has_signals())
+	{
+		return;
+	}
+
 	os << "// " << std::string(indent*2, ' ') << "└─" << additional_info << " using " << type << " aggregator" << std::endl;
 	for (auto &signal : signals)
 	{
-		signal->display(os, line, indent + 1);
+		signal->display(os, rule_line, indent + 1);
 	}
 	return;
 }
@@ -209,13 +214,15 @@ void MediatorSignal::set_mediator(std::string mediator_name)
 	return;
 }
 
-void MediatorSignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
+void MediatorSignal::display(std::ostream &os, RuleLine rule_line, int indent, std::string additional_info)
 {
-	os << "// " << std::string(indent*2, ' ') << "└─mediating between (" << min_value << ", " << base_value << ", " << max_value << ") using a " << type << " mediator" << std::endl;
-	line.response = "decreasing";
-	decreasing_signal->display(os, line, indent + 1, "decreasing");
-	line.response = "increasing";
-	increasing_signal->display(os, line, indent + 1, "increasing");
+	os << "// " << std::string(indent*2, ' ') << "└─mediating between " << min_value << " ≤ " << base_value << " ≤ " << max_value << " using a " << type << " mediator" << std::endl;
+	rule_line.response = "decreases";
+	rule_line.max_response = min_value;
+	decreasing_signal->display(os, rule_line, indent + 1, "decreasing");
+	rule_line.response = "increases";
+	rule_line.max_response = max_value;
+	increasing_signal->display(os, rule_line, indent + 1, "increasing");
 	return;
 }
 
@@ -235,7 +242,7 @@ double RelativeSignal::evaluate(Cell *pCell)
 
 std::string RelativeSignal::construct_relative_signal_string( void )
 {
-	std::string signal = construct_relative_signal_string();
+	std::string signal;
 	if (has_reference())
 	{
 		signal = "(" + signal_reference->get_type() + ") " + signal_name + " (from " + std::to_string(signal_reference->get_reference_value()) + ")";
@@ -247,22 +254,22 @@ std::string RelativeSignal::construct_relative_signal_string( void )
 	return signal;
 }
 
-void PartialHillSignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
+void PartialHillSignal::display(std::ostream &os, RuleLine rule_line, int indent, std::string additional_info)
 {
-	os << line.cell_type << "," << construct_relative_signal_string() << "," << line.response << "," << line.behavior << "," << line.max_response << "," << half_max << "," << hill_power << "," << applies_to_dead << std::endl;
+	os << rule_line.cell_type << "," << construct_relative_signal_string() << "," << rule_line.response << "," << rule_line.behavior << "," << rule_line.max_response << "," << half_max << "," << hill_power << "," << applies_to_dead << std::endl;
 	return;
 }
 
-void HillSignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
+void HillSignal::display(std::ostream &os, RuleLine rule_line, int indent, std::string additional_info)
 {
-	os << line.cell_type << "," << construct_relative_signal_string() << "," << line.response << " (hill)," << line.behavior << "," << line.max_response << "," << half_max << "," << hill_power << "," << applies_to_dead << std::endl;
+	os << rule_line.cell_type << "," << construct_relative_signal_string() << "," << rule_line.response << " (hill)," << rule_line.behavior << "," << rule_line.max_response << "," << half_max << "," << hill_power << "," << applies_to_dead << std::endl;
 	return;
 }
 
-void IdentitySignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
+void IdentitySignal::display(std::ostream &os, RuleLine rule_line, int indent, std::string additional_info)
 {
 	// Note: the two commas after max_response are intentional to make sure this has 8 columns
-	os << line.cell_type << "," << construct_relative_signal_string() << "," << line.response << " (identity)," << line.behavior << "," << line.max_response << ",,," << applies_to_dead << std::endl;
+	os << rule_line.cell_type << "," << construct_relative_signal_string() << "," << rule_line.response << " (identity)," << rule_line.behavior << "," << rule_line.max_response << ",,," << applies_to_dead << std::endl;
 	return;
 }
 
@@ -277,19 +284,19 @@ double AbsoluteSignal::evaluate(Cell *pCell)
 
 std::string AbsoluteSignal::construct_absolute_signal_string( void )
 {
-	return "(" + type + ")" + signal_name;
+	return "(" + type + ") " + signal_name;
 }
 
-void LinearSignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
+void LinearSignal::display(std::ostream &os, RuleLine rule_line, int indent, std::string additional_info)
 {
-	os << line.cell_type << "," << construct_absolute_signal_string() << "," << line.response << " (linear)," << line.behavior << "," << line.max_response << "," << signal_min << "," << signal_max << "," << applies_to_dead << std::endl;
+	os << rule_line.cell_type << "," << construct_absolute_signal_string() << "," << rule_line.response << " (linear)," << rule_line.behavior << "," << rule_line.max_response << "," << signal_min << "," << signal_max << "," << applies_to_dead << std::endl;
 	return;
 }
 
-void HeavisideSignal::display(std::ostream &os, RuleLine line, int indent, std::string additional_info)
+void HeavisideSignal::display(std::ostream &os, RuleLine rule_line, int indent, std::string additional_info)
 {
 	// Note: the two commas after threshold are intentional to make sure this has 8 columns
-	os << line.cell_type << "," << construct_absolute_signal_string() << "," << line.response << " (heaviside)," << line.behavior << "," << line.max_response << "," << threshold << ",," << applies_to_dead << std::endl;
+	os << rule_line.cell_type << "," << construct_absolute_signal_string() << "," << rule_line.response << " (heaviside)," << rule_line.behavior << "," << rule_line.max_response << "," << threshold << ",," << applies_to_dead << std::endl;
 	return;
 }
 
@@ -309,27 +316,27 @@ double exponential_solve(double current, double rate, double target)
 	return target + (current - target) * exp(-rate * phenotype_dt);
 }
 
-void BehaviorSetter::display(std::ostream &os, RuleLine line)
+void BehaviorSetter::display(std::ostream &os, RuleLine rule_line)
 {
 	os << "//   └─set " << behavior << std::endl;
-	line.behavior = behavior;
-	signal->display(os, line, 2);
+	rule_line.behavior = behavior;
+	signal->display(os, rule_line, 2);
 	return;
 }
 
-void BehaviorAccumulator::display(std::ostream &os, RuleLine line)
+void BehaviorAccumulator::display(std::ostream &os, RuleLine rule_line)
 {
 	os << "//   └─accumulate " << behavior << " from " << behavior_base << " to " << behavior_saturation << std::endl;
-	line.behavior = behavior;
-	signal->display(os, line, 2);
+	rule_line.behavior = behavior;
+	signal->display(os, rule_line, 2);
 	return;
 }
 
-void BehaviorAttenuator::display(std::ostream &os, RuleLine line)
+void BehaviorAttenuator::display(std::ostream &os, RuleLine rule_line)
 {
 	os << "//   └─attenuate " << behavior << " from " << behavior_saturation << " to " << behavior_base << std::endl;
-	line.behavior = behavior;
-	signal->display(os, line, 2);
+	rule_line.behavior = behavior;
+	signal->display(os, rule_line, 2);
 	return;
 }
 
@@ -376,11 +383,11 @@ void BehaviorRuleset::apply(Cell *pCell)
 	return;
 }
 
-void BehaviorRuleset::display(std::ostream &os, RuleLine line)
+void BehaviorRuleset::display(std::ostream &os, RuleLine rule_line)
 {
 	for (auto &rule : rules)
 	{
-		rule->display(os, line);
+		rule->display(os, rule_line);
 	}
 	return;
 }
@@ -414,7 +421,7 @@ void setup_behavior_rules( void )
 
 	parse_behavior_rules_from_pugixml();
 
-	// display_behavior_rules( std::cout );
+	display_behavior_rulesets( std::cout );
 
 	// save_annotated_detailed_English_behavior_rules(); 
 	// save_annotated_detailed_English_behavior_rules_HTML(); 
@@ -443,145 +450,6 @@ void apply_behavior_ruleset( Cell* pCell )
 	behavior_rulesets[pCD]->apply( pCell );
 	return; 
 }
-
-// BehaviorRule::BehaviorRule(std::string cell_type, std::string behavior_name, double min_behavior, double max_behavior)
-// {
-//     pCell_Definition = find_cell_definition(cell_type);
-//     behavior = behavior_name;
-//     min_value = min_behavior;
-//     max_value = max_behavior;
-//     base_value = get_single_base_behavior(pCell_Definition, behavior_name);
-// }
-
-// void BehaviorRule::add_signal(std::string, std::string response)
-// {
-// 	PartialHillSignal *pDecreasingSignal = new PartialHillSignal();
-// 	PartialHillSignal *pIncreasingSignal = new PartialHillSignal();
-// 	signal = new MediatorSignal(pDecreasingSignal, pIncreasingSignal);
-// 	return;
-// }
-
-// void BehaviorRule::apply(Cell *pCell)
-// {
-// 	double param = evaluate(pCell);
-// 	set_single_behavior(pCell, behavior, param);
-// 	return;
-// }
-
-// void BehaviorRule::sync_to_cell_definition( Cell_Definition* pCD )
-// {
-// 	if( pCD == NULL )
-// 	{ return; }
-
-// 	cell_type = pCD->name; 
-// 	pCell_Definition = pCD; 
-
-// 	// sync base behavior 
-// 	base_value = get_single_base_behavior(pCD,behavior); 
-
-// 	return; 
-// }
-
-// void BehaviorRuleset::add_behavior(std::string behavior, double min_behavior, double max_behavior)
-// {
-//     // check: is this a valid signal? (is it in the dictionary?)
-//     if (find_behavior_index(behavior) < 0)
-//     {
-//         std::cout << "Warning! Attempted to add behavior " << behavior << " which is not in the dictionary." << std::endl;
-//         std::cout << "Either fix your model or add the missing behavior to the simulation." << std::endl;
-
-//         exit(-1);
-//     }
-
-//     // first, check. Is there already a ruleset?
-//     for (auto &rule : rules)
-//     {
-//         if (rule->behavior == behavior)
-//         {
-//             std::cout << "ERROR: Attempted to add behavior " << behavior << " which is already in the ruleset." << std::endl;
-//             std::cout << "\tIf you want to change the min and max values, use the set_min_max_behavior function." << std::endl;
-//             exit(-1);
-//         }
-//     }
-//     // if not, add it
-//     BehaviorRule *pBR = new BehaviorRule(cell_type, behavior, min_behavior, max_behavior);
-// }
-
-// void BehaviorRuleset::sync_to_cell_definition(std::string cell_type)
-// {
-//     pCell_Definition = find_cell_definition(cell_type);
-//     sync_to_cell_definition_finish(cell_type);
-// }
-
-// BehaviorRule* Hypothesis_Ruleset::add_behavior( std::string behavior , double min_behavior, double max_behavior )
-// {
-//     // check: is this a valid signal? (is it in the dictionary?)
-//     if( find_behavior_index(behavior) < 0 )
-//     {
-//         std::cout << "Warning! Attempted to add behavior " << behavior << " which is not in the dictionary." << std::endl; 
-//         std::cout << "Either fix your model or add the missing behavior to the simulation." << std::endl; 
-
-//         exit(-1); 
-//     }
-
-// 	// first, check. Is there already a ruleset? 
-// 	auto search = rules_map.find( behavior ); 
-
-// 		// if not, add it 
-// 	if( search == rules_map.end() )
-// 	{
-// 		BehaviorRule *pBR = new BehaviorRule;
-
-// 		pBR->behavior = behavior; 
-
-// 		pBR->sync_to_cell_definition( pCell_Definition ); 
-
-// 		pBR->min_value = min_behavior; 
-// 		pBR->max_value = max_behavior;
-
-// 		rules.push_back(pBR);
-// 		rules_map[ behavior ] = pBR; 
-
-// 		return pBR; 
-// 	}
-
-// 		// otherwise, edit it 
-// 	BehaviorRule* pBR = search->second; 
-
-// 	/*
-// 		// March 28 2023 fix  : let's not overwrite eixsting values
-// 	pBR->min_value = min_behavior; 
-// 	pBR->max_value = max_behavior; 
-// 	*/
-
-// 	return pBR; 
-// }
-
-// BehaviorRule* Hypothesis_Ruleset::add_behavior( std::string behavior )
-// { 
-// 	double min_behavior = 9e99; // Min behaviour high value
-// 	double max_behavior = -9e99; // Max behaviour low value
-// 	return Hypothesis_Ruleset::add_behavior( behavior, min_behavior, max_behavior );
-// }
-
-// BehaviorRule* Hypothesis_Ruleset::find_behavior( std::string name )
-// {
-//     auto search = rules_map.find( name); 
-// 	if( search == rules_map.end() )
-// 	{
-// 		// std::cout << "Warning! Ruleset does not contain " << name << std::endl; 
-// 		// std::cout << "         Returning NULL." << std::endl; 
-// 		return NULL; 
-// 	}
-
-// 	return search->second; 
-// }
-
-// BehaviorRule& Hypothesis_Ruleset::operator[]( std::string name )
-// {
-// 	BehaviorRule* pBR = find_behavior(name);
-// 	return *pBR; 
-// } 
 
 void parse_xml_behavior_rules(const std::string filename)
 {
@@ -1021,6 +889,7 @@ void parse_behavior_rules_from_file(std::string path_to_file, std::string format
 		exit(-1);
 	}
 	PhysiCell_settings.rules_enabled = true;
+	copy_file_to_output(path_to_file);
 	return; 
 }
 
@@ -1276,40 +1145,28 @@ MediatorSignal* get_top_level_mediator(const std::string &cell_definition_name, 
 	return pMS;
 }
 
-void record_cell_rules( void )
+void display_behavior_rulesets(std::ostream &os)
 {
-	// display rules to screen
-	// display_behavior_rulesets(std::cout);
 
-	// // save annotations
-	// save_annotated_detailed_English_rules();
-	// save_annotated_detailed_English_rules_HTML();
-	// save_annotated_English_rules();
-	// save_annotated_English_rules_HTML();
+	RuleLine rule_line;
 
-	// save dictionaries
-	std::string dictionary_file = "./" + PhysiCell_settings.folder + "/dictionaries.txt";
-	std::ofstream dict_of(dictionary_file, std::ios::out);
+	for (int n = 0; n < cell_definitions_by_index.size(); n++)
+	{
+		Cell_Definition *pCD = cell_definitions_by_index[n];
+		BehaviorRuleset *pBR = find_behavior_ruleset(pCD);
 
-	// display_signal_dictionary( dict_of ); // done 
-	display_signal_dictionary_with_synonyms( dict_of ); // 
-	// display_behavior_dictionary( dict_of ); // done 
-	display_behavior_dictionary_with_synonyms( dict_of ); // done 
-	dict_of.close(); 
+		std::string cell_type = pCD->name;
 
-	// save rules (v3)
-	std::string rules_file = PhysiCell_settings.folder + "/cell_rules_parsed.csv"; 
-	export_behavior_rules( rules_file ); 
+		os << "// " << cell_type << std::endl;
+
+		rule_line.cell_type = cell_type;
+
+		pBR->display(os, rule_line);
+
+		os << std::endl;
+	}
 
 	return;
-}
-
-void display_behavior_rulesets( std::ostream& os )
-{
-	for( int n=0 ; n < cell_definitions_by_index.size() ; n++ )
-	{ behavior_rulesets[ cell_definitions_by_index[n] ].display( os ); }
-
-	return; 
 }
 
 /*
@@ -1356,58 +1213,9 @@ void export_behavior_rules( std::string filename )
 	}
 
 	std::cout << "Exporting rules to file " << filename << std::endl; 
-	RuleLine line;
-
-	for( int n=0; n < cell_definitions_by_index.size(); n++ )
-	{
-		Cell_Definition* pCD = cell_definitions_by_index[n]; 
-		BehaviorRuleset* pBR = find_behavior_ruleset( pCD ); 
-
-		std::string cell_type = pCD->name;
-
-		fs << "// " << cell_type << std::endl;
-
-		line.cell_type = cell_type;
-
-		pBR->display(fs, line);
-	}
-
-
-	// 	for( int k=0 ; k < pBR->rules.size(); k++ ) 
-	// 	{
-	// 		std::string behavior = pHRS->rules[k]->behavior; 
-
-	// 		double min_value = pHRS->rules[k]->min_value; 
-	// 		double max_value = pHRS->rules[k]->max_value; 
-	// 		double base_value = pHRS->rules[k]->base_value; 
-	// 		for( int i=0; i < pHRS->rules[k]->signals.size() ; i++ )
-	// 		{
-	// 			std::string signal = pHRS->rules[k]->signals[i]; 
-	// 			std::string response; 
-	// 			double max_response = -9e99; 
-	// 			if( pHRS->rules[k]->responses[i] == true )
-	// 			{ response = "increases"; max_response = max_value; }
-	// 			else
-	// 			{ response = "decreases"; max_response = min_value; }
-	// 			double half_max = pHRS->rules[k]->half_maxes[i];
-	// 			double hill_power = pHRS->rules[k]->hill_powers[i];
-	// 			bool use_for_dead = pHRS->rules[k]->applies_to_dead_cells[i];
-
-	// 			// output the rule 
-	// 			fs << cell_type << "," << signal << "," << response << "," << behavior << "," // 0,1,2,3
-	// 				// << base_value << "," 
-	// 				<< max_response << "," << half_max << "," << hill_power << "," // 4,5, 6,7, 
-	// 				<< use_for_dead << std::endl; // 8 
-	// 		}
-	// 	}
-	// }
-
-/*
- Cell type, signal, direcxtion, behavior, base, max_response, half-max, hill , dead 
-*/ 
+	display_behavior_rulesets(fs);
+	
 	fs.close(); 
-
-	// std::cout << "Done!" << std::endl << std::endl; 
 
 	return; 
 }
