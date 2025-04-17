@@ -1,0 +1,128 @@
+// increasing_partial_hill
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 0 ≤ 1 using a decreasing_dominant mediator
+//       └─increasing using multivariate_hill aggregator
+increasing_partial_hill,time,increases,custom:sample,1,30,2,0
+
+// decreasing_partial_hill
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 0 ≤ 1 using a decreasing_dominant mediator
+//       └─increasing using multivariate_hill aggregator
+decreasing_partial_hill,(decreasing) time (from 60.000000),increases,custom:sample,1,30,2,0
+
+// decreasing_dominant_mediator_hill
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 0.5 ≤ 1 using a decreasing dominant mediator
+//       └─decreasing using multivariate_hill aggregator
+decreasing_dominant_mediator_hill,time,decreases,custom:sample,0,30,2,0
+//       └─increasing using multivariate_hill aggregator
+decreasing_dominant_mediator_hill,time,increases,custom:sample,1,30,2,0
+
+// increasing_dominant_mediator_hill
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 0.5 ≤ 1 using a increasing dominant mediator
+//       └─decreasing using multivariate_hill aggregator
+increasing_dominant_mediator_hill,time,decreases,custom:sample,0,30,2,0
+//       └─increasing using multivariate_hill aggregator
+increasing_dominant_mediator_hill,time,increases,custom:sample,1,30,2,0
+
+// neutral_mediator_hill
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 0.5 ≤ 1 using a neutral mediator
+//       └─decreasing using multivariate_hill aggregator
+neutral_mediator_hill,time,decreases,custom:sample,0,20,2,0
+//       └─increasing using multivariate_hill aggregator
+neutral_mediator_hill,time,increases,custom:sample,1,40,5,0
+
+// increasing_linear
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 0 ≤ 1 using a decreasing_dominant mediator
+//       └─increasing using sum aggregator
+increasing_linear,(increasing) time,increases (linear),custom:sample,1,15,45,0
+
+// decreasing_linear
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 0 ≤ 1 using a decreasing_dominant mediator
+//       └─increasing using sum aggregator
+decreasing_linear,(decreasing) time,increases (linear),custom:sample,1,15,45,0
+
+// heaviside
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 0 ≤ 1 using a decreasing_dominant mediator
+//       └─increasing using sum aggregator
+heaviside,(increasing) time,increases (heaviside),custom:sample,1,30,,0
+
+// heaviside_decreasing
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 0 ≤ 1 using a decreasing_dominant mediator
+//       └─increasing using sum aggregator
+heaviside_decreasing,(decreasing) time,increases (heaviside),custom:sample,1,30,,0
+
+// mean_aggregator
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 0 ≤ 1 using a decreasing_dominant mediator
+//       └─increasing using mean aggregator
+mean_aggregator,(increasing) time,increases (heaviside),custom:sample,1,13.5,,0
+mean_aggregator,(increasing) time,increases (heaviside),custom:sample,1,28.5,,0
+mean_aggregator,(increasing) time,increases (heaviside),custom:sample,1,43.5,,0
+mean_aggregator,(increasing) time,increases (heaviside),custom:sample,1,58.5,,0
+
+// tent
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 0 ≤ 1 using a decreasing_dominant mediator
+//       └─decreasing using sum aggregator
+tent,(increasing) time,decreases (linear),custom:sample,0,40,50,0
+//       └─increasing using sum aggregator
+tent,(increasing) time,increases (linear),custom:sample,1,10,20,0
+
+// vee
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 1 ≤ 1 using a increasing dominant mediator
+//       └─decreasing using sum aggregator
+vee,(increasing) time,decreases (linear),custom:sample,0,10,20,0
+//       └─increasing using sum aggregator
+vee,(increasing) time,increases (linear),custom:sample,1,40,50,0
+
+// increasing_hill_reference
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 0 ≤ 1 using a decreasing_dominant mediator
+//       └─increasing using multivariate_hill aggregator
+increasing_hill_reference,(increasing) time (from 20.000000),increases,custom:sample,1,10,2,0
+
+// accumulator
+//   └─accumulate custom:sample from 0 to 1
+//     └─mediating between -0.05 ≤ -0.05 ≤ 0.2 using a decreasing_dominant mediator
+//       └─increasing using product aggregator
+accumulator,time,increases (hill),custom:sample,0.2,5,2,0
+accumulator,(decreasing) time,increases (heaviside),custom:sample,0.2,30,,0
+
+// attenuator
+//   └─attenuate custom:sample from 0 to 1
+//     └─mediating between -0.05 ≤ -0.05 ≤ 0.2 using a decreasing_dominant mediator
+//       └─increasing using product aggregator
+attenuator,time,increases (hill),custom:sample,0.2,5,2,0
+attenuator,(decreasing) time,increases (heaviside),custom:sample,0.2,30,,0
+
+// custom_mediator
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 0 ≤ 1 using a custom mediator
+//       └─decreasing using first aggregator
+custom_mediator,time,decreases (hill),custom:sample,0,40,4,0
+//       └─increasing using first aggregator
+custom_mediator,time,increases (hill),custom:sample,1,10,4,0
+
+// custom_mediator_with_values
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 1 ≤ 1 using a custom mediator
+//       └─decreasing using first aggregator
+custom_mediator_with_values,time,decreases (hill),custom:sample,0,20,16,0
+//       └─increasing using first aggregator
+custom_mediator_with_values,time,increases (hill),custom:sample,1,10,4,0
+
+// custom_aggregator
+//   └─set custom:sample
+//     └─mediating between 0 ≤ 0 ≤ 1 using a decreasing_dominant mediator
+//       └─increasing using custom aggregator
+custom_aggregator,time,increases (hill),custom:sample,1,10,4,0
+custom_aggregator,time,increases (hill),custom:sample,1,20,8,0
+custom_aggregator,time,increases (hill),custom:sample,1,40,16,0
