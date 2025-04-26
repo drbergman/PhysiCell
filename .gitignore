@@ -10,6 +10,7 @@ addons/PhysiBoSS/libMaBoSS-*.tar.gz
 biorobots
 cancer_immune_3D
 config/PhysiCell_settings-backup.xml
+custom_modules
 heterogeneity
 initial.svg
 interaction_demo
