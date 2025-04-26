@@ -2304,6 +2304,52 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 			std::cout << std::endl;
 			pCD->functions.cell_division_function = standard_asymmetric_division_function;
 		}
+		node = cd_node.child( "phenotype" );
+		node = node.child( "cycle" );
+		node = node.child( "extended_asymmetric_division" );
+		if( node && node.attribute("enabled").as_bool() )
+		{
+			Asymmetric_Division *pAD = &(pCD->phenotype.cycle.asymmetric_division);
+
+			// asymmetric division rates
+			pugi::xml_node node_eadp = node.child( "extended_asymmetric_division_probability" );
+			while (node_eadp)
+			{
+				// get the name of the target cell type
+				std::string first_target_name = node_eadp.attribute("name1").value();
+				std::string second_target_name = node_eadp.attribute("name2").value();
+				// now find its index
+				auto first_search = cell_definition_indices_by_name.find(first_target_name);
+				auto second_search = cell_definition_indices_by_name.find(second_target_name);
+				// safety first!
+				if( first_search != cell_definition_indices_by_name.end() || second_search != cell_definition_indices_by_name.end() )
+				{
+					// if the target is found, set the appropriate rate
+					int first_target_index = first_search->second;
+					int second_target_index = second_search->second;
+
+					double extended_asymmetric_division_probability = xml_get_my_double_value(node_eadp);
+					pAD->extended_asymmetric_division_probabilities[std::make_pair(first_target_index, second_target_index)] = extended_asymmetric_division_probability;
+				}
+				else
+				{
+					std::cout << "Error: When processing the " << pCD->name << " cell definition: " << std::endl
+						<< "\tCould not find cell type " << first_target_name << " or " << second_target_name << " for asymmetric division." << std::endl
+						<< "\tRemove this cell type from the extended asymmetric division probabilities!" << std::endl << std::endl;
+					exit(-1);
+				}
+				node_eadp = node_eadp.next_sibling("extended_asymmetric_division_probability");
+			}
+			std::cout << "Extended asymmetric division probabilities for " << pCD->name << ": ";
+			for (int i = 0; i < pAD->extended_asymmetric_division_probabilities.size(); i++)
+			for (auto it = pAD->extended_asymmetric_division_probabilities.begin(); it != pAD->extended_asymmetric_division_probabilities.end(); ++it)
+			{
+				std::cout << it->first.first << " " << it->first.second << ": " << it->second << " ";
+			}
+			std::cout << std::endl;
+			pCD->functions.cell_division_function = extended_asymmetric_division_function;
+		}
+
 	}
 	
 	// here's what it ***should*** do: 

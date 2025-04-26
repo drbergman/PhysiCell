@@ -213,21 +213,35 @@ class Cycle_Model
 	std::ostream& display( std::ostream& os ); // done 
 };
 
+// DZ change extended asym div: needed a hash function for pairs of ints as keys for extended_asymmetric_division_probabilities
+struct pair_hash {
+	template <class T1, class T2>
+	std::size_t operator () (const std::pair<T1,T2>& pair) const
+	{
+		auto hash1 = std::hash<T1>{}(pair.first);
+		auto hash2 = std::hash<T2>{}(pair.second);
+		return hash1 ^ hash2 + hash1 + hash2; 
+	}
+};
+
 class Asymmetric_Division
 {
 private:
 public:
 	// rates of asymmetric division into different cell types 
 	std::vector<double> asymmetric_division_probabilities; 
+	std::unordered_map<std::pair<int, int>, double, pair_hash> extended_asymmetric_division_probabilities;	// DZ change extended asym div
 
 	// initialization
 	Asymmetric_Division(); // done 
 	void sync_to_cell_definitions(); // done 
 
 	double probabilities_total();
+	double extended_probabilities_total(); // DZ change extended asym div
 
 	// ease of access 
 	double& asymmetric_division_probability( std::string type_name ); // done
+	double& extended_asymmetric_division_probability( std::pair<std::string, std::string> type_names ); // DZ change extended asym div
 };
 
 class Cycle
