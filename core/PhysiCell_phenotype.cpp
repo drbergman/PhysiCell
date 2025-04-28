@@ -33,7 +33,7 @@
 #                                                                             #
 # BSD 3-Clause License (see https://opensource.org/licenses/BSD-3-Clause)     #
 #                                                                             #
-# Copyright (c) 2015-2022, Paul Macklin and the PhysiCell Project             #
+# Copyright (c) 2015-2025, Paul Macklin and the PhysiCell Project             #
 # All rights reserved.                                                        #
 #                                                                             #
 # Redistribution and use in source and binary forms, with or without          #
@@ -302,7 +302,7 @@ void Cycle_Model::advance_model( Cell* pCell, Phenotype& phenotype, double dt )
 			bool continue_transition = false; 
 			if( phase_links[i][k].fixed_duration )
 			{
-				if( phenotype.cycle.data.elapsed_time_in_phase > 1.0/phenotype.cycle.data.transition_rates[i][k] )
+				if( phenotype.cycle.data.elapsed_time_in_phase > ((1.0/phenotype.cycle.data.transition_rates[i][k]) - 0.5 * dt) )
 				{
 					continue_transition = true; 
 				}
@@ -1049,7 +1049,7 @@ void Molecular::sync_to_current_microenvironment( void )
 	{
 		internalized_total_substrates.resize( 0 , 0.0 ); 
 		fraction_released_at_death.resize( 0 , 0.0 ); 
-		fraction_transferred_when_ingested.resize( 0, 0.0 ); 
+		fraction_transferred_when_ingested.resize( 0, 1.0 ); 
 	}
 	return; 
 }
@@ -1062,7 +1062,7 @@ void Molecular::sync_to_microenvironment( Microenvironment* pNew_Microenvironmen
 
 	internalized_total_substrates.resize( number_of_densities , 0.0 ); 
 	fraction_released_at_death.resize( number_of_densities , 0.0 ); 
-	fraction_transferred_when_ingested.resize( number_of_densities , 0.0 ); 
+	fraction_transferred_when_ingested.resize( number_of_densities , 1.0 ); 
 	
 	return; 
 }
@@ -1210,6 +1210,8 @@ Phenotype& Phenotype::operator=(const Phenotype &p ) {
 	secretion = p.secretion;
 	
 	molecular = p.molecular;
+
+	cell_integrity = p.cell_integrity; 
 	
 	delete intracellular;
 	
@@ -1262,11 +1264,23 @@ void Phenotype::sync_to_microenvironment( Microenvironment* pMicroenvironment )
 
 Cell_Interactions::Cell_Interactions()
 {
-	dead_phagocytosis_rate = 0.0; 
+	// dead_phagocytosis_rate = 0.0; 
+
+	apoptotic_phagocytosis_rate = 0.0; 
+	necrotic_phagocytosis_rate = 0.0; 
+	other_dead_phagocytosis_rate = 0.0; 
+
 	live_phagocytosis_rates = {0.0}; 
-	damage_rate = 1.0; 
+
+	attack_damage_rate = 1.0; 
 	attack_rates = {0.0}; 
 	immunogenicities = {1}; 
+
+	pAttackTarget = NULL; 
+	total_damage_delivered = 0.0; 
+
+	attack_duration = 30.0; // a typical attack duration for a T cell using perforin/granzyme is ~30 minutes
+
 	fusion_rates = {0.0}; 
 	
 	return; 
@@ -1344,13 +1358,46 @@ double& Cell_Transformations::transformation_rate( std::string type_name )
 	return transformation_rates[n]; 
 }
 
-// beta functionality in 1.10.3 
-Integrity::Integrity()
+Asymmetric_Division::Asymmetric_Division()
 {
- 	damage = 0.0; 
+	asymmetric_division_probabilities = {0.0};
+}
+
+void Asymmetric_Division::sync_to_cell_definitions()
+{
+	extern std::unordered_map<std::string,int> cell_definition_indices_by_name; 
+	int number_of_cell_defs = cell_definition_indices_by_name.size(); 
+	
+	if( asymmetric_division_probabilities.size() != number_of_cell_defs )
+	{ asymmetric_division_probabilities.resize( number_of_cell_defs, 0.0); }
+	
+	return; 
+}
+
+double Asymmetric_Division::probabilities_total( void )
+{
+	double total = 0.0; 
+	for( int i=0; i < asymmetric_division_probabilities.size(); i++ )
+	{ total += asymmetric_division_probabilities[i]; }
+	return total; 
+}
+
+// ease of access
+double& Asymmetric_Division::asymmetric_division_probability( std::string type_name )
+{
+	extern std::unordered_map<std::string,int> cell_definition_indices_by_name; 
+	int n = cell_definition_indices_by_name[type_name]; 
+	return asymmetric_division_probabilities[n]; 
+}
+
+// beta functionality in 1.10.3 
+Cell_Integrity::Cell_Integrity()
+{
+ 	damage = 0;  
 	damage_rate = 0.0; 
 	damage_repair_rate = 0.0; 
 
+/*
 	lipid_damage = 0.0; 
 	lipid_damage_rate = 0.0; 
 	lipid_damage_repair_rate = 0.0; 
@@ -1359,11 +1406,12 @@ Integrity::Integrity()
 	DNA_damage = 0.0; 
 	DNA_damage_rate = 0.0; 
 	DNA_damage_repair_rate = 0.0; 
+*/
 
 	return; 
 }
 
-void Integrity::advance_damage_models( double dt )
+void Cell_Integrity::advance_damage( double dt )
 {
 	double temp1;
 	double temp2; 
@@ -1381,7 +1429,7 @@ void Integrity::advance_damage_models( double dt )
 		damage += temp1; 
 		damage /= temp2; 
 	}
-
+/*
 	// lipid damage 
 	if( lipid_damage_rate > tol || lipid_damage_repair_rate > tol )
 	{
@@ -1407,6 +1455,9 @@ void Integrity::advance_damage_models( double dt )
 		DNA_damage += temp1; 
 		DNA_damage /= temp2; 
 	}
+*/	
+
+//	std::cout << "damage: " << damage << std::endl; 
 
 	return; 
 }
