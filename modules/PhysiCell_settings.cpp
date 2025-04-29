@@ -125,7 +125,9 @@ bool load_PhysiCell_config_file( void )
 
 	create_output_directory( PhysiCell_settings.folder );
 
-	return true; 	
+	copy_file_to_output( argument_parser.path_to_config_file );
+
+	return true;
 }
 
 PhysiCell_Settings::PhysiCell_Settings()
