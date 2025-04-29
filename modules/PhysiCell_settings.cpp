@@ -102,9 +102,9 @@ bool load_PhysiCell_config_file( std::string filename )
 	if (!read_PhysiCell_config_file( filename ))
 	{ return false; }
 
-	PhysiCell_settings.read_from_pugixml(); 
+	PhysiCell_settings.read_from_pugixml();
 	
-	// now read the microenvironment (optional) 
+	// now read the microenvironment (optional)
 	
 	if( !setup_microenvironment_from_XML( physicell_config_root ) )
 	{
@@ -119,7 +119,9 @@ bool load_PhysiCell_config_file( std::string filename )
 
 	create_output_directory( PhysiCell_settings.folder );
 
-	return true; 	
+	copy_file_to_output( filename );
+
+	return true;
 }
 
 PhysiCell_Settings::PhysiCell_Settings()
