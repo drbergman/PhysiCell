@@ -400,7 +400,8 @@ bool load_cells_from_file(std::string path_to_file, std::string filetype)
 		exit(-1);
 	}
 
-	copy_file_to_output(path_to_file);
+	std::string default_basename = "cells.csv";
+	copy_file_to_output(path_to_file, default_basename);
 	return true; 
 }
 
