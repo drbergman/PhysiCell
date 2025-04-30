@@ -2098,6 +2098,7 @@ void parse_rules_from_file(std::string path_to_file, std::string format, std::st
 		version = 3.0; // default version (at least for CSVs)
 	}
 
+	std::string default_basename;
 	if (format == "CSV" || format == "csv")
 	{
 		std::cout << "\tFormat: CSV (version " << version << ")" << std::endl;
@@ -2109,11 +2110,13 @@ void parse_rules_from_file(std::string path_to_file, std::string format, std::st
 		}
 
 		parse_csv_rules_v3(path_to_file); // parse all rules in a CSV file
+		default_basename = "cell_rules.csv";
 	}
 	else if (format == "XML" || format == "xml")
 	{
 		std::cout << "\tFormat: XML" << std::endl;
 		parse_xml_rules(path_to_file);
+		default_basename = "cell_rules.xml";
 	}
 	else
 	{
@@ -2121,7 +2124,7 @@ void parse_rules_from_file(std::string path_to_file, std::string format, std::st
 		exit(-1);
 	}
 	PhysiCell_settings.rules_enabled = true;
-	copy_file_to_output( path_to_file );
+	copy_file_to_output( path_to_file, default_basename );
 	return;
 }
 
