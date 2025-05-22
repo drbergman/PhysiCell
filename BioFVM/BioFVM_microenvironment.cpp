@@ -1309,6 +1309,7 @@ void load_initial_conditions_from_csv(std::string filename)
 	char c = line.c_str()[0];
 	std::vector<int> substrate_indices;
 	bool header_provided = false;
+	std::vector<int> voxel_set = {}; // set to check that no voxel value is set twice
 	if( c == 'X' || c == 'x' )
 	{ 
 		// do not support this with a header yet
@@ -1343,21 +1344,18 @@ void load_initial_conditions_from_csv(std::string filename)
 	{
 		std::stringstream stream(line);
 		std::string field;
-		int i = 0;
+		int i = -1;
 		while (std::getline(stream, field, ','))
 		{
+			i++;
 			if (i<3) {continue;} // skip (x,y,z)
 			substrate_indices.push_back(i-3); // the substrate index is the column index - 3 (since x,y,z are the first 3 columns)
-			i++;
 		}
-		// in this case, we want to read this first line, so close the file and re-open so that we start with this line
-		file.close();
-		std::ifstream file(filename, std::ios::in);
-		std::getline(file, line);
+		// in this case, we want to read this first line, so read it now and the below logic will loop through the remaining lines
+		get_row_from_substrate_initial_condition_csv(voxel_set, line, substrate_indices, header_provided);
 	}
 
 	std::cout << "Loading substrate initial conditions from CSV file " << filename << " ... " << std::endl;
-	std::vector<int> voxel_set = {}; // set to check that no voxel value is set twice
 	
 	while (std::getline(file, line))
 	{
@@ -1615,7 +1613,7 @@ void set_dirichlet_boundaries_from_file( void )
 
 void load_dirichlet_conditions_from_matlab(std::string filename)
 {
-	std::cerr << "ERROR: Load BioFVM dirichlet conditions from MATLAB not yet supported." << std::endl;
+	std::cerr << "ERROR: Load BioFVM dirichlet conditions from MATLAB not yet supported. Use a CSV file instead." << std::endl;
 	exit(-1);
 }
 
@@ -1644,6 +1642,7 @@ void load_dirichlet_conditions_from_csv(std::string filename)
 	std::vector<int> substrate_indices;
 	bool header_provided = false;
 	int n_cols;
+	std::vector<int> voxel_set = {}; // set to check that no voxel value is set twice
 	if( c == 'X' || c == 'x' )
 	{ 
 		// do not support this with a header yet
@@ -1679,23 +1678,27 @@ void load_dirichlet_conditions_from_csv(std::string filename)
 	{
 		std::stringstream stream(line);
 		std::string field;
-		int i = 0;
+		int i = -1;
 		while (std::getline(stream, field, ','))
 		{
+			i++;
 			if (i<3) {continue;} // skip (x,y,z)
 			substrate_indices.push_back(i-3); // the substrate index is the column index - 3 (since x,y,z are the first 3 columns)
-			i++;
 		}
-		// in this case, we want to read this first line, so close the file and re-open so that we start with this line
+		// If the line ends with a comma, that implies a final empty field so no DC set at that voxel-substrate pair
+		if (!line.empty() && line.back() == ',')
+		{
+			i++;
+			if (i >= 3)
+			{
+				substrate_indices.push_back(i - 3);
+			}
+		}
 		n_cols = 3 + substrate_indices.size();
-		file.close();
-		std::ifstream file(filename, std::ios::in);
-		std::getline(file, line);
+		// in this case, we want to read this first line, so read it now and the below logic will loop through the remaining lines
+		get_row_from_dirichlet_condition_csv(voxel_set, line, substrate_indices, header_provided, n_cols);
 	}
-
-	std::cout << "Loading substrate dirichlet conditions from CSV file " << filename << " ... " << std::endl;
-	std::vector<int> voxel_set = {}; // set to check that no voxel value is set twice
-
+	
 	while (std::getline(file, line))
 	{
 		get_row_from_dirichlet_condition_csv(voxel_set, line, substrate_indices, header_provided, n_cols);
