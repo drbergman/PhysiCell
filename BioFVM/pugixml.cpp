@@ -6846,7 +6846,25 @@ namespace pugi
 		if (!(flags & format_no_declaration) && !impl::has_declaration(_root))
 		{
 			buffered_writer.write_string(PUGIXML_TEXT("<?xml version=\"1.0\""));
-			if (encoding == encoding_latin1) buffered_writer.write_string(PUGIXML_TEXT(" encoding=\"ISO-8859-1\""));
+			const char_t* decl_encoding;
+			switch (encoding)
+			{
+				case pugi::encoding_utf8: decl_encoding = PUGIXML_TEXT("UTF-8"); break;
+				case pugi::encoding_latin1: decl_encoding = PUGIXML_TEXT("ISO-8859-1"); break;
+				case pugi::encoding_utf16: decl_encoding = PUGIXML_TEXT("UTF-16"); break;
+				case pugi::encoding_utf16_le: decl_encoding = PUGIXML_TEXT("UTF-16"); break;
+				case pugi::encoding_utf16_be: decl_encoding = PUGIXML_TEXT("UTF-16"); break;
+				case pugi::encoding_utf32: decl_encoding = PUGIXML_TEXT("UTF-32"); break;
+				case pugi::encoding_utf32_le: decl_encoding = PUGIXML_TEXT("UTF-32"); break;
+				case pugi::encoding_utf32_be: decl_encoding = PUGIXML_TEXT("UTF-32"); break;
+				default: decl_encoding = nullptr; // Don't write anything
+			}
+			if (decl_encoding)
+			{
+				buffered_writer.write_string(PUGIXML_TEXT(" encoding=\""));
+				buffered_writer.write_string(decl_encoding);
+				buffered_writer.write('"');
+			}
 			buffered_writer.write('?', '>');
 			if (!(flags & format_raw)) buffered_writer.write('\n');
 		}

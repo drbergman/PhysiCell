@@ -1268,7 +1268,7 @@ void set_intracellular_files(pugi::xml_node &node_config_intracellular, const pu
 		pugi::xml_document rr_doc;
 		rr_doc.append_copy(node_rr_root);
 		std::string rr_filename = base_path_to_filename + "_" + intracellular_type + ".xml";
-		rr_doc.save_file(rr_filename.c_str());
+		rr_doc.save_file(rr_filename.c_str(), PUGIXML_TEXT("\t"), pugi::format_default, pugi::encoding_utf8);
 		pugi::xml_node node_sbml_filename = node_config_intracellular.child("sbml_filename");
 		if (!node_sbml_filename)
 		{
