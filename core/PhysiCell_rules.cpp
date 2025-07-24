@@ -2331,13 +2331,13 @@ std::vector<double> UniformInShell( double r1, double r2 )
 	sqrt_one_minus_T -= T; 
 	sqrt_one_minus_T = sqrt( sqrt_one_minus_T ); 
 
-	double param1 = pow( UniformRandom() , 0.33333333333333333333333333333333333333 );  //  xi^(1/3), 
-	// param1 *= (r2-r1); 
-	// param1 += r1; 
-    double param2 = param1; // xi^(1/3)
-	param2 *= 2.0; // 2 * xi^(1/3)
-	param2 *= sqrt_T; // 2 * xi(1) * T^(1/2)
-	param2 *= sqrt_one_minus_T; //  2 * xi(1) * T^(1/2) * (1-T)^(1/2)
+	double r1_3 = r1*r1*r1;
+	double r2_3 = r2*r2*r2;
+	double param1 = pow( r1_3 + (r2_3-r1_3) * UniformRandom() , 0.33333333333333333333333333333333333333 );  //  r scaled by xi^(1/3)
+    double param2 = param1; // r * xi^(1/3)
+	param2 *= 2.0; // 2 * r * xi^(1/3)
+	param2 *= sqrt_T; // 2 * r * xi(1) * T^(1/2)
+	param2 *= sqrt_one_minus_T; //  2 * r * xi(1) * T^(1/2) * (1-T)^(1/2)
 	
     double theta = UniformRandom(); // U(0,1)
 	theta *= two_pi; // U(0,2*pi)
