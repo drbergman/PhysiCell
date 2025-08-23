@@ -604,7 +604,7 @@ void add_signal(const std::vector<std::string> &synonyms, SignalValue value)
 	return;
 }
 
-std::unordered_map<std::string,Cell*> base_cells_by_name;
+std::unordered_map<std::string,std::unique_ptr<Cell>> base_cells_by_name;
 
 void create_base_cells()
 {
@@ -633,12 +633,12 @@ void create_base_cells()
 		pCell->set_total_volume(pCell->phenotype.volume.total);
 
 		// store the base cell by name
-		base_cells_by_name[pCD->name] = std::move(pCell);
+		base_cells_by_name[pCD->name] = std::unique_ptr<Cell>(pCell);
 	}
 }
 
 void add_behavior( std::string name, BehaviorValue value )
-{ return add_behavior({std::vector<std::string>{std::move(name)}}, std::move(value)); }
+{ return add_behavior(std::vector<std::string>{std::move(name)}, std::move(value)); }
 
 void add_behavior(const std::vector<std::string> &synonyms, BehaviorValue value)
 {
@@ -894,7 +894,7 @@ std::unordered_map<std::string, double> get_base_behaviors( Cell* pCell )
 		std::string behavior_name = behavior.second->get_name();
 		if (std::find(behaviors_got.begin(), behaviors_got.end(), behavior_name) != behaviors_got.end())
 		{ continue; }
-		base_behavior_map[behavior_name] = behavior.second->get_value(base_cells_by_name[pCell->type_name]);
+		base_behavior_map[behavior_name] = behavior.second->get_value(base_cells_by_name[pCell->type_name].get());
 		behaviors_got.push_back(behavior_name);
 	}
 	return base_behavior_map;
@@ -908,7 +908,7 @@ double get_single_base_behavior( Cell* pCell , std::string name )
 		std::cerr << "ERROR: Behavior '" << name << "' not found!" << std::endl;
 		return 0.0;
 	}
-	return it->second->get_value(base_cells_by_name[pCell->type_name]);
+	return it->second->get_value(base_cells_by_name[pCell->type_name].get());
 }
 
 double get_single_base_behavior( Cell_Definition* pCD , std::string name )
@@ -919,7 +919,7 @@ double get_single_base_behavior( Cell_Definition* pCD , std::string name )
 		std::cerr << "ERROR: Behavior '" << name << "' not found!" << std::endl;
 		return 0.0;
 	}
-	return it->second->get_value(base_cells_by_name[pCD->name]);
+	return it->second->get_value(base_cells_by_name[pCD->name].get());
 }
 
 std::unordered_map<std::string, double> get_base_behaviors( Cell* pCell , std::vector<std::string> names )
