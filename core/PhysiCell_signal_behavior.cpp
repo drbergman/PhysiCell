@@ -233,24 +233,24 @@ void setup_signal_behavior_dictionaries( void )
 	// set key parameters on number of signals, etc. 
 	// make registry of signals 
 	// make registry of responses 
-
+	
 	static bool setup_done = false; 
 	if( setup_done == true )
 	{ return; }
 	setup_done = true; 
-
+	
 	int m = microenvironment.number_of_densities(); 
 	int n = cell_definition_indices_by_name.size(); 
-
+	
 	all_signals.clear(); 
 	all_behaviors.clear();
-
+	
 	// construct signals 
-
+	
 	std::vector<std::string> signal_synonyms;
 	SignalValue signal_value;
 	BehaviorValue behavior_value;
-
+	
 	// substrate densities 
 	for( int i=0; i < m ; i++ )
 	{
@@ -320,7 +320,7 @@ void setup_signal_behavior_dictionaries( void )
 	add_signal(signal_synonyms, contact_with_basement_membrane);
 
 	// damage state 
-	add_signal(signal_synonyms, cell_damage);
+	add_signal("damage", cell_damage);
 
 	// damage delivered
 	signal_synonyms = {"damage delivered", "total damage delivered"};
@@ -595,14 +595,13 @@ void setup_signal_behavior_dictionaries( void )
 }
 
 void add_signal( std::string name, SignalValue value )
-{ return add_signal({std::move(name)}, std::move(value)); }
+{ return add_signal(std::vector<std::string>{std::move(name)}, std::move(value)); }
 
-void add_signal(const std::vector<std::string> &synonyms,
-					   SignalValue value)
+void add_signal(const std::vector<std::string> &synonyms, SignalValue value)
 {
 	// allocate the callable once
 	auto signal_ptr = std::make_shared<Signal>(synonyms[0], std::move(value));
-
+	
 	// assign the same pointer to all synonyms
 	for (const auto &name : synonyms)
 	{ all_signals[name] = signal_ptr; }
@@ -643,7 +642,7 @@ void create_base_cells()
 }
 
 void add_behavior( std::string name, BehaviorValue value )
-{ return add_behavior({std::move(name)}, std::move(value)); }
+{ return add_behavior({std::vector<std::string>{std::move(name)}}, std::move(value)); }
 
 void add_behavior(const std::vector<std::string> &synonyms, BehaviorValue value)
 {
@@ -761,14 +760,10 @@ void display_behavior_dictionary_with_synonyms( void )
 */	
 
 bool signal_exists( std::string signal_name )
-{
-	return ( all_signals.find(signal_name) != all_signals.end() );
-}
+{ return all_signals.find(signal_name) != all_signals.end(); }
 
 bool behavior_exists( std::string behavior_name )
-{
-	return ( all_behaviors.find(behavior_name) != all_behaviors.end() );
-}
+{ return all_behaviors.find(behavior_name) != all_behaviors.end(); }
 
 // int find_signal_index( std::string signal_name )
 // {
