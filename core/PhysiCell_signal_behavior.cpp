@@ -874,7 +874,7 @@ double get_single_behavior( Cell* pCell , const std::string& name )
 	if (it == all_behaviors.end())
 	{
 		std::cerr << "ERROR: Behavior '" << name << "' not found!" << std::endl;
-		return 0.0;
+		exit(-1);
 	}
 	return it->second->get_value(pCell);
 }
@@ -915,7 +915,7 @@ double get_single_base_behavior( Cell* pCell , const std::string& name )
 	if (it == all_behaviors.end())
 	{
 		std::cerr << "ERROR: Behavior '" << name << "' not found!" << std::endl;
-		return 0.0;
+		exit(-1);
 	}
 	return it->second->get_base_value(pCell);
 }
@@ -926,7 +926,7 @@ double get_single_base_behavior(Cell_Definition *pCD, const std::string &name)
 	if (it == all_behaviors.end())
 	{
 		std::cerr << "ERROR: Behavior '" << name << "' not found!" << std::endl;
-		return 0.0;
+		exit(-1);
 	}
 	return it->second->get_base_value(pCD);
 }

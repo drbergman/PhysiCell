@@ -237,15 +237,6 @@ void display_behavior_dictionary_with_synonyms( std::ostream& os );
 /* signal functions */
 bool signal_exists(const std::string &signal_name);
 
-// find index for named signal (returns -1 if not found)
-// int find_signal_index( std::string signal_name );
-
-// coming soon: 
-// std::vector<int> find_signal_indices( std::vector<std::string> signal_names );
-
-// // get the name of a signal index 
-// std::string signal_name( int i );
-
 // create a full signal vector 
 std::unordered_map<std::string, double> get_signals( Cell* pCell );
 
@@ -257,11 +248,6 @@ double get_single_signal( Cell* pCell, const std::string &name );
 
 /* behavior functions */ 
 bool behavior_exists( const std::string &behavior_name );
-// find index for named behavior / response / parameter (returns -1 if not found)
-// int find_parameter_index( std::string response_name );
-// int find_behavior_index( std::string response_name );
-
-// std::vector<int> find_behavior_indices( std::vector<std::string> behavior_names );
 
 // get the name of a behavior index 
 std::string behavior_name( int i );
