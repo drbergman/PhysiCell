@@ -173,7 +173,7 @@ void Hypothesis_Rule::detailed_display( std::ostream& os )
 			<< " with half-max " << half_maxes[j] << " and Hill power " << hill_powers[j] << "."; 
 		if( applies_to_dead_cells[j] == true )
 		{ os << " Rule applies to dead cells."; }
-		std::cout << std::endl; 
+		os << std::endl; 
 	}
 	return; 
 }
@@ -759,7 +759,7 @@ Hypothesis_Rule* Hypothesis_Ruleset::add_behavior( std::string behavior , double
     // check: is this a valid signal? (is it in the dictionary?)
     if( !behavior_exists(behavior) )
     {
-        std::cout << "Warning! Attempted to add behavior " << behavior << " which is not in the dictionary." << std::endl; 
+        std::cout << "ERROR! Attempted to add behavior " << behavior << " which is not in the dictionary." << std::endl; 
         std::cout << "Either fix your model or add the missing behavior to the simulation." << std::endl; 
 
 		std::cout << "\t\tSee possible fixes at https://github.com/physicell-training/PhysiCell_common_errors\n\n";

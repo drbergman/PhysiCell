@@ -252,7 +252,7 @@ class Cell : public Basic_Agent
 	
 	void convert_to_cell_definition( Cell_Definition& cd ); 
 
-	bool is_necrotic( void ); 
+	bool is_necrotic( void ) const; 
 };
 
 Cell* create_cell( Cell* (*custom_instantiate)() = NULL );  

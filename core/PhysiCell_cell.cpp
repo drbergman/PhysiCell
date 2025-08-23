@@ -1189,9 +1189,9 @@ void Cell::convert_to_cell_definition( Cell_Definition& cd )
 	return; 
 }
 
-bool Cell::is_necrotic( void )
+bool Cell::is_necrotic( void ) const
 {
-	int code = phenotype.cycle.current_phase().code;
+	const int code = phenotype.cycle.current_phase().code;
 	return (code == PhysiCell_constants::necrotic || code == PhysiCell_constants::necrotic_swelling || code == PhysiCell_constants::necrotic_lysed);
 }
 

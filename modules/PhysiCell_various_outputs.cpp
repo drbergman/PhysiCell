@@ -85,7 +85,7 @@ int writePov(std::vector<Cell*> all_cells, double timepoint, double scale)
 	povFile<<"#include \"colors.inc\" \n";
 	povFile<<"#include \"header.inc\" \n";
 	
-	for(int i=0;i<all_cells.size();i++)
+	for(size_t i=0;i<all_cells.size();i++)
 	{
 		std::string _nameCore;
 

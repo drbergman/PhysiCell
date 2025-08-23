@@ -81,7 +81,7 @@
 namespace PhysiCell{
 
 // create the signal and behavior dictionaries 
-void setup_signal_behavior_dictionaries( void ); // done 
+void setup_signal_behavior_dictionaries( void );
 
 using SignalValue = std::function<double(Cell *)>;
 struct Signal
@@ -173,70 +173,68 @@ double &cell_attack_duration(Cell *);
 double &cell_damage_rate(Cell *);
 double &cell_custom_behavior(Cell *, int);
 
-void add_signal( std::string name, SignalValue value );
+void add_signal(const std::string &name, SignalValue value);
 void add_signal(const std::vector<std::string> &synonyms, SignalValue value);
 
 void create_base_cells();
 
-void add_behavior( std::string name, BehaviorValue value );
+void add_behavior(const std::string &name, BehaviorValue value);
 void add_behavior(const std::vector<std::string> &synonyms, BehaviorValue value);
 
 // display dictionaries 
-void display_signal_dictionary( void ); // done 
-void display_behavior_dictionary( void ); // done 
+void display_signal_dictionary( void );
+void display_behavior_dictionary( void );
 
-void display_signal_dictionary( std::ostream& os ); // done 
-void display_behavior_dictionary( std::ostream& os ); // done 
+void display_signal_dictionary( std::ostream& os );
+void display_behavior_dictionary( std::ostream& os );
 
-void display_signal_dictionary_with_synonyms( void ); // done 
-void display_behavior_dictionary_with_synonyms( void ); // done 
-void display_signal_dictionary_with_synonyms( std::ostream& os ); // done 
-void display_behavior_dictionary_with_synonyms( std::ostream& os ); // done 
+void display_signal_dictionary_with_synonyms( void );
+void display_behavior_dictionary_with_synonyms( void );
+void display_signal_dictionary_with_synonyms( std::ostream& os );
+void display_behavior_dictionary_with_synonyms( std::ostream& os );
 
 
 
-/* signal functions */ 
-bool signal_exists( std::string signal_name );
+/* signal functions */
+bool signal_exists(const std::string &signal_name);
 
 // find index for named signal (returns -1 if not found)
-// int find_signal_index( std::string signal_name ); // done 
+// int find_signal_index( std::string signal_name );
 
 // coming soon: 
-// std::vector<int> find_signal_indices( std::vector<std::string> signal_names ); // done 
+// std::vector<int> find_signal_indices( std::vector<std::string> signal_names );
 
 // // get the name of a signal index 
-// std::string signal_name( int i ); // done 
+// std::string signal_name( int i );
 
 // create a full signal vector 
-std::unordered_map<std::string, double> get_signals( Cell* pCell ); // done 
+std::unordered_map<std::string, double> get_signals( Cell* pCell );
 
-// create a subset of the signal vector with the supplied indicies 
-// std::vector<double> get_selected_signals( Cell* pCell , std::vector<int> indices ); // done 
-std::vector<double> get_selected_signals( Cell* pCell , std::vector<std::string> names );  // done 
+// create a subset of the signal vector with the supplied indices
+std::vector<double> get_selected_signals(Cell *pCell, const std::vector<std::string> &names);
 
-// grab a single signal by its index or name 
-double get_single_signal( Cell* pCell, int index ); // done 
-double get_single_signal( Cell* pCell, std::string name ); // done 
+// grab a single signal by its index or name
+double get_single_signal( Cell* pCell, const std::string &name );
 
 /* behavior functions */ 
-bool behavior_exists( std::string behavior_name );
+bool behavior_exists( const std::string &behavior_name );
 // find index for named behavior / response / parameter (returns -1 if not found)
-// int find_parameter_index( std::string response_name ); // done
-// int find_behavior_index( std::string response_name ); // done 
+// int find_parameter_index( std::string response_name );
+// int find_behavior_index( std::string response_name );
 
-// std::vector<int> find_behavior_indices( std::vector<std::string> behavior_names ); // done 
+// std::vector<int> find_behavior_indices( std::vector<std::string> behavior_names );
 
 // get the name of a behavior index 
-std::string behavior_name( int i ); // done 
+std::string behavior_name( int i );
 
-// write a full behavior vector (phenotype parameters) to the cell 
-void set_behaviors( Cell* pCell , std::vector<double> parameters ); // done 
+// write a full behavior vector (phenotype parameters) to the cell
+void set_behaviors(Cell *pCell, const std::vector<double> &parameters);
 
-// write a selected set of behavior parameters to the cell 
-void set_selected_behaviors( Cell* pCell , std::vector<std::string> names , std::vector<double> parameters ); // done 
+// write a selected set of behavior parameters to the cell
+void set_selected_behaviors(Cell *pCell, const std::vector<std::string> &names, const std::vector<double> &parameters);
 
 // write a single behavior parameter 
-void set_single_behavior( Cell* pCell, std::string name , double parameter ); // done 
+void set_single_behavior( Cell* pCell, const std::string &name , const double &parameter );
 
 /* get current behaviors */ 
 
@@ -244,11 +242,10 @@ void set_single_behavior( Cell* pCell, std::string name , double parameter ); //
 std::unordered_map<std::string, double> get_behaviors( Cell* pCell );
 
 // get selected current behavior
-std::vector<double> get_behaviors( Cell* pCell , std::vector<int> indices ); // doen 
-std::vector<double> get_behaviors( Cell* pCell , std::vector<std::string> names ); // done 
+std::vector<double> get_behaviors( Cell* pCell , const std::vector<std::string> &names );
 
 // get single current behavior 
-double get_single_behavior( Cell* pCell , std::string name ); // done 
+double get_single_behavior( Cell* pCell , const std::string &name );
 
 /* get base behaviors (from cell definition) */ 
 
@@ -256,13 +253,12 @@ double get_single_behavior( Cell* pCell , std::string name ); // done
 std::unordered_map<std::string, double> get_base_behaviors( Cell* pCell );
 
 // get selected base behaviors (from cell's definition)
-std::unordered_map<std::string, double> get_base_behaviors( Cell* pCell , std::vector<std::string> names );
+std::unordered_map<std::string, double> get_base_behaviors( Cell* pCell , const std::vector<std::string> &names );
 
 // get single base behavior (from cell's definition)
-double get_single_base_behavior( Cell* pCell , int index ); // done 
-double get_single_base_behavior( Cell* pCell , std::string name ); // done 
+double get_single_base_behavior( Cell* pCell , const std::string &name ); 
 
-double get_single_base_behavior( Cell_Definition* pCD , std::string name ); 
+double get_single_base_behavior( Cell_Definition* pCD , const std::string &name ); 
 
 
 }; 
