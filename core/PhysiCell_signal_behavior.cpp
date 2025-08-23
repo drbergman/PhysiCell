@@ -810,52 +810,6 @@ bool signal_exists(const std::string &signal_name)
 bool behavior_exists(const std::string &behavior_name)
 { return all_behaviors.find(behavior_name) != all_behaviors.end(); }
 
-// int find_signal_index( std::string signal_name )
-// {
-// 	auto search = signal_to_int.find( signal_name );
-// 	// safety first! 
-// 	if( search != signal_to_int.end() )
-//     { return search->second; }   
-
-// 	std::cout << "having trouble finding " << signal_name << std::endl; 
-
-//     return -1; 
-// }
-
-// std::vector<int> find_signal_indices( std::vector<std::string> signal_names )
-// {
-// 	std::vector<int> output( signal_names.size() , 0 ); 
-// 	for( int n=0; n < signal_names.size(); n++ )
-// 	{ output[n] = find_signal_index(signal_names[n]); }
-// 	return output; 
-// }
-
-// std::string signal_name( int i )
-// {
-// 	if( i >= 0 && i < int_to_signal.size() )
-// 	{ return int_to_signal[i]; }	
-// 	return "not found"; 
-// }
-
-// int find_parameter_index( std::string response_name )
-// {
-// 	auto search = behavior_to_int.find( response_name );
-// 	if( search != behavior_to_int.end() )
-//     { return search->second; }   
-//     return -1; 
-// }
-
-// int find_behavior_index( std::string response_name )
-// { return find_parameter_index(response_name); }
-
-// std::vector<int> find_behavior_indices( std::vector<std::string> behavior_names )
-// {
-// 	std::vector<int> output( behavior_names.size() , 0 ); 
-// 	for( int n=0; n < behavior_names.size(); n++ )
-// 	{ output[n] = find_behavior_index(behavior_names[n]); }
-// 	return output; 
-// }
-
 std::unordered_map<std::string, double> get_signals( Cell* pCell )
 {
 	std::unordered_map<std::string, double> output;
