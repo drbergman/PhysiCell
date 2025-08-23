@@ -152,7 +152,7 @@ double contact_with_basement_membrane(Cell *pCell) { return (double)(pCell->stat
 double cell_damage(Cell *pCell) { return pCell->phenotype.cell_integrity.damage; };
 double damage_delivered(Cell *pCell) { return pCell->phenotype.cell_interactions.total_damage_delivered; };
 double is_attacking(Cell *pCell) { return pCell->phenotype.cell_interactions.pAttackTarget ? 1.0 : 0.0; }
-double is_dead(Cell *pCell) { return (double)pCell->phenotype.death.dead ? 0.0 : 1.0; }
+double is_dead(Cell *pCell) { return (double)pCell->phenotype.death.dead; }
 double total_attack_time(Cell *pCell) { return pCell->state.total_attack_time; }
 double get_current_time(Cell *) {return PhysiCell_globals.current_time; }
 double cell_custom_signal(Cell *pCell, int i) { return pCell->custom_data.variables[i].value; };
@@ -860,7 +860,15 @@ std::unordered_map<std::string, double> get_behaviors( Cell* pCell )
 }
 
 double get_single_behavior( Cell* pCell , std::string name )
-{ return all_behaviors[name]->get_value(pCell); }
+{
+	auto it = all_behaviors.find(name);
+	if (it == all_behaviors.end())
+	{
+		std::cerr << "ERROR: Behavior '" << name << "' not found!" << std::endl;
+		return 0.0;
+	}
+	return it->second->get_value(pCell);
+}
 
 std::vector<double> get_behaviors( Cell* pCell , std::vector<std::string> names )
 {
@@ -894,12 +902,24 @@ std::unordered_map<std::string, double> get_base_behaviors( Cell* pCell )
 
 double get_single_base_behavior( Cell* pCell , std::string name )
 {
-	return all_behaviors[name]->get_value(base_cells_by_name[pCell->type_name]);
+	auto it = all_behaviors.find(name);
+	if (it == all_behaviors.end())
+	{
+		std::cerr << "ERROR: Behavior '" << name << "' not found!" << std::endl;
+		return 0.0;
+	}
+	return it->second->get_value(base_cells_by_name[pCell->type_name]);
 }
 
 double get_single_base_behavior( Cell_Definition* pCD , std::string name )
 {
-	return all_behaviors[name]->get_value(base_cells_by_name[pCD->name]);
+	auto it = all_behaviors.find(name);
+	if (it == all_behaviors.end())
+	{
+		std::cerr << "ERROR: Behavior '" << name << "' not found!" << std::endl;
+		return 0.0;
+	}
+	return it->second->get_value(base_cells_by_name[pCD->name]);
 }
 
 std::unordered_map<std::string, double> get_base_behaviors( Cell* pCell , std::vector<std::string> names )
