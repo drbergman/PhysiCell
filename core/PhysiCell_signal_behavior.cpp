@@ -71,7 +71,6 @@ using namespace BioFVM;
 
 namespace PhysiCell{
 
-// std::vector<double> signal_scales; 
 typedef void (Secretion::*Advancer)(Basic_Agent *pCell, Phenotype &phenotype, double dt);
 
 std::unordered_map<std::string, std::shared_ptr<Signal>> all_signals;
@@ -579,9 +578,6 @@ void setup_signal_behavior_dictionaries( void )
 
 	/* add new behaviors above this line */
 
-    // resize scales; 
-    // signal_scales.resize( int_to_signal.size() , 1.0 ); 
-
     display_signal_dictionary(); 
     display_behavior_dictionary(); 
 /*
@@ -651,12 +647,6 @@ void add_behavior(const std::vector<std::string> &synonyms, BehaviorValue value)
 	{ all_behaviors[name] = behavior_ptr; }
 	return;
 }
-
-// double& signal_scale( std::string signal_name )
-// { return signal_scales[ find_signal_index(signal_name) ]; }
-
-// double& signal_scale( int signal_index  )
-// { return signal_scales[signal_index]; }
 
 void display_signal_dictionary( std::ostream& os )
 {
@@ -825,57 +815,6 @@ std::unordered_map<std::string, double> get_signals( Cell* pCell )
 		signals_got.push_back(signal_name);
 	}
 	return output;
-}
-
-// create a signal vector of only the cell contacts 
-std::vector<double> get_cell_contact_signals( Cell* pCell )
-{
-	static int m = microenvironment.number_of_densities(); 
-	static int n = cell_definition_indices_by_name.size(); 
-
-	std::vector<double> output( n+2+3 , 0.0 ); 
-	// process all neighbors 
-	int dead_cells = 0; 
-	int live_cells = 0; 
-    int apop_cells = 0;
-    int necro_cells = 0; 
-    int other_dead_cells = 0; 
-
-	for( int i=0; i < pCell->state.neighbors.size(); i++ )
-	{
-		Cell* pC = pCell->state.neighbors[i]; 
-		if( pC->phenotype.death.dead == true )
-		{
-			dead_cells++; 
-            if(pC->phenotype.cycle.current_phase().code == PhysiCell_constants::apoptotic )
-            { apop_cells++; }
-
-            if( pC->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_swelling || 
-                pC->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_lysed || 
-                pC->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic )
-            { necro_cells++; }  	
-		} 
-		else
-		{ live_cells++; } 
-		int nCT = cell_definition_indices_by_type[pC->type]; 
-		output[nCT] += 1; 
-	}
-    other_dead_cells = dead_cells - apop_cells - necro_cells; 
-
-	output[n] = live_cells; 
-	output[n+1] = dead_cells; 
-
-	output[n+2] = apop_cells; 
-	output[n+3] = necro_cells; 
-	output[n+4] = other_dead_cells; 
-
-	// rescale 
-	// std::string search_for = "contact with " + cell_definitions_by_type[0]->name; 
-	// static int scaling_start_index = find_signal_index( search_for ); 
-	// for( int i=0; i < n+2 ; i++ )
-	// { output[i] /= signal_scales[scaling_start_index+i]; }
-
-	return output; 
 }
 
 std::vector<double> get_selected_signals( Cell* pCell , const std::vector<std::string> &signal_names )

@@ -80,12 +80,6 @@
 
 namespace PhysiCell{
 
-// scales for the signals 
-// extern std::vector<double> signal_scales; 
-// easy access to get or set scales 
-// double& signal_scale( std::string signal_name ); // done 
-// double& signal_scale( int signal_index ); // done 
-
 // create the signal and behavior dictionaries 
 void setup_signal_behavior_dictionaries( void ); // done 
 
@@ -215,9 +209,6 @@ bool signal_exists( std::string signal_name );
 
 // create a full signal vector 
 std::unordered_map<std::string, double> get_signals( Cell* pCell ); // done 
-
-// create a signal vector of only the cell contacts 
-std::vector<double> get_cell_contact_signals( Cell* pCell ); // done 
 
 // create a subset of the signal vector with the supplied indicies 
 // std::vector<double> get_selected_signals( Cell* pCell , std::vector<int> indices ); // done 

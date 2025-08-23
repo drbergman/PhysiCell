@@ -115,9 +115,7 @@ std::vector<std::string> false_cell_coloring_Ki67( Cell* pCell )
     }
 	
 	// Necrotic - Brown
-	if( pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_swelling || 
-		pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_lysed || 
-		pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic )
+	if( pCell->is_necrotic() )
 	{
 		output[0] = "rgb(250,138,38)";
 		output[2] = "rgb(139,69,19)";
@@ -149,9 +147,7 @@ std::vector<std::string> false_cell_coloring_live_dead( Cell* pCell )
 	}
 	
 	// Necrotic - Brown
-	if( pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_swelling || 
-		pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_lysed || 
-		pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic )
+	if( pCell->is_necrotic() )
 	{
 		output[0] = "rgb(250,138,38)";
 		output[2] = "rgb(139,69,19)";
@@ -189,9 +185,7 @@ std::vector<std::string> false_cell_coloring_cycling_quiescent( Cell* pCell )
     }
 	
 	// Necrotic - Brown
-	if( pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_swelling || 
-		pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_lysed || 
-		pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic )
+	if( pCell->is_necrotic() )
 	{
 		output[0] = "rgb(250,138,38)";
 		output[2] = "rgb(139,69,19)";
@@ -215,9 +209,7 @@ std::vector<std::string> false_cell_coloring_cytometry( Cell* pCell )
 	}
 	
 	// Necrotic - Brown
-	if( pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_swelling || 
-		pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_lysed || 
-		pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic )
+	if( pCell->is_necrotic() )
 	{
 		output[0] = "rgb(250,138,38)";
 		output[2] = "rgb(139,69,19)";
@@ -1767,9 +1759,7 @@ std::vector<std::string> paint_by_number_cell_coloring( Cell* pCell )
 	// { output[1] = interior_color; } 
 
 	// necrotic cells are brown 
-	if( pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_swelling || 
-		pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_lysed || 
-		pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic )
+	if( pCell->is_necrotic() )
 	{ interior_color = "saddlebrown"; }
 	// apoptotic cells are white 
 	if( pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::apoptotic ) 

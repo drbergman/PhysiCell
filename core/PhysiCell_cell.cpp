@@ -2695,7 +2695,6 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 		{ pM->maximum_number_of_attachments = xml_get_my_int_value( node_mech ); }
 	}
 
-	std::cout << "TEST 1" << std::endl;
 	// motility 
 	node = cd_node.child( "phenotype" );
 	node = node.child( "motility" ); 
@@ -2838,8 +2837,6 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 
 		}
 
-		std::cout << "TEST 2" << std::endl;
-
 		// display summary for diagnostic help 
 		if( pCD->functions.update_migration_bias == chemotaxis_function && pMot->is_motile == true )
 		{
@@ -2878,8 +2875,6 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 			std::cout << std::endl; 
 		}		
 	}
-
-	std::cout << "TEST 3" << std::endl;
 
 	// secretion
 	
@@ -3281,8 +3276,6 @@ void initialize_cell_definitions_from_pugixml( pugi::xml_node root )
 		
 		node = node.next_sibling( "cell_definition" ); 
 	}
-
-	std::cout << "TEST 4" << std::endl;
 	
 /*	
 	// now, make sure cell_defaults gets synced correctly. 

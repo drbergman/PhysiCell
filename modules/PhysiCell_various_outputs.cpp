@@ -96,7 +96,7 @@ int writePov(std::vector<Cell*> all_cells, double timepoint, double scale)
 				_nameCore="LIVE";
 			else if (code==PhysiCell_constants::apoptotic)
 				_nameCore="APOP";
-			else if (code==PhysiCell_constants::necrotic_swelling || code==PhysiCell_constants::necrotic_lysed || code==PhysiCell_constants::necrotic)
+			else if (all_cells[i]->is_necrotic())
 				_nameCore="NEC";
 			else if (code==PhysiCell_constants::debris)
 				_nameCore="DEBR";

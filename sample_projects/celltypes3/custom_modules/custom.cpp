@@ -302,9 +302,7 @@ std::vector<std::string> regular_colors( Cell* pCell )
 	if( pCell->phenotype.death.dead == true )
 	{
 		// Necrotic - Brown
-		if( pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_swelling || 
-			pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_lysed || 
-			pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic )
+		if( pCell->is_necrotic() )
 		{
 			output[2] = "chocolate";
 		}
@@ -378,9 +376,7 @@ std::vector<std::string> pseudo_fluorescence( Cell* pCell )
 	}
 
 	// Necrotic - black
-	if( pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_swelling || 
-		pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic_lysed || 
-		pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::necrotic )
+	if( pCell->is_necrotic() )
 	{ sprintf(color,"rgba(0,0,0,%f)" , value ); } 
 
 	output = { color, "none", color , "none" }; 
