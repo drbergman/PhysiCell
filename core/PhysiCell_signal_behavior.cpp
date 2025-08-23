@@ -308,7 +308,7 @@ void setup_signal_behavior_dictionaries( void )
 	
 	// construct signals 
 	
-	std::vector<std::string> signal_synonyms;
+	std::vector<std::string> synonyms;
 	SignalValue signal_value;
 	BehaviorValue behavior_value;
 	BehaviorBaseValue behavior_base_value;
@@ -324,21 +324,22 @@ void setup_signal_behavior_dictionaries( void )
     // internalized substrates 
     for( int i=0; i < m ; i++ )
 	{
-		signal_synonyms = {"intracellular " + microenvironment.density_names[i], "internalized " + microenvironment.density_names[i]};
+		synonyms = {"intracellular " + microenvironment.density_names[i],
+						   "internalized " + microenvironment.density_names[i]};
 		signal_value = [i](Cell *pCell) -> double
 		{ return internalized_substrate_density(pCell, i); };
-		add_signal(signal_synonyms, signal_value);
+		add_signal(synonyms, signal_value);
 	}
 
     // substrate gradients 
 	for( int i=0; i < m ; i++ )
 	{
-		signal_synonyms = {microenvironment.density_names[i] + " gradient",
+		synonyms = {microenvironment.density_names[i] + " gradient",
 						   "grad(" + microenvironment.density_names[i] + ")",
 						   "gradient of " + microenvironment.density_names[i]};
 		signal_value = [i](Cell *pCell) -> double
 		{ return substrate_gradient_norm(pCell, i); };
-		add_signal(signal_synonyms, signal_value);
+		add_signal(synonyms, signal_value);
 	}
 
 	// mechanical pressure 
@@ -351,84 +352,83 @@ void setup_signal_behavior_dictionaries( void )
 	for (int i = 0; i < n; i++)
 	{
 		Cell_Definition* pCD = cell_definitions_by_type[i]; 
-		signal_synonyms =  {"contact with " + pCD->name};
 		signal_value = [i](Cell *pCell) -> double
-		{ return cell_contact(pCell, i); };;
-		add_signal(signal_synonyms, signal_value);
+		{ return cell_contact(pCell, i); };
+		add_signal("contact with " + pCD->name, signal_value);
 	}
 	
 	// contact with (any) live cell 
-	signal_synonyms = {"contact with live cell", "contact with live cells"};
-	add_signal(signal_synonyms, live_cell_contact);
+	synonyms = {"contact with live cell", "contact with live cells"};
+	add_signal(synonyms, live_cell_contact);
 
 	// contact with (any) dead cell 
-	signal_synonyms = {"contact with dead cell", "contact with dead cells"};
-	add_signal(signal_synonyms, dead_cell_contact);
+	synonyms = {"contact with dead cell", "contact with dead cells"};
+	add_signal(synonyms, dead_cell_contact);
 
 	// contact with apoptotic cell 
-	signal_synonyms = {"contact with apoptotic cell", "contact with apoptotic cells"};
-	add_signal(signal_synonyms, apoptotic_cell_contact);
+	synonyms = {"contact with apoptotic cell", "contact with apoptotic cells"};
+	add_signal(synonyms, apoptotic_cell_contact);
 
 	// contact with necrotic cell 
-	signal_synonyms = {"contact with necrotic cell", "contact with necrotic cells"};
-	add_signal(signal_synonyms, necrotic_cell_contact);
+	synonyms = {"contact with necrotic cell", "contact with necrotic cells"};
+	add_signal(synonyms, necrotic_cell_contact);
 
 	// contact with other dead cell 
-	signal_synonyms = {"contact with other dead cell", "contact with other dead cells"};
-	add_signal(signal_synonyms, other_dead_cell_contact);
+	synonyms = {"contact with other dead cell", "contact with other dead cells"};
+	add_signal(synonyms, other_dead_cell_contact);
 
 	// contact with basement membrane 
-	signal_synonyms = {"contact with basement membrane", "contact with BM"};
-	add_signal(signal_synonyms, contact_with_basement_membrane);
+	synonyms = {"contact with basement membrane", "contact with BM"};
+	add_signal(synonyms, contact_with_basement_membrane);
 
 	// damage state 
 	add_signal("damage", cell_damage);
 
 	// damage delivered
-	signal_synonyms = {"damage delivered", "total damage delivered"};
-	add_signal(signal_synonyms, damage_delivered);
+	synonyms = {"damage delivered", "total damage delivered"};
+	add_signal(synonyms, damage_delivered);
 
 	// attacking yes/no?  
-	signal_synonyms = {"attacking", "is attacking"};
-	add_signal(signal_synonyms, is_attacking);
+	synonyms = {"attacking", "is attacking"};
+	add_signal(synonyms, is_attacking);
 
 	// live / dead state 
-	signal_synonyms = {"dead", "is dead"};
-	add_signal(signal_synonyms, is_dead);
+	synonyms = {"dead", "is dead"};
+	add_signal(synonyms, is_dead);
 
 	// total attack time 
 	add_signal("total_attack_time", total_attack_time);
 
 	// current time
-	signal_synonyms = {"time", "current time", "global time"};
-	add_signal(signal_synonyms, get_current_time);
+	synonyms = {"time", "current time", "global time"};
+	add_signal(synonyms, get_current_time);
 
 	// custom signals
 	std::vector<std::string> base_custom_names = {"custom:", "custom: ", "custom "};
 	for( int nc=0 ; nc < cell_defaults.custom_data.variables.size() ; nc++ )
 	{
-		signal_synonyms.resize(base_custom_names.size());
+		synonyms.resize(base_custom_names.size());
 		for (size_t i = 0; i < base_custom_names.size(); i++)
 		{
-			signal_synonyms[i] = base_custom_names[i] + cell_defaults.custom_data.variables[nc].name;
+			synonyms[i] = base_custom_names[i] + cell_defaults.custom_data.variables[nc].name;
 		}
 		signal_value = [nc](Cell *pCell) -> double
 		{ return cell_custom_signal(pCell, nc); };
-		add_signal(signal_synonyms, signal_value);
+		add_signal(synonyms, signal_value);
 
 		behavior_value = [nc](Cell *pCell) -> double&
 		{ return cell_custom_behavior(pCell, nc); };
 		behavior_base_value = [nc](Cell_Definition *pCD) -> double
 		{ return cell_custom_behavior_base(pCD, nc); };
-		add_behavior(signal_synonyms, behavior_value, behavior_base_value);
+		add_behavior(synonyms, behavior_value, behavior_base_value);
 	}
 
 	// is apoptotic
-	signal_synonyms = {"apoptotic", "is_apoptotic"};
-	add_signal(signal_synonyms, is_apoptotic);
+	synonyms = {"apoptotic", "is_apoptotic"};
+	add_signal(synonyms, is_apoptotic);
 
-	signal_synonyms = {"necrotic", "is_necrotic"};
-	add_signal(signal_synonyms, is_necrotic);
+	synonyms = {"necrotic", "is_necrotic"};
+	add_signal(synonyms, is_necrotic);
 
 /*
 	// immunogenicity to each cell type 
@@ -451,8 +451,6 @@ void setup_signal_behavior_dictionaries( void )
 
 	// construct behaviors 
 
-	std::vector<std::string> behavior_synonyms;
-
 	for( int i=0; i < m ; i++ )
 	{
 		std::string name = microenvironment.density_names[i];
@@ -465,12 +463,12 @@ void setup_signal_behavior_dictionaries( void )
 		add_behavior(name + " secretion", behavior_value, behavior_base_value);
 
 		// secretion target 
-		behavior_synonyms = {name + " secretion target", name + " secretion saturation density"};
+		synonyms = {name + " secretion target", name + " secretion saturation density"};
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_secretion_target(pCell, i); };
 		behavior_base_value = [i](Cell_Definition *pCD) -> double
 		{ return cell_secretion_target_base(pCD, i); };
-		add_behavior(behavior_synonyms, behavior_value, behavior_base_value);
+		add_behavior(synonyms, behavior_value, behavior_base_value);
 
 		// uptake rate 
 		behavior_value = [i](Cell *pCell) -> double&
@@ -487,8 +485,8 @@ void setup_signal_behavior_dictionaries( void )
 		add_behavior(name + " export", behavior_value, behavior_base_value);
 	}
 
-	behavior_synonyms = {"cycle entry", "exit from cycle phase 0"};
-	add_behavior(behavior_synonyms, cell_cycle_entry_rate, cell_cycle_entry_rate_base);
+	synonyms = {"cycle entry", "exit from cycle phase 0"};
+	add_behavior(synonyms, cell_cycle_entry_rate, cell_cycle_entry_rate_base);
 
 	// other cyle phases 
 	for( int i=1; i < 6; i++ )
@@ -518,13 +516,13 @@ void setup_signal_behavior_dictionaries( void )
 	// chemotactic sensitivities 
 	for( int i=0; i < m ; i++ )
 	{
-		behavior_synonyms = {"chemotactic response to " + microenvironment.density_names[i],
-		                     "chemotactic sensitivity to " + microenvironment.density_names[i]};
+		synonyms = {"chemotactic response to " + microenvironment.density_names[i],
+					"chemotactic sensitivity to " + microenvironment.density_names[i]};
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_chemotaxis_sensitivity(pCell, i); };
 		behavior_base_value = [i](Cell_Definition *pCD) -> double
 		{ return cell_chemotaxis_sensitivity_base(pCD, i); };
-		add_behavior(behavior_synonyms, behavior_value, behavior_base_value);
+		add_behavior(synonyms, behavior_value, behavior_base_value);
 	}
 	
 	// cell-cell adhesion 
@@ -552,41 +550,41 @@ void setup_signal_behavior_dictionaries( void )
 	add_behavior("cell-cell repulsion", cell_cell_repulsion, cell_cell_repulsion_base);
 
 	// cell-BM adhesion
-	behavior_synonyms = {"cell-BM adhesion", "cell-membrane adhesion"};
-	add_behavior(behavior_synonyms, cell_basement_membrane_adhesion, cell_basement_membrane_adhesion_base);
+	synonyms = {"cell-BM adhesion", "cell-membrane adhesion"};
+	add_behavior(synonyms, cell_basement_membrane_adhesion, cell_basement_membrane_adhesion_base);
 
 	// cell-BM repulsion 
-	behavior_synonyms = {"cell-BM repulsion", "cell-membrane repulsion"};
-	add_behavior(behavior_synonyms, cell_basement_membrane_repulsion, cell_basement_membrane_repulsion_base);
+	synonyms = {"cell-BM repulsion", "cell-membrane repulsion"};
+	add_behavior(synonyms, cell_basement_membrane_repulsion, cell_basement_membrane_repulsion_base);
 
 	// phagocytosis of apoptotic cell
-	behavior_synonyms = {"phagocytose apoptotic cell",
+	synonyms = {"phagocytose apoptotic cell",
 						 "phagocytosis of apoptotic cell",
 						 "phagocytosis of apoptotic cells"};
-	add_behavior(behavior_synonyms, cell_phagocytose_apoptotic, cell_phagocytose_apoptotic_base);
+	add_behavior(synonyms, cell_phagocytose_apoptotic, cell_phagocytose_apoptotic_base);
 
 	// phagocytosis of necrotic cell
-	behavior_synonyms = {"phagocytose necrotic cell",
+	synonyms = {"phagocytose necrotic cell",
 						 "phagocytosis of necrotic cell",
 						 "phagocytosis of necrotic cells"};
-	add_behavior(behavior_synonyms, cell_phagocytose_necrotic, cell_phagocytose_necrotic_base);
+	add_behavior(synonyms, cell_phagocytose_necrotic, cell_phagocytose_necrotic_base);
 
 	// phagocytosis of other dead cell
-	behavior_synonyms = {"phagocytose other dead cell",
+	synonyms = {"phagocytose other dead cell",
 						 "phagocytosis of other dead cell",
 						 "phagocytosis of other dead cells"};
-	add_behavior(behavior_synonyms, cell_phagocytose_other_dead, cell_phagocytose_other_dead_base);
+	add_behavior(synonyms, cell_phagocytose_other_dead, cell_phagocytose_other_dead_base);
 
 	// phagocytosis of each live cell type 
 	for( int i=0; i < n ; i++ )
 	{
-		behavior_synonyms = {"phagocytose " + cell_definitions_by_type[i]->name,
-							 "phagocytosis of " + cell_definitions_by_type[i]->name};
+		synonyms = {"phagocytose " + cell_definitions_by_type[i]->name,
+					"phagocytosis of " + cell_definitions_by_type[i]->name};
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_phagocytose_live_cell_type(pCell, i); };
 		behavior_base_value = [i](Cell_Definition *pCD) -> double
 		{ return cell_phagocytose_live_cell_type_base(pCD, i); };
-		add_behavior(behavior_synonyms, behavior_value, behavior_base_value);
+		add_behavior(synonyms, behavior_value, behavior_base_value);
 	}
 
 	// attack of each live cell type 
@@ -612,13 +610,13 @@ void setup_signal_behavior_dictionaries( void )
 	// transformation / transition 
 	for( int i=0; i < n ; i++ )
 	{
-		behavior_synonyms = {"transition to " + cell_definitions_by_type[i]->name,
-							 "transform to " + cell_definitions_by_type[i]->name};
+		synonyms = {"transition to " + cell_definitions_by_type[i]->name,
+					"transform to " + cell_definitions_by_type[i]->name};
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_transform_to_type(pCell, i); };
 		behavior_base_value = [i](Cell_Definition *pCD) -> double
 		{ return cell_transform_to_type_base(pCD, i); };
-		add_behavior(behavior_synonyms, behavior_value, behavior_base_value);
+		add_behavior(synonyms, behavior_value, behavior_base_value);
 	}
 
 	// asymmetic division
@@ -632,8 +630,8 @@ void setup_signal_behavior_dictionaries( void )
 	}
 
 	// is movable
-	behavior_synonyms = {"is_movable", "is movable", "movable"};
-	add_behavior(behavior_synonyms, cell_is_movable, cell_is_movable_base);
+	synonyms = {"is_movable", "is movable", "movable"};
+	add_behavior(synonyms, cell_is_movable, cell_is_movable_base);
 
 	// immunogenicity to each cell type
 	for (int i = 0; i < n; i++)
