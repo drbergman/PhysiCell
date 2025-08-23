@@ -530,6 +530,11 @@ Phase& Cycle::current_phase( void )
 	return data.current_phase(); 
 }
 
+const Phase& Cycle::current_phase() const
+{
+    return const_cast<Cycle*>(this)->current_phase();
+}
+
 int& Cycle::current_phase_index( void )
 {
 	return data.current_phase_index; 

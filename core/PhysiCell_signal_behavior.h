@@ -99,19 +99,23 @@ struct Signal
 };
 
 using BehaviorValue = std::function<double&(Cell *)>;
+using BehaviorBaseValue = std::function<double(Cell_Definition *)>;
 struct Behavior
 {
 private:
 	std::string name; // primary synonym
 	BehaviorValue value;
+	BehaviorBaseValue base_value;
 
 public:
 	std::string get_name() const { return name; }
-	Behavior() : name("no name"), value(nullptr) {}
-	Behavior(std::string my_name, BehaviorValue my_value) : name(std::move(my_name)), value(std::move(my_value)) {}
+	Behavior() : name("no name"), value(nullptr), base_value(nullptr) {}
+	Behavior(std::string my_name, BehaviorValue my_value, BehaviorBaseValue my_base_value) : name(std::move(my_name)), value(std::move(my_value)), base_value(std::move(my_base_value)) {}
 
 	double get_value(Cell* pCell) const { return value(pCell); }
-	void set_value(Cell* pCell, double new_value) const { value(pCell) = new_value; }
+	void set_value(Cell *pCell, double new_value) const { value(pCell) = new_value; }
+	double get_base_value(Cell *) const;
+	double get_base_value(Cell_Definition *pCD) const { return base_value(pCD); }
 };
 
 double substrate_density(Cell *pCell, int substrate_index);
@@ -173,13 +177,48 @@ double &cell_attack_duration(Cell *);
 double &cell_damage_rate(Cell *);
 double &cell_custom_behavior(Cell *, int);
 
+double &cell_secretion_rate_base(Cell_Definition *, int);
+double &cell_secretion_target_base(Cell_Definition *, int);
+double &cell_uptake_rate_base(Cell_Definition *, int);
+double &cell_net_export_rate_base(Cell_Definition *, int);
+double &cell_cycle_entry_rate_base(Cell_Definition *);
+double &phase_exit_rate_base(Cell_Definition *, int);
+double &cell_apoptosis_rate_base(Cell_Definition *);
+double &cell_necrosis_rate_base(Cell_Definition *);
+double &cell_migration_speed_base(Cell_Definition *);
+double &cell_migration_bias_base(Cell_Definition *);
+double &cell_migration_persistence_time_base(Cell_Definition *);
+double &cell_chemotaxis_sensitivity_base(Cell_Definition *, int);
+double &cell_cell_adhesion_strength_base(Cell_Definition *);
+double &cell_cell_adhesion_elastic_constant_base(Cell_Definition *);
+double &cell_adhesion_affinity_to_type_base(Cell_Definition *, int);
+double &cell_relative_maximum_adhesion_distance_base(Cell_Definition *);
+double &cell_cell_repulsion_base(Cell_Definition *);
+double &cell_basement_membrane_adhesion_base(Cell_Definition *);
+double &cell_basement_membrane_repulsion_base(Cell_Definition *);
+double &cell_phagocytose_apoptotic_base(Cell_Definition *);
+double &cell_phagocytose_necrotic_base(Cell_Definition *);
+double &cell_phagocytose_other_dead_base(Cell_Definition *);
+double &cell_phagocytose_live_cell_type_base(Cell_Definition *, int);
+double &cell_attack_type_base(Cell_Definition *, int);
+double &cell_fuse_to_type_base(Cell_Definition *, int);
+double &cell_transform_to_type_base(Cell_Definition *, int);
+double &cell_asymmetric_division_to_type_base(Cell_Definition *, int);
+double &cell_is_movable_base(Cell_Definition *);
+double &cell_immunogenicity_to_type_base(Cell_Definition *, int);
+double &cell_attachment_rate_base(Cell_Definition *);
+double &cell_detachment_rate_base(Cell_Definition *);
+double &maximum_number_attachments_base(Cell_Definition *);
+double &cell_attack_damage_rate_base(Cell_Definition *);
+double &cell_attack_duration_base(Cell_Definition *);
+double &cell_damage_rate_base(Cell_Definition *);
+double &cell_custom_behavior_base(Cell_Definition *, int);
+
 void add_signal(const std::string &name, SignalValue value);
 void add_signal(const std::vector<std::string> &synonyms, SignalValue value);
 
-void create_base_cells();
-
-void add_behavior(const std::string &name, BehaviorValue value);
-void add_behavior(const std::vector<std::string> &synonyms, BehaviorValue value);
+void add_behavior(const std::string &name, BehaviorValue value, BehaviorBaseValue base_value);
+void add_behavior(const std::vector<std::string> &synonyms, BehaviorValue value, BehaviorBaseValue base_value);
 
 // display dictionaries 
 void display_signal_dictionary( void );
@@ -233,8 +272,8 @@ void set_behaviors(Cell *pCell, const std::vector<double> &parameters);
 // write a selected set of behavior parameters to the cell
 void set_selected_behaviors(Cell *pCell, const std::vector<std::string> &names, const std::vector<double> &parameters);
 
-// write a single behavior parameter 
-void set_single_behavior( Cell* pCell, const std::string &name , const double &parameter );
+// write a single behavior parameter
+void set_single_behavior(Cell *pCell, const std::string &name, const double &parameter);
 
 /* get current behaviors */ 
 

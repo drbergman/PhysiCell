@@ -76,6 +76,9 @@ typedef void (Secretion::*Advancer)(Basic_Agent *pCell, Phenotype &phenotype, do
 std::unordered_map<std::string, std::shared_ptr<Signal>> all_signals;
 std::unordered_map<std::string, std::shared_ptr<Behavior>> all_behaviors;
 
+double Behavior::get_base_value(Cell* pCell) const
+{ return base_value(&get_cell_definition(pCell->type)); }
+
 double substrate_density(Cell *pCell, int substrate_index) { return pCell->nearest_density_vector()[substrate_index]; }
 double internalized_substrate_density(Cell *pCell, int substrate_index) { return pCell->phenotype.molecular.internalized_total_substrates[substrate_index] / pCell->phenotype.volume.total; }
 double substrate_gradient_norm(Cell *pCell, int substrate_index) { return norm(pCell->nearest_gradient(substrate_index)); }
@@ -210,7 +213,7 @@ double &cell_fuse_to_type(Cell *pCell, int i) { return pCell->phenotype.cell_int
 double &cell_transform_to_type(Cell *pCell, int i) { return pCell->phenotype.cell_transformations.transformation_rates[i]; }
 double &cell_asymmetric_division_to_type(Cell *pCell, int i) { return pCell->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities[i]; }
 double &cell_is_movable(Cell *pCell) { return (double &)pCell->is_movable; }
-double &cell_immunogenicity_to_type(Cell *pCell, int i) { return pCell->phenotype.cell_interactions.immunogenicities[i]; };
+double &cell_immunogenicity_to_type(Cell *pCell, int i) { return pCell->phenotype.cell_interactions.immunogenicities[i]; }
 double &cell_attachment_rate(Cell *pCell) { return pCell->phenotype.mechanics.attachment_rate; }
 double &cell_detachment_rate(Cell *pCell) { return pCell->phenotype.mechanics.detachment_rate; }
 double &maximum_number_attachments(Cell *pCell) { return (double &)pCell->phenotype.mechanics.maximum_number_of_attachments; }
@@ -221,13 +224,72 @@ double &cell_damage_repair_rate(Cell *pCell) { return pCell->phenotype.cell_inte
 double &cell_custom_behavior(Cell *pCell, int i) { return pCell->custom_data.variables[i].value; };
 
 
+double &cell_secretion_rate_base(Cell_Definition *pCD, int i) { return pCD->phenotype.secretion.secretion_rates[i]; }
+double &cell_secretion_target_base(Cell_Definition *pCD, int i) { return pCD->phenotype.secretion.saturation_densities[i]; }
+double &cell_uptake_rate_base(Cell_Definition *pCD, int i) { return pCD->phenotype.secretion.uptake_rates[i]; }
+double &cell_net_export_rate_base(Cell_Definition *pCD, int i) { return pCD->phenotype.secretion.net_export_rates[i]; }
+double &cell_cycle_entry_rate_base(Cell_Definition *pCD) { return pCD->phenotype.cycle.data.exit_rate(0); }
+
+double &phase_exit_rate_base(Cell_Definition *pCD, int i)
+{
+	auto &phases = pCD->phenotype.cycle.model().phases;
+	if (i >= phases.size())
+	{
+		std::cerr << "ERROR: Attempting to access cycle phase " << i << " exit rate..." << std::endl
+				  << "...but cells of type " << pCD->name << " only have 0-"
+				  << phases.size() - 1 << " phases." << std::endl;
+		exit(-1);
+	}
+	return pCD->phenotype.cycle.data.exit_rate(i);
+}
+
+double &cell_apoptosis_rate_base(Cell_Definition *pCD)
+{
+	static int apoptosis_index = pCD->phenotype.death.find_death_model_index(PhysiCell_constants::apoptosis_death_model);
+	return pCD->phenotype.death.rates[apoptosis_index];
+}
+
+double &cell_necrosis_rate_base(Cell_Definition *pCD)
+{
+	static int necrosis_index = pCD->phenotype.death.find_death_model_index(PhysiCell_constants::necrosis_death_model);
+	return pCD->phenotype.death.rates[necrosis_index];
+}
+
+double &cell_migration_speed_base(Cell_Definition *pCD) { return pCD->phenotype.motility.migration_speed; }
+double &cell_migration_bias_base(Cell_Definition *pCD) { return pCD->phenotype.motility.migration_bias; }
+double &cell_migration_persistence_time_base(Cell_Definition *pCD) { return pCD->phenotype.motility.persistence_time; }
+double &cell_chemotaxis_sensitivity_base(Cell_Definition *pCD, int i) { return pCD->phenotype.motility.chemotactic_sensitivities[i]; }
+double &cell_cell_adhesion_strength_base(Cell_Definition *pCD) { return pCD->phenotype.mechanics.cell_cell_adhesion_strength; }
+double &cell_cell_adhesion_elastic_constant_base(Cell_Definition *pCD) { return pCD->phenotype.mechanics.attachment_elastic_constant; }
+double &cell_adhesion_affinity_to_type_base(Cell_Definition *pCD, int i) { return pCD->phenotype.mechanics.cell_adhesion_affinities[i]; }
+double &cell_relative_maximum_adhesion_distance_base(Cell_Definition *pCD) { return pCD->phenotype.mechanics.relative_maximum_adhesion_distance; }
+double &cell_cell_repulsion_base(Cell_Definition *pCD) { return pCD->phenotype.mechanics.cell_cell_repulsion_strength; }
+double &cell_basement_membrane_adhesion_base(Cell_Definition *pCD) { return pCD->phenotype.mechanics.cell_BM_adhesion_strength; }
+double &cell_basement_membrane_repulsion_base(Cell_Definition *pCD) { return pCD->phenotype.mechanics.cell_BM_repulsion_strength; }
+double &cell_phagocytose_apoptotic_base(Cell_Definition *pCD) { return pCD->phenotype.cell_interactions.apoptotic_phagocytosis_rate; }
+double &cell_phagocytose_necrotic_base(Cell_Definition *pCD) { return pCD->phenotype.cell_interactions.necrotic_phagocytosis_rate; }
+double &cell_phagocytose_other_dead_base(Cell_Definition *pCD) { return pCD->phenotype.cell_interactions.other_dead_phagocytosis_rate; }
+double &cell_phagocytose_live_cell_type_base(Cell_Definition *pCD, int i) { return pCD->phenotype.cell_interactions.live_phagocytosis_rates[i]; }
+double &cell_attack_type_base(Cell_Definition *pCD, int i) { return pCD->phenotype.cell_interactions.attack_rates[i]; }
+double &cell_fuse_to_type_base(Cell_Definition *pCD, int i) { return pCD->phenotype.cell_interactions.fusion_rates[i]; }
+double &cell_transform_to_type_base(Cell_Definition *pCD, int i) { return pCD->phenotype.cell_transformations.transformation_rates[i]; }
+double &cell_asymmetric_division_to_type_base(Cell_Definition *pCD, int i) { return pCD->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities[i]; }
+double &cell_is_movable_base(Cell_Definition *pCD) { return (double &)pCD->is_movable; }
+double &cell_immunogenicity_to_type_base(Cell_Definition *pCD, int i) { return pCD->phenotype.cell_interactions.immunogenicities[i]; }
+double &cell_attachment_rate_base(Cell_Definition *pCD) { return pCD->phenotype.mechanics.attachment_rate; }
+double &cell_detachment_rate_base(Cell_Definition *pCD) { return pCD->phenotype.mechanics.detachment_rate; }
+double &maximum_number_attachments_base(Cell_Definition *pCD) { return (double &)pCD->phenotype.mechanics.maximum_number_of_attachments; }
+double &cell_attack_damage_rate_base(Cell_Definition *pCD) { return pCD->phenotype.cell_interactions.attack_damage_rate; }
+double &cell_attack_duration_base(Cell_Definition *pCD) { return pCD->phenotype.cell_interactions.attack_duration; }
+double &cell_damage_rate_base(Cell_Definition *pCD) { return pCD->phenotype.cell_integrity.damage_rate; }
+double &cell_damage_repair_rate_base(Cell_Definition *pCD) { return pCD->phenotype.cell_integrity.damage_repair_rate; }
+double &cell_custom_behavior_base(Cell_Definition *pCD, int i) { return pCD->custom_data.variables[i].value; };
+
 void setup_signal_behavior_dictionaries( void )
 {
 	extern std::unordered_map<std::string,int> cell_definition_indices_by_name; 
 	extern std::unordered_map<int,int> cell_definition_indices_by_type; 
 	extern std::unordered_map<int,Cell_Definition*> cell_definitions_by_type; 
-	
-	create_base_cells();
 	
 	// set key parameters on number of signals, etc. 
 	// make registry of signals 
@@ -249,7 +311,8 @@ void setup_signal_behavior_dictionaries( void )
 	std::vector<std::string> signal_synonyms;
 	SignalValue signal_value;
 	BehaviorValue behavior_value;
-	
+	BehaviorBaseValue behavior_base_value;
+
 	// substrate densities 
 	for( int i=0; i < m ; i++ )
 	{
@@ -355,7 +418,9 @@ void setup_signal_behavior_dictionaries( void )
 
 		behavior_value = [nc](Cell *pCell) -> double&
 		{ return cell_custom_behavior(pCell, nc); };
-		add_behavior(signal_synonyms, behavior_value);
+		behavior_base_value = [nc](Cell_Definition *pCD) -> double
+		{ return cell_custom_behavior_base(pCD, nc); };
+		add_behavior(signal_synonyms, behavior_value, behavior_base_value);
 	}
 
 	// is apoptotic
@@ -395,50 +460,60 @@ void setup_signal_behavior_dictionaries( void )
 		// secretion rate 
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_secretion_rate(pCell, i); };
-		add_behavior(name + " secretion", behavior_value);
+		behavior_base_value = [i](Cell_Definition *pCD) -> double
+		{ return cell_secretion_rate_base(pCD, i); };
+		add_behavior(name + " secretion", behavior_value, behavior_base_value);
 
 		// secretion target 
 		behavior_synonyms = {name + " secretion target", name + " secretion saturation density"};
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_secretion_target(pCell, i); };
-		add_behavior(behavior_synonyms, behavior_value);
+		behavior_base_value = [i](Cell_Definition *pCD) -> double
+		{ return cell_secretion_target_base(pCD, i); };
+		add_behavior(behavior_synonyms, behavior_value, behavior_base_value);
 
 		// uptake rate 
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_uptake_rate(pCell, i); };
-		add_behavior(name + " uptake", behavior_value);
+		behavior_base_value = [i](Cell_Definition *pCD) -> double
+		{ return cell_uptake_rate_base(pCD, i); };
+		add_behavior(name + " uptake", behavior_value, behavior_base_value);
 
 		// net export rate 
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_net_export_rate(pCell, i); };
-		add_behavior(name + " export", behavior_value);
+		behavior_base_value = [i](Cell_Definition *pCD) -> double
+		{ return cell_net_export_rate_base(pCD, i); };
+		add_behavior(name + " export", behavior_value, behavior_base_value);
 	}
 
 	behavior_synonyms = {"cycle entry", "exit from cycle phase 0"};
-	add_behavior(behavior_synonyms, cell_cycle_entry_rate);
+	add_behavior(behavior_synonyms, cell_cycle_entry_rate, cell_cycle_entry_rate_base);
 
 	// other cyle phases 
 	for( int i=1; i < 6; i++ )
 	{
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return phase_exit_rate(pCell, i); };
-		add_behavior("exit from cycle phase " + std::to_string(i), behavior_value);
+		behavior_base_value = [i](Cell_Definition *pCD) -> double
+		{ return phase_exit_rate_base(pCD, i); };
+		add_behavior("exit from cycle phase " + std::to_string(i), behavior_value, behavior_base_value);
 	}
 
 	// apoptosis
-	add_behavior("apoptosis", cell_apoptosis_rate);
+	add_behavior("apoptosis", cell_apoptosis_rate, cell_apoptosis_rate_base);
 
 	// necrosis
-	add_behavior("necrosis", cell_necrosis_rate);
+	add_behavior("necrosis", cell_necrosis_rate, cell_necrosis_rate_base);
 
 	// migration speed
-	add_behavior("migration speed", cell_migration_speed);
+	add_behavior("migration speed", cell_migration_speed, cell_migration_speed_base);
 
 	// migration bias
-	add_behavior("migration bias", cell_migration_bias);
+	add_behavior("migration bias", cell_migration_bias, cell_migration_bias_base);
 
 	// migration persistence time
-	add_behavior("migration persistence time", cell_migration_persistence_time);
+	add_behavior("migration persistence time", cell_migration_persistence_time, cell_migration_persistence_time_base);
 
 	// chemotactic sensitivities 
 	for( int i=0; i < m ; i++ )
@@ -447,14 +522,16 @@ void setup_signal_behavior_dictionaries( void )
 		                     "chemotactic sensitivity to " + microenvironment.density_names[i]};
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_chemotaxis_sensitivity(pCell, i); };
-		add_behavior(behavior_synonyms, behavior_value);
+		behavior_base_value = [i](Cell_Definition *pCD) -> double
+		{ return cell_chemotaxis_sensitivity_base(pCD, i); };
+		add_behavior(behavior_synonyms, behavior_value, behavior_base_value);
 	}
 	
 	// cell-cell adhesion 
-	add_behavior("cell-cell adhesion", cell_cell_adhesion_strength);
+	add_behavior("cell-cell adhesion", cell_cell_adhesion_strength, cell_cell_adhesion_strength_base);
 
 	// cell-cell adhesion elastic constant
-	add_behavior("cell-cell adhesion elastic constant", cell_cell_adhesion_elastic_constant);
+	add_behavior("cell-cell adhesion elastic constant", cell_cell_adhesion_elastic_constant, cell_cell_adhesion_elastic_constant_base);
 
     // cell adhesion affinities 
 	// cell-type specific adhesion 
@@ -462,41 +539,43 @@ void setup_signal_behavior_dictionaries( void )
 	{
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_adhesion_affinity_to_type(pCell, i); };
+		behavior_base_value = [i](Cell_Definition *pCD) -> double
+		{ return cell_adhesion_affinity_to_type_base(pCD, i); };
 		add_behavior("adhesive affinity to " + cell_definitions_by_type[i]->name,
-					 behavior_value);
+					 behavior_value, behavior_base_value);
 	}
 
 	// max adhesion distance
-	add_behavior("relative maximum adhesion distance", cell_relative_maximum_adhesion_distance);
+	add_behavior("relative maximum adhesion distance", cell_relative_maximum_adhesion_distance, cell_relative_maximum_adhesion_distance_base);
 
 	// cell-cell repulsion
-	add_behavior("cell-cell repulsion", cell_cell_repulsion);
+	add_behavior("cell-cell repulsion", cell_cell_repulsion, cell_cell_repulsion_base);
 
 	// cell-BM adhesion
 	behavior_synonyms = {"cell-BM adhesion", "cell-membrane adhesion"};
-	add_behavior(behavior_synonyms, cell_basement_membrane_adhesion);
+	add_behavior(behavior_synonyms, cell_basement_membrane_adhesion, cell_basement_membrane_adhesion_base);
 
 	// cell-BM repulsion 
 	behavior_synonyms = {"cell-BM repulsion", "cell-membrane repulsion"};
-	add_behavior(behavior_synonyms, cell_basement_membrane_repulsion);
+	add_behavior(behavior_synonyms, cell_basement_membrane_repulsion, cell_basement_membrane_repulsion_base);
 
 	// phagocytosis of apoptotic cell
 	behavior_synonyms = {"phagocytose apoptotic cell",
 						 "phagocytosis of apoptotic cell",
 						 "phagocytosis of apoptotic cells"};
-	add_behavior(behavior_synonyms, cell_phagocytose_apoptotic);
+	add_behavior(behavior_synonyms, cell_phagocytose_apoptotic, cell_phagocytose_apoptotic_base);
 
 	// phagocytosis of necrotic cell
 	behavior_synonyms = {"phagocytose necrotic cell",
 						 "phagocytosis of necrotic cell",
 						 "phagocytosis of necrotic cells"};
-	add_behavior(behavior_synonyms, cell_phagocytose_necrotic);
+	add_behavior(behavior_synonyms, cell_phagocytose_necrotic, cell_phagocytose_necrotic_base);
 
 	// phagocytosis of other dead cell
 	behavior_synonyms = {"phagocytose other dead cell",
 						 "phagocytosis of other dead cell",
 						 "phagocytosis of other dead cells"};
-	add_behavior(behavior_synonyms, cell_phagocytose_other_dead);
+	add_behavior(behavior_synonyms, cell_phagocytose_other_dead, cell_phagocytose_other_dead_base);
 
 	// phagocytosis of each live cell type 
 	for( int i=0; i < n ; i++ )
@@ -505,7 +584,9 @@ void setup_signal_behavior_dictionaries( void )
 							 "phagocytosis of " + cell_definitions_by_type[i]->name};
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_phagocytose_live_cell_type(pCell, i); };
-		add_behavior(behavior_synonyms, behavior_value);
+		behavior_base_value = [i](Cell_Definition *pCD) -> double
+		{ return cell_phagocytose_live_cell_type_base(pCD, i); };
+		add_behavior(behavior_synonyms, behavior_value, behavior_base_value);
 	}
 
 	// attack of each live cell type 
@@ -513,7 +594,9 @@ void setup_signal_behavior_dictionaries( void )
 	{
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_attack_type(pCell, i); };
-		add_behavior("attack " + cell_definitions_by_type[i]->name, behavior_value);
+		behavior_base_value = [i](Cell_Definition *pCD) -> double
+		{ return cell_attack_type_base(pCD, i); };
+		add_behavior("attack " + cell_definitions_by_type[i]->name, behavior_value, behavior_base_value);
 	}
 
 	// fusion 
@@ -521,8 +604,9 @@ void setup_signal_behavior_dictionaries( void )
 	{
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_fuse_to_type(pCell, i); };
-		behavior_synonyms = {"fuse to " + cell_definitions_by_type[i]->name};
-		add_behavior(behavior_synonyms, behavior_value);
+		behavior_base_value = [i](Cell_Definition *pCD) -> double
+		{ return cell_fuse_to_type_base(pCD, i); };
+		add_behavior("fuse to " + cell_definitions_by_type[i]->name, behavior_value, behavior_base_value);
 	}
 
 	// transformation / transition 
@@ -532,7 +616,9 @@ void setup_signal_behavior_dictionaries( void )
 							 "transform to " + cell_definitions_by_type[i]->name};
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_transform_to_type(pCell, i); };
-		add_behavior(behavior_synonyms, behavior_value);
+		behavior_base_value = [i](Cell_Definition *pCD) -> double
+		{ return cell_transform_to_type_base(pCD, i); };
+		add_behavior(behavior_synonyms, behavior_value, behavior_base_value);
 	}
 
 	// asymmetic division
@@ -540,41 +626,45 @@ void setup_signal_behavior_dictionaries( void )
 	{
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_asymmetric_division_to_type(pCell, i); };
-		add_behavior("asymmetric division to " + cell_definitions_by_type[i]->name, behavior_value);
+		behavior_base_value = [i](Cell_Definition *pCD) -> double
+		{ return cell_asymmetric_division_to_type_base(pCD, i); };
+		add_behavior("asymmetric division to " + cell_definitions_by_type[i]->name, behavior_value, behavior_base_value);
 	}
 
 	// is movable
 	behavior_synonyms = {"is_movable", "is movable", "movable"};
-	add_behavior(behavior_synonyms, cell_is_movable);
+	add_behavior(behavior_synonyms, cell_is_movable, cell_is_movable_base);
 
 	// immunogenicity to each cell type
 	for (int i = 0; i < n; i++)
 	{
 		behavior_value = [i](Cell *pCell) -> double&
 		{ return cell_immunogenicity_to_type(pCell, i); };
-		add_behavior("immunogenicity to " + cell_definitions_by_type[i]->name, behavior_value);
+		behavior_base_value = [i](Cell_Definition *pCD) -> double
+		{ return cell_immunogenicity_to_type_base(pCD, i); };
+		add_behavior("immunogenicity to " + cell_definitions_by_type[i]->name, behavior_value, behavior_base_value);
 	}
 
 	// cell attachment rate
-	add_behavior("cell attachment rate", cell_attachment_rate);
+	add_behavior("cell attachment rate", cell_attachment_rate, cell_attachment_rate_base);
 
 	// cell detachment rate
-	add_behavior("cell detachment rate", cell_detachment_rate);
+	add_behavior("cell detachment rate", cell_detachment_rate, cell_detachment_rate_base);
 
 	// maximum number of cell attachments
-	add_behavior("maximum number of cell attachments", maximum_number_attachments);
+	add_behavior("maximum number of cell attachments", maximum_number_attachments, maximum_number_attachments_base);
 
 	// attack damage rate
-	add_behavior("attack damage rate", cell_attack_damage_rate);
+	add_behavior("attack damage rate", cell_attack_damage_rate, cell_attack_damage_rate_base);
 
 	// attack duration
-	add_behavior("attack duration", cell_attack_duration);
+	add_behavior("attack duration", cell_attack_duration, cell_attack_duration_base);
 
 	// damage rate
-	add_behavior("damage rate", cell_damage_rate);
+	add_behavior("damage rate", cell_damage_rate, cell_damage_rate_base);
 
 	// damage repair rate
-	add_behavior("damage repair rate", cell_damage_repair_rate);
+	add_behavior("damage repair rate", cell_damage_repair_rate, cell_damage_repair_rate_base);
 
 	/* add new behaviors above this line */
 
@@ -590,7 +680,7 @@ void setup_signal_behavior_dictionaries( void )
 	return;
 }
 
-void add_signal( std::string name, SignalValue value )
+void add_signal( const std::string& name, SignalValue value )
 { return add_signal(std::vector<std::string>{std::move(name)}, std::move(value)); }
 
 void add_signal(const std::vector<std::string> &synonyms, SignalValue value)
@@ -604,45 +694,12 @@ void add_signal(const std::vector<std::string> &synonyms, SignalValue value)
 	return;
 }
 
-std::unordered_map<std::string,std::unique_ptr<Cell>> base_cells_by_name;
+void add_behavior(const std::string &name, BehaviorValue value, BehaviorBaseValue base_value)
+{ return add_behavior(std::vector<std::string>{std::move(name)}, std::move(value), std::move(base_value)); }
 
-void create_base_cells()
+void add_behavior(const std::vector<std::string> &synonyms, BehaviorValue value, BehaviorBaseValue base_value)
 {
-	base_cells_by_name.clear();
-	for( auto& cell_definition : cell_definitions_by_name )
-	{
-		Cell_Definition* pCD = cell_definition.second;
-		Cell* pCell = new Cell;
-		pCell->set_total_volume( pCell->phenotype.volume.total );
-
-		pCell->type = pCD->type;
-		pCell->type_name = pCD->name;
-
-		pCell->custom_data = pCD->custom_data;
-		pCell->parameters = pCD->parameters;
-		pCell->functions = pCD->functions;
-
-		pCell->phenotype = pCD->phenotype;
-		if (pCell->phenotype.intracellular)
-			pCell->phenotype.intracellular->start();
-
-		pCell->is_movable = false; //  true;
-		pCell->is_out_of_domain = true;
-		pCell->displacement.resize(3, 0.0); // state?
-
-		pCell->set_total_volume(pCell->phenotype.volume.total);
-
-		// store the base cell by name
-		base_cells_by_name[pCD->name] = std::unique_ptr<Cell>(pCell);
-	}
-}
-
-void add_behavior( std::string name, BehaviorValue value )
-{ return add_behavior(std::vector<std::string>{std::move(name)}, std::move(value)); }
-
-void add_behavior(const std::vector<std::string> &synonyms, BehaviorValue value)
-{
-	auto behavior_ptr = std::make_shared<Behavior>(synonyms[0], std::move(value));
+	auto behavior_ptr = std::make_shared<Behavior>(synonyms[0], std::move(value), std::move(base_value));
 	for (auto name : synonyms)
 	{ all_behaviors[name] = behavior_ptr; }
 	return;
@@ -747,12 +804,12 @@ void display_behavior_dictionary_with_synonyms( void )
 	{ std::cout << it->second << " : " << it->first << std::endl; }
 	std::cout << std::endl << std::endl;  	
     return; 
-*/	
+*/
 
-bool signal_exists( std::string signal_name )
+bool signal_exists(const std::string &signal_name)
 { return all_signals.find(signal_name) != all_signals.end(); }
 
-bool behavior_exists( std::string behavior_name )
+bool behavior_exists(const std::string &behavior_name)
 { return all_behaviors.find(behavior_name) != all_behaviors.end(); }
 
 // int find_signal_index( std::string signal_name )
@@ -827,7 +884,7 @@ std::vector<double> get_selected_signals( Cell* pCell , const std::vector<std::s
 	return signals; 
 }
 
-double get_single_signal( Cell* pCell, std::string name )
+double get_single_signal(Cell *pCell, const std::string &name)
 {
 	return all_signals[name]->get_value(pCell);
 }
@@ -840,7 +897,7 @@ void set_behaviors( Cell* pCell , std::unordered_map<std::string, double> behavi
 	return; 
 }
 
-void set_single_behavior( Cell* pCell, std::string name , double parameter )
+void set_single_behavior( Cell* pCell, const std::string& name , const double& parameter )
 { return all_behaviors[name]->set_value(pCell, parameter); }
 
 std::unordered_map<std::string, double> get_behaviors( Cell* pCell )
@@ -859,7 +916,7 @@ std::unordered_map<std::string, double> get_behaviors( Cell* pCell )
 	return behavior_values; 
 }
 
-double get_single_behavior( Cell* pCell , std::string name )
+double get_single_behavior( Cell* pCell , const std::string& name )
 {
 	auto it = all_behaviors.find(name);
 	if (it == all_behaviors.end())
@@ -874,7 +931,7 @@ std::vector<double> get_behaviors( Cell* pCell , std::vector<std::string> names 
 {
 	std::vector<double> parameters( names.size() , 0.0 ); 
 	for( int n=0; n < names.size(); n++ )
-	{ parameters[n] = get_single_behavior(pCell,names[n]); }
+	{ parameters[n] = get_single_behavior(pCell, names[n]); }
 	return parameters; 
 }
 
@@ -894,13 +951,13 @@ std::unordered_map<std::string, double> get_base_behaviors( Cell* pCell )
 		std::string behavior_name = behavior.second->get_name();
 		if (std::find(behaviors_got.begin(), behaviors_got.end(), behavior_name) != behaviors_got.end())
 		{ continue; }
-		base_behavior_map[behavior_name] = behavior.second->get_value(base_cells_by_name[pCell->type_name].get());
+		base_behavior_map[behavior_name] = get_single_base_behavior(pCell, behavior_name);
 		behaviors_got.push_back(behavior_name);
 	}
 	return base_behavior_map;
 }
 
-double get_single_base_behavior( Cell* pCell , std::string name )
+double get_single_base_behavior( Cell* pCell , const std::string& name )
 {
 	auto it = all_behaviors.find(name);
 	if (it == all_behaviors.end())
@@ -908,10 +965,10 @@ double get_single_base_behavior( Cell* pCell , std::string name )
 		std::cerr << "ERROR: Behavior '" << name << "' not found!" << std::endl;
 		return 0.0;
 	}
-	return it->second->get_value(base_cells_by_name[pCell->type_name].get());
+	return it->second->get_base_value(pCell);
 }
 
-double get_single_base_behavior( Cell_Definition* pCD , std::string name )
+double get_single_base_behavior(Cell_Definition *pCD, const std::string &name)
 {
 	auto it = all_behaviors.find(name);
 	if (it == all_behaviors.end())
@@ -919,7 +976,7 @@ double get_single_base_behavior( Cell_Definition* pCD , std::string name )
 		std::cerr << "ERROR: Behavior '" << name << "' not found!" << std::endl;
 		return 0.0;
 	}
-	return it->second->get_value(base_cells_by_name[pCD->name].get());
+	return it->second->get_base_value(pCD);
 }
 
 std::unordered_map<std::string, double> get_base_behaviors( Cell* pCell , std::vector<std::string> names )

@@ -244,6 +244,7 @@ class Cycle
 	
 	Cycle_Model& model( void ); // done 
 	Phase& current_phase( void ); // done 
+	const Phase& current_phase() const;
 	int& current_phase_index( void ); // done 
 	
 	void sync_to_cycle_model( Cycle_Model& cm ); // done 
