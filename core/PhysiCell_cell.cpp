@@ -1189,6 +1189,12 @@ void Cell::convert_to_cell_definition( Cell_Definition& cd )
 	return; 
 }
 
+bool Cell::is_necrotic( void )
+{
+	int code = phenotype.cycle.current_phase().code;
+	return (code == PhysiCell_constants::necrotic || code == PhysiCell_constants::necrotic_swelling || code == PhysiCell_constants::necrotic_lysed);
+}
+
 void delete_cell( int index )
 {
 //	std::cout << __FUNCTION__ << " " << (*all_cells)[index] 

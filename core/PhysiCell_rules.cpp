@@ -251,7 +251,7 @@ void Hypothesis_Rule::English_display_HTML( std::ostream& os )
 void Hypothesis_Rule::add_signal( std::string signal , double half_max , double hill_power , std::string response )
 {
     // check: is this a valid signal? (is it in the dictionary?)
-    if( find_signal_index(signal) < 0 )
+	if (signal_exists(signal))
     {
         std::cout << "Error! Attempted to add signal " << signal << " which is not in the dictionary." << std::endl; 
         std::cout << "Either fix your model or add the missing signal to the simulation." << std::endl; 
@@ -757,7 +757,7 @@ void Hypothesis_Ruleset::sync_to_cell_definition( Cell_Definition* pCD )
 Hypothesis_Rule* Hypothesis_Ruleset::add_behavior( std::string behavior , double min_behavior, double max_behavior )
 {
     // check: is this a valid signal? (is it in the dictionary?)
-    if( find_behavior_index(behavior) < 0 )
+    if( behavior_exists(behavior) )
     {
         std::cout << "Warning! Attempted to add behavior " << behavior << " which is not in the dictionary." << std::endl; 
         std::cout << "Either fix your model or add the missing behavior to the simulation." << std::endl; 

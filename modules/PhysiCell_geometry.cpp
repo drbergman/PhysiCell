@@ -454,7 +454,7 @@ void set_distributed_parameter(pugi::xml_node node_dist, Cell_Definition *pCD)
 		exit(-1);
 	}
 
-	if (!strcmpi(behavior,"volume") && find_behavior_index(behavior) == -1)
+	if (!strcmpi(behavior,"volume") && !behavior_exists(behavior))
 	{
 		std::cout << "ERROR: Initial parameter distributions can only be set for volume and cell behaviors." << std::endl
 				  << "\t" << behavior << " is not among these." << std::endl;
@@ -796,7 +796,7 @@ Cell* process_csv_v2_line( std::string line , std::vector<std::string> labels )
 		if( processed == false && skip == false )
 		{
 			// if the behavior is found in the dictionary, process it 
-			if( find_behavior_index( labels[k] ) > -1 )
+			if( behavior_exists( labels[k] ) )
 			{
 				set_single_behavior( pCell , labels[k] , dval ); 
 				processed = true; 

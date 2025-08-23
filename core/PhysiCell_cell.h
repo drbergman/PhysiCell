@@ -251,6 +251,8 @@ class Cell : public Basic_Agent
 	std::vector<Cell*> nearby_interacting_cells( void ); // new in 1.8.0 
 	
 	void convert_to_cell_definition( Cell_Definition& cd ); 
+
+	bool is_necrotic( void ); 
 };
 
 Cell* create_cell( Cell* (*custom_instantiate)() = NULL );  
