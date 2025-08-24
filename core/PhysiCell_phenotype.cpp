@@ -363,6 +363,11 @@ Phase& Cycle_Data::current_phase( void )
 	return pCycle_Model->phases[current_phase_index]; 
 }
 
+const Phase& Cycle_Data::current_phase( void ) const
+{
+	return pCycle_Model->phases[current_phase_index]; 
+}
+
 Death_Parameters::Death_Parameters()
 {
 	time_units = "min"; 
@@ -532,7 +537,7 @@ Phase& Cycle::current_phase( void )
 
 const Phase& Cycle::current_phase() const
 {
-    return const_cast<Cycle*>(this)->current_phase();
+	return data.current_phase(); 
 }
 
 int& Cycle::current_phase_index( void )

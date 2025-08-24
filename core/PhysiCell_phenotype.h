@@ -159,7 +159,8 @@ class Cycle_Data
 	
 	// return current phase (by reference)
 	Phase& current_phase( void ); // done 
-	
+	const Phase& current_phase( void ) const;
+
 	// make the data structures consistent with the corresponding cell cycle model
 	void sync_to_cycle_model( void ); // done 
 
