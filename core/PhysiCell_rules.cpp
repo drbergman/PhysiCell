@@ -421,9 +421,6 @@ Hypothesis_Rule* Hypothesis_Ruleset::add_behavior( std::string behavior , double
 
 		pHR->set_behavior(all_behaviors[behavior]);
 
-		std::cout << "Adding behavior " << behavior << " to ruleset for cell type " << cell_type << std::endl;
-		std::cout << "  It's name is set to " << pHR->get_behavior()->get_name() << std::endl;
-
 		pHR->sync_to_cell_definition( pCell_Definition ); 
 
 		pHR->min_value = min_behavior; 
@@ -550,10 +547,12 @@ void add_rule( std::string cell_type, std::string signal, std::string behavior ,
         exit(-1); 
     }
 
-	if( pHRS->find_behavior(behavior) )
+	if (pHRS->find_behavior(behavior) && ((*pHRS)[behavior].get_behavior()->get_name() != behavior))
 	{
-		if( (*pHRS)[behavior].get_behavior()->get_name() != behavior )
-		{ (*pHRS)[behavior].set_behavior(all_behaviors[behavior]); std::cout << "wha?" << std::endl; }
+		std::cout << "ERROR: Behavior name mismatch for " << behavior << " in " << cell_type << std::endl
+				  << "  Expected: " << behavior << std::endl
+				  << "  Found: " << (*pHRS)[behavior].get_behavior()->get_name() << std::endl;
+		exit(-1);
 	}
 
 	pHRS->add_behavior(behavior);
