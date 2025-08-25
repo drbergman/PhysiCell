@@ -113,7 +113,6 @@ void Hypothesis_Rule::display( std::ostream& os )
 void Hypothesis_Rule::reduced_display( std::ostream& os )
 {
 	std::string behavior_name = behavior->get_name();
-	for( int j=0; j < down_signals.size(); j++ )
 	for( const auto& down_signal : down_signals )
 	{ os << down_signal->get_name() << " decreases " << behavior_name << std::endl; }
 	for( const auto& up_signal : up_signals )
