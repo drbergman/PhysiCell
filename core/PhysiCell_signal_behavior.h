@@ -83,110 +83,76 @@ namespace PhysiCell{
 // create the signal and behavior dictionaries 
 void setup_signal_behavior_dictionaries( void );
 
+using CellValue = std::function<double(Cell *)>;
+
 struct Signal
 {
-public:
-	using SignalValue = std::function<double(Cell *)>;
-
 private:
 	std::string name; // primary synonym
-	SignalValue value;
+	CellValue value;
 	
 public:
 	std::string get_name() const { return name; }
 	Signal() : name("no name"), value(nullptr) {}
-	Signal(std::string my_name, SignalValue my_value) : name(std::move(my_name)), value(std::move(my_value)) {}
+	Signal(std::string my_name, CellValue my_value) : name(std::move(my_name)), value(std::move(my_value)) {}
 	
 	double get_value(Cell* pCell) const { return value(pCell); }
 };
 
-struct Behavior {
-protected:
+struct Behavior
+{
+private:
 	std::string name; // primary synonym
+	CellValue value_getter;
+	std::function<void(Cell *, double)> value_setter;
+	std::function<double(Cell_Definition *)> base_value_getter;
 
 public:
-    Behavior(std::string my_name) : name(std::move(my_name)) {}
+	Behavior(std::string my_name, std::function<double &(Cell *)> my_value_getter, std::function<double(Cell_Definition *)> my_base_value_getter)
+		: name(std::move(my_name)), base_value_getter(std::move(my_base_value_getter))
+	{
+		value_getter = [my_value_getter](Cell *pCell) -> double
+		{ return my_value_getter(pCell); };
+		value_setter = [my_value_getter](Cell *pCell, double new_value)
+		{
+			my_value_getter(pCell) = new_value;
+			return;
+		};
+	}
+
+	Behavior(std::string my_name, std::function<bool &(Cell *)> my_value_getter, std::function<bool(Cell_Definition *)> my_base_value_getter)
+		: name(std::move(my_name)), base_value_getter(std::move(my_base_value_getter))
+	{
+		value_getter = [my_value_getter](Cell *pCell) -> double
+		{ return my_value_getter(pCell); };
+		value_setter = [my_value_getter](Cell *pCell, double new_value)
+		{
+			my_value_getter(pCell) = new_value > 0.5;
+			return;
+		};
+	}
+
+	Behavior(std::string my_name, std::function<int &(Cell *)> my_value_getter, std::function<int(Cell_Definition *)> my_base_value_getter)
+		: name(std::move(my_name)), base_value_getter(std::move(my_base_value_getter))
+	{
+		value_getter = [my_value_getter](Cell *pCell) -> double
+		{ return my_value_getter(pCell); };
+		value_setter = [my_value_getter](Cell *pCell, double new_value)
+		{
+			my_value_getter(pCell) = static_cast<int>(new_value);
+			return;
+		};
+	}
 
 	std::string get_name() const { return name; }
 
-	virtual double get_value(Cell *) const = 0;
-	virtual void set_value(Cell *, double) const = 0;
-	virtual double get_base_value(Cell *) const = 0;
-	virtual double get_base_value(Cell_Definition *) const = 0;
+	double get_value(Cell *pCell) const { return value_getter(pCell); }
+	void set_value(Cell *pCell, double new_value) const { value_setter(pCell, new_value); }
+	double get_base_value(Cell_Definition *pCD) const { return base_value_getter(pCD); }
 
-	virtual ~Behavior() = default;
-};
+	double get_base_value(Cell *pCell) const;
 
-struct BehaviorDouble : public Behavior
-{
-public:
-	using BehaviorValue = std::function<double&(Cell *)>;
-	using BehaviorValueBase = std::function<double(Cell_Definition *)>;
-
-private:
-	BehaviorValue value;
-	BehaviorValueBase base_value;
-
-public:
-	BehaviorDouble(std::string my_name, BehaviorValue my_value, BehaviorValueBase my_base_value)
-		: Behavior(std::move(my_name)), value(std::move(my_value)), base_value(std::move(my_base_value)) {}
-
-	double get_value(Cell* pCell) const override { return value(pCell); }
-	void set_value(Cell* pCell, double new_value) const override { value(pCell) = new_value; }
-	double get_base_value(Cell* pCell) const override;
-	double get_base_value(Cell_Definition* pCD) const override { return base_value(pCD); }
-
-	~BehaviorDouble() override = default;
-};
-
-struct BehaviorBool : public Behavior
-{
-public:
-	using BehaviorValue = std::function<bool&(Cell *)>;
-	using BehaviorValueSet = std::function<void(Cell*, bool)>;
-	using BehaviorValueBase = std::function<bool(Cell_Definition *)>;
-
-private:
-	BehaviorValue value;
-	BehaviorValueSet setter;
-	BehaviorValueBase base_value;
-
-public:
-
-	BehaviorBool(std::string my_name, BehaviorValue my_value, BehaviorValueSet my_setter, BehaviorValueBase my_base_value)
-		: Behavior(std::move(my_name)), value(std::move(my_value)), setter(std::move(my_setter)), base_value(std::move(my_base_value)) {}
-
-	double get_value(Cell* pCell) const override { return value(pCell) ? 1.0 : 0.0; }
-	void set_value(Cell* pCell, double new_value) const override { setter(pCell, new_value > 0.5); }
-	double get_base_value(Cell* pCell) const override;
-	double get_base_value(Cell_Definition* pCD) const override { return base_value(pCD) ? 1.0 : 0.0; }
-
-	~BehaviorBool() override = default;
-};
-
-struct BehaviorInt : public Behavior
-{
-public:
-	using BehaviorValue = std::function<int&(Cell *)>;
-	using BehaviorValueSet = std::function<void(Cell*, int)>;
-	using BehaviorValueBase = std::function<int(Cell_Definition *)>;
-
-private:
-	BehaviorValue value;
-	BehaviorValueSet setter;
-	BehaviorValueBase base_value;
-
-public:
-
-	BehaviorInt(std::string my_name, BehaviorValue my_value, BehaviorValueSet my_setter, BehaviorValueBase my_base_value)
-		: Behavior(std::move(my_name)), value(std::move(my_value)), setter(std::move(my_setter)), base_value(std::move(my_base_value)) {}
-
-	double get_value(Cell* pCell) const override { return value(pCell); }
-	void set_value(Cell* pCell, double new_value) const override { setter(pCell, static_cast<int>(new_value)); }
-	double get_base_value(Cell* pCell) const override;
-	double get_base_value(Cell_Definition* pCD) const override { return base_value(pCD); }
-
-	~BehaviorInt() override = default;
+	~Behavior() = default;
 };
 
 double substrate_density(Cell *pCell, int substrate_index);
@@ -285,17 +251,19 @@ double &cell_attack_duration_base(Cell_Definition *);
 double &cell_damage_rate_base(Cell_Definition *);
 double &cell_custom_behavior_base(Cell_Definition *, int);
 
-void add_signal(const std::string &name, Signal::SignalValue value);
-void add_signal(const std::vector<std::string> &synonyms, Signal::SignalValue value);
+void add_signal(const std::string &name, CellValue value);
+void add_signal(const std::vector<std::string> &synonyms, CellValue value);
 
-void add_double_behavior(const std::string &name, BehaviorDouble::BehaviorValue value, BehaviorDouble::BehaviorValueBase base_value);
-void add_double_behavior(const std::vector<std::string> &synonyms, BehaviorDouble::BehaviorValue value, BehaviorDouble::BehaviorValueBase base_value);
+void add_behavior(const std::string &name, std::function<double&(Cell *)> value, std::function<double(Cell_Definition *)> base_value);
+void add_behavior(const std::vector<std::string> &synonyms, std::function<double&(Cell *)> value, std::function<double(Cell_Definition *)> base_value);
 
-void add_bool_behavior(const std::string &name, BehaviorBool::BehaviorValue value, BehaviorBool::BehaviorValueSet set_value, BehaviorBool::BehaviorValueBase base_value);
-void add_bool_behavior(const std::vector<std::string> &synonyms, BehaviorBool::BehaviorValue value, BehaviorBool::BehaviorValueSet set_value, BehaviorBool::BehaviorValueBase base_value);
+void add_behavior(const std::string &name, std::function<bool&(Cell *)> value, std::function<bool(Cell_Definition *)> base_value);
+void add_behavior(const std::vector<std::string> &synonyms, std::function<bool&(Cell *)> value, std::function<bool(Cell_Definition *)> base_value);
 
-void add_int_behavior(const std::string &name, BehaviorInt::BehaviorValue value, BehaviorInt::BehaviorValueSet set_value, BehaviorInt::BehaviorValueBase base_value);
-void add_int_behavior(const std::vector<std::string> &synonyms, BehaviorInt::BehaviorValue value, BehaviorInt::BehaviorValueSet set_value, BehaviorInt::BehaviorValueBase base_value);
+void add_behavior(const std::string &name, std::function<int&(Cell *)> value, std::function<int(Cell_Definition *)> base_value);
+void add_behavior(const std::vector<std::string> &synonyms, std::function<int&(Cell *)> value, std::function<int(Cell_Definition *)> base_value);
+
+double &phase_exit_rate_exceed_bounds(const std::string &cell_type_name, int phase_index, int num_phases)
 
 // display dictionaries 
 void display_signal_dictionary( void );
@@ -308,8 +276,6 @@ void display_signal_dictionary_with_synonyms( void );
 void display_behavior_dictionary_with_synonyms( void );
 void display_signal_dictionary_with_synonyms( std::ostream& os );
 void display_behavior_dictionary_with_synonyms( std::ostream& os );
-
-
 
 /* signal functions */
 bool signal_exists(const std::string &signal_name);
