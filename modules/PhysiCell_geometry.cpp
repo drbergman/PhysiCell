@@ -323,8 +323,8 @@ void load_cells_csv_v1( std::string filename )
 		Cell_Definition* pCD = find_cell_definition( my_type );
 		if( pCD != NULL )
 		{
-			std::cout << "Creating " << pCD->name << " (type=" << pCD->type << ") at " 
-			<< position << std::endl; 
+			std::cout << "Creating " << pCD->name << " (type=" << pCD->type << ") at "
+					  << position << std::endl;
 			Cell* pCell = create_cell( *pCD ); 
 			pCell->assign_position( position ); 
 		}
@@ -755,9 +755,9 @@ Cell* process_csv_v2_line( std::string line , std::vector<std::string> labels )
 		return NULL;
 	}
 
-	// create the cell IF the definition was found 
-	std::cout << "Creating " << pCD->name << " (type=" << pCD->type << ") at " 
-		<< position << std::endl; 
+	// create the cell IF the definition was found
+	std::cout << "Creating " << pCD->name << " (type=" << pCD->type << ") at "
+			  << position << std::endl;
 
 	Cell* pCell = create_cell( *pCD ); 
 	pCell->assign_position( position ); 
