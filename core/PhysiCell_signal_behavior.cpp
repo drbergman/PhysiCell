@@ -82,6 +82,9 @@ double BehaviorDouble::get_base_value(Cell* pCell) const
 double BehaviorBool::get_base_value(Cell* pCell) const
 { return get_base_value(find_cell_definition(pCell->type)); }
 
+double BehaviorInt::get_base_value(Cell* pCell) const
+{ return get_base_value(find_cell_definition(pCell->type)); }
+
 double substrate_density(Cell *pCell, int substrate_index) { return pCell->nearest_density_vector()[substrate_index]; }
 double internalized_substrate_density(Cell *pCell, int substrate_index) { return pCell->phenotype.molecular.internalized_total_substrates[substrate_index] / pCell->phenotype.volume.total; }
 double substrate_gradient_norm(Cell *pCell, int substrate_index) { return norm(pCell->nearest_gradient(substrate_index)); }
@@ -221,7 +224,7 @@ bool &cell_is_movable(Cell *pCell) { return pCell->is_movable; }
 double &cell_immunogenicity_to_type(Cell *pCell, int i) { return pCell->phenotype.cell_interactions.immunogenicities[i]; }
 double &cell_attachment_rate(Cell *pCell) { return pCell->phenotype.mechanics.attachment_rate; }
 double &cell_detachment_rate(Cell *pCell) { return pCell->phenotype.mechanics.detachment_rate; }
-double &maximum_number_attachments(Cell *pCell) { return (double &)pCell->phenotype.mechanics.maximum_number_of_attachments; }
+int &maximum_number_attachments(Cell *pCell) { return pCell->phenotype.mechanics.maximum_number_of_attachments; }
 double &cell_attack_damage_rate(Cell *pCell) { return pCell->phenotype.cell_interactions.attack_damage_rate; }
 double &cell_attack_duration(Cell *pCell) { return pCell->phenotype.cell_interactions.attack_duration; }
 double &cell_damage_rate(Cell *pCell) { return pCell->phenotype.cell_integrity.damage_rate; }
@@ -229,6 +232,7 @@ double &cell_damage_repair_rate(Cell *pCell) { return pCell->phenotype.cell_inte
 double &cell_custom_behavior(Cell *pCell, int i) { return pCell->custom_data.variables[i].value; };
 
 void cell_is_movable_set(Cell *pCell, bool new_value) { pCell->is_movable = new_value; }
+void maximum_number_attachments_set(Cell *pCell, int new_value) { pCell->phenotype.mechanics.maximum_number_of_attachments = new_value; }
 
 double &cell_secretion_rate_base(Cell_Definition *pCD, int i) { return pCD->phenotype.secretion.secretion_rates[i]; }
 double &cell_secretion_target_base(Cell_Definition *pCD, int i) { return pCD->phenotype.secretion.saturation_densities[i]; }
@@ -286,7 +290,7 @@ bool &cell_is_movable_base(Cell_Definition *pCD) { return pCD->is_movable; }
 double &cell_immunogenicity_to_type_base(Cell_Definition *pCD, int i) { return pCD->phenotype.cell_interactions.immunogenicities[i]; }
 double &cell_attachment_rate_base(Cell_Definition *pCD) { return pCD->phenotype.mechanics.attachment_rate; }
 double &cell_detachment_rate_base(Cell_Definition *pCD) { return pCD->phenotype.mechanics.detachment_rate; }
-double &maximum_number_attachments_base(Cell_Definition *pCD) { return (double &)pCD->phenotype.mechanics.maximum_number_of_attachments; }
+int &maximum_number_attachments_base(Cell_Definition *pCD) { return pCD->phenotype.mechanics.maximum_number_of_attachments; }
 double &cell_attack_damage_rate_base(Cell_Definition *pCD) { return pCD->phenotype.cell_interactions.attack_damage_rate; }
 double &cell_attack_duration_base(Cell_Definition *pCD) { return pCD->phenotype.cell_interactions.attack_duration; }
 double &cell_damage_rate_base(Cell_Definition *pCD) { return pCD->phenotype.cell_integrity.damage_rate; }
@@ -324,6 +328,10 @@ void setup_signal_behavior_dictionaries( void )
 	BehaviorBool::BehaviorValue behavior_bool_value;
 	BehaviorBool::BehaviorValueSet behavior_bool_value_set;
 	BehaviorBool::BehaviorValueBase behavior_bool_base_value;
+
+	BehaviorInt::BehaviorValue behavior_int_value;
+	BehaviorInt::BehaviorValueSet behavior_int_value_set;
+	BehaviorInt::BehaviorValueBase behavior_int_base_value;
 	
 
 	// substrate densities 
@@ -663,7 +671,7 @@ void setup_signal_behavior_dictionaries( void )
 	add_double_behavior("cell detachment rate", cell_detachment_rate, cell_detachment_rate_base);
 
 	// maximum number of cell attachments
-	add_double_behavior("maximum number of cell attachments", maximum_number_attachments, maximum_number_attachments_base);
+	add_int_behavior("maximum number of cell attachments", maximum_number_attachments, maximum_number_attachments_set, maximum_number_attachments_base);
 
 	// attack damage rate
 	add_double_behavior("attack damage rate", cell_attack_damage_rate, cell_attack_damage_rate_base);
@@ -722,6 +730,18 @@ void add_bool_behavior(const std::string &name, BehaviorBool::BehaviorValue valu
 void add_bool_behavior(const std::vector<std::string> &synonyms, BehaviorBool::BehaviorValue value, BehaviorBool::BehaviorValueSet set_value, BehaviorBool::BehaviorValueBase base_value)
 {
 	std::shared_ptr<Behavior> behavior_ptr = std::make_shared<BehaviorBool>(
+		synonyms[0], std::move(value), std::move(set_value), std::move(base_value));
+	for (auto name : synonyms)
+	{ all_behaviors[name] = behavior_ptr; }
+	return;
+}
+
+void add_int_behavior(const std::string &name, BehaviorInt::BehaviorValue value, BehaviorInt::BehaviorValueSet set_value, BehaviorInt::BehaviorValueBase base_value)
+{ return add_int_behavior(std::vector<std::string>{std::move(name)}, std::move(value), std::move(set_value), std::move(base_value)); }
+
+void add_int_behavior(const std::vector<std::string> &synonyms, BehaviorInt::BehaviorValue value, BehaviorInt::BehaviorValueSet set_value, BehaviorInt::BehaviorValueBase base_value)
+{
+	std::shared_ptr<Behavior> behavior_ptr = std::make_shared<BehaviorInt>(
 		synonyms[0], std::move(value), std::move(set_value), std::move(base_value));
 	for (auto name : synonyms)
 	{ all_behaviors[name] = behavior_ptr; }

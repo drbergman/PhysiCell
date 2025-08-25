@@ -98,21 +98,6 @@ struct Signal
 	double get_value(Cell* pCell) const { return value(pCell); }
 };
 
-// template <typename T>
-// class BehaviorValue
-// {
-// 	using RefType = T &;
-// 	std::function<RefType(Cell *)> value_getter;
-// 	std::function<T(Cell_Definition *)> base_value_getter;
-
-// public:
-// 	BehaviorValue(std::function<RefType(Cell *)> g, std::function<T(Cell_Definition *)> bg) : value_getter(std::move(g)), base_value_getter(std::move(bg)) {}
-
-// 	RefType operator()(Cell *c) const { return value_getter(c); }
-// 	T operator()(Cell_Definition *cd) const { return base_value_getter(cd); }
-// 	T get_base_value(Cell *) const;
-// };
-
 struct Behavior {
 protected:
 	std::string name; // primary synonym
@@ -177,26 +162,30 @@ public:
 	~BehaviorBool() override = default;
 };
 
-// template <typename T>
-// struct Behavior
-// {
-// private:
-// 	std::string name; // primary synonym
-// 	BehaviorValue<T> value;
+struct BehaviorInt : public Behavior
+{
+public:
+	using BehaviorValue = std::function<int&(Cell *)>;
+	using BehaviorValueSet = std::function<void(Cell*, int)>;
+	using BehaviorValueBase = std::function<int(Cell_Definition *)>;
 
-// public:
-// 	std::string get_name() const { return name; }
-// 	Behavior() : name("no name"), value(nullptr) {}
-// 	Behavior(std::string my_name, BehaviorValue my_value) : name(std::move(my_name)), value(std::move(my_value)) {}
+private:
+	BehaviorValue value;
+	BehaviorValueSet setter;
+	BehaviorValueBase base_value;
 
-// 	double get_value(Cell* pCell) const;
-// 	void set_value(Cell *pCell, double new_value) const;
-// 	double get_base_value(Cell *) const;
-// 	double get_base_value(Cell_Definition *pCD) const;
+public:
 
-// 	void *get_raw(Cell *c) const override
-// 	{ return (void *)&value(c); }
-// };
+	BehaviorInt(std::string my_name, BehaviorValue my_value, BehaviorValueSet my_setter, BehaviorValueBase my_base_value)
+		: Behavior(std::move(my_name)), value(std::move(my_value)), setter(std::move(my_setter)), base_value(std::move(my_base_value)) {}
+
+	double get_value(Cell* pCell) const override { return value(pCell); }
+	void set_value(Cell* pCell, double new_value) const override { setter(pCell, static_cast<int>(new_value)); }
+	double get_base_value(Cell* pCell) const override;
+	double get_base_value(Cell_Definition* pCD) const override { return base_value(pCD); }
+
+	~BehaviorInt() override = default;
+};
 
 double substrate_density(Cell *pCell, int substrate_index);
 double internalized_substrate_density(Cell *pCell, int substrate_index);
@@ -251,7 +240,7 @@ bool &cell_is_movable(Cell *);
 double &cell_immunogenicity_to_type(Cell *, int);
 double &cell_attachment_rate(Cell *);
 double &cell_detachment_rate(Cell *);
-double &maximum_number_attachments(Cell *);
+int &maximum_number_attachments(Cell *);
 double &cell_attack_damage_rate(Cell *);
 double &cell_attack_duration(Cell *);
 double &cell_damage_rate(Cell *);
@@ -288,7 +277,7 @@ bool &cell_is_movable_base(Cell_Definition *);
 double &cell_immunogenicity_to_type_base(Cell_Definition *, int);
 double &cell_attachment_rate_base(Cell_Definition *);
 double &cell_detachment_rate_base(Cell_Definition *);
-double &maximum_number_attachments_base(Cell_Definition *);
+int &maximum_number_attachments_base(Cell_Definition *);
 double &cell_attack_damage_rate_base(Cell_Definition *);
 double &cell_attack_duration_base(Cell_Definition *);
 double &cell_damage_rate_base(Cell_Definition *);
@@ -302,6 +291,9 @@ void add_double_behavior(const std::vector<std::string> &synonyms, BehaviorDoubl
 
 void add_bool_behavior(const std::string &name, BehaviorBool::BehaviorValue value, BehaviorBool::BehaviorValueSet set_value, BehaviorBool::BehaviorValueBase base_value);
 void add_bool_behavior(const std::vector<std::string> &synonyms, BehaviorBool::BehaviorValue value, BehaviorBool::BehaviorValueSet set_value, BehaviorBool::BehaviorValueBase base_value);
+
+void add_int_behavior(const std::string &name, BehaviorInt::BehaviorValue value, BehaviorInt::BehaviorValueSet set_value, BehaviorInt::BehaviorValueBase base_value);
+void add_int_behavior(const std::vector<std::string> &synonyms, BehaviorInt::BehaviorValue value, BehaviorInt::BehaviorValueSet set_value, BehaviorInt::BehaviorValueBase base_value);
 
 // display dictionaries 
 void display_signal_dictionary( void );
