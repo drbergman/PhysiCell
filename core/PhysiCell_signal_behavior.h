@@ -263,7 +263,7 @@ void add_behavior(const std::vector<std::string> &synonyms, std::function<bool&(
 void add_behavior(const std::string &name, std::function<int&(Cell *)> value, std::function<int(Cell_Definition *)> base_value);
 void add_behavior(const std::vector<std::string> &synonyms, std::function<int&(Cell *)> value, std::function<int(Cell_Definition *)> base_value);
 
-double &phase_exit_rate_exceed_bounds(const std::string &cell_type_name, int phase_index, int num_phases)
+double &phase_exit_rate_exceed_bounds(const std::string &cell_type_name, int phase_index, int num_phases);
 
 // display dictionaries 
 void display_signal_dictionary( void );
