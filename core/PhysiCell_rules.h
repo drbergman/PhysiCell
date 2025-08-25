@@ -69,6 +69,7 @@
 #include "../modules/PhysiCell_standard_modules.h" 
 
 #include <typeinfo>
+#include <memory>
 
 // using namespace BioFVM; 
 // using namespace PhysiCell;
@@ -79,63 +80,60 @@
 using namespace BioFVM; 
 namespace PhysiCell{
 
+struct Signal;
+struct Behavior;
+
+extern std::unordered_map<std::string, std::shared_ptr<Signal>> all_signals;
+extern std::unordered_map<std::string, std::shared_ptr<Behavior>> all_behaviors;
+
 class Hypothesis_Rule
 {
  private:
-    std::unordered_map<std::string,int> signals_map;  
- public:
-    std::string cell_type; 
-    Cell_Definition* pCell_Definition; 
+   Behavior *behavior;
 
-    std::string behavior; 
-    double base_value; 
-    double max_value; 
-    double min_value; 
+   std::string cell_type;
+   Cell_Definition *pCell_Definition;
 
-    std::vector< std::string > signals; 
-    std::vector<bool> responses; 
-    std::vector<double> half_maxes; 
-    std::vector<double> hill_powers; 
-    std::vector<bool> applies_to_dead_cells; 
+public:
+   double base_value;
+   double max_value;
+   double min_value;
+   
+   std::vector<Signal*> up_signals;
+   std::vector<double> up_half_maxes;
+   std::vector<double> up_hill_powers;
+   std::vector<bool> up_applies_to_dead_cells;
 
-    std::vector< std::string > up_signals; 
-    std::vector<double> up_half_maxes; 
-    std::vector<double> up_hill_powers; 
-    std::vector<bool> up_applies_to_dead_cells; 
+   std::vector<Signal*> down_signals;
+   std::vector<double> down_half_maxes;
+   std::vector<double> down_hill_powers;
+   std::vector<bool> down_applies_to_dead_cells;
 
-    std::vector< std::string > down_signals; 
-    std::vector<double> down_half_maxes; 
-    std::vector<double> down_hill_powers; 
-    std::vector<bool> down_applies_to_dead_cells; 
+   Hypothesis_Rule(); // done
 
-    Hypothesis_Rule(); // done 
+   void set_behavior(std::shared_ptr<Behavior> b) { behavior = b.get(); }
+   Behavior *get_behavior() const { return behavior; }
 
-    void sync_to_cell_definition( Cell_Definition* pCD ); // done 
-    void sync_to_cell_definition( std::string cell_name ); // done 
+   void sync_to_cell_definition(Cell_Definition *pCD);  // done
+   void sync_to_cell_definition(std::string cell_name); // done
 
-    void add_signal( std::string signal , double half_max , double hill_power , std::string response ); // done 
-    void add_signal( std::string signal , std::string response ); // done 
+   void add_signal(std::string signal, std::string response, double half_max, double hill_power, bool use_for_dead);
 
-    double evaluate( std::vector<double> signal_values , bool dead ); // done 
-    double evaluate( std::vector<double> signal_values ); // done 
-    double evaluate( Cell* pCell ); // done 
-    void apply( Cell* pCell ); // done 
+   double evaluate(std::vector<double> down_signal_values, std::vector<double> up_signal_values); // done
+   double evaluate(Cell *pCell);                                  // done
+   void apply(Cell *pCell);                                       // done
 
-    int find_signal( std::string name ); // done 
+   int find_signal(std::string name, bool is_up); // done
 
-    void set_half_max( std::string , double hm ); // done 
-    void set_hill_power( std::string , double hp ); // done 
-    void set_response( std::string , std::string response ); // done 
+   void reduced_display(std::ostream &os);  // done
+   void display(std::ostream &os);          // done
+   void detailed_display(std::ostream &os); // done
 
-    void reduced_display( std::ostream& os ); // done 
-    void display( std::ostream& os ); // done 
-    void detailed_display( std::ostream& os ); // done 
-
-    void English_display( std::ostream& os ); 
-    void English_display_HTML( std::ostream& os ); 
-    void English_detailed_display( std::ostream& os ); 
-    void English_detailed_display_HTML( std::ostream& os ); 
-}; 
+   void English_display(std::ostream &os);
+   void English_display_HTML(std::ostream &os);
+   void English_detailed_display(std::ostream &os);
+   void English_detailed_display_HTML(std::ostream &os);
+};
 
 class Hypothesis_Ruleset
 {
@@ -177,11 +175,8 @@ void intialize_hypothesis_rulesets( void );
 
 // adding and editing rules (easy eccess)
 
-void add_rule( std::string cell_type, std::string signal, std::string behavior , std::string response ); 
-void add_rule( std::string cell_type, std::string signal, std::string behavior , std::string response , bool use_for_dead ); 
+void add_rule(std::string cell_type, std::string signal, std::string behavior, std::string response, double half_max, double hill_power, bool use_for_dead);
 
-void set_hypothesis_parameters(std::string cell_type, std::string signal, std::string behavior , 
-   double half_max, double hill_power ); 
 void set_behavior_parameters( std::string cell_type, std::string behavior, 
    double min_value, double max_value ); 
 void set_behavior_parameters( std::string cell_type, std::string behavior, 
