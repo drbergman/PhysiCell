@@ -71,8 +71,6 @@ using namespace BioFVM;
 
 namespace PhysiCell{
 
-typedef void (Secretion::*Advancer)(Basic_Agent *pCell, Phenotype &phenotype, double dt);
-
 std::unordered_map<std::string, std::shared_ptr<Signal>> all_signals;
 std::unordered_map<std::string, std::shared_ptr<Behavior>> all_behaviors;
 
@@ -157,16 +155,16 @@ double other_dead_cell_contact(Cell *pCell)
 	return signal_value;
 }
 
-double contact_with_basement_membrane(Cell *pCell) { return (double)(pCell->state.contact_with_basement_membrane); }
+double contact_with_basement_membrane(Cell *pCell) { return static_cast<double>(pCell->state.contact_with_basement_membrane); }
 double cell_damage(Cell *pCell) { return pCell->phenotype.cell_integrity.damage; };
 double damage_delivered(Cell *pCell) { return pCell->phenotype.cell_interactions.total_damage_delivered; };
 double is_attacking(Cell *pCell) { return pCell->phenotype.cell_interactions.pAttackTarget ? 1.0 : 0.0; }
-double is_dead(Cell *pCell) { return (double)pCell->phenotype.death.dead; }
+double is_dead(Cell *pCell) { return static_cast<double>(pCell->phenotype.death.dead); }
 double total_attack_time(Cell *pCell) { return pCell->state.total_attack_time; }
 double get_current_time(Cell *) {return PhysiCell_globals.current_time; }
 double cell_custom_signal(Cell *pCell, int i) { return pCell->custom_data.variables[i].value; };
-double is_apoptotic(Cell *pCell) { return (double)(pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::apoptotic); }
-double is_necrotic(Cell *pCell) { return (double)(pCell->is_necrotic()); }
+double is_apoptotic(Cell *pCell) { return static_cast<double>(pCell->phenotype.cycle.current_phase().code == PhysiCell_constants::apoptotic); }
+double is_necrotic(Cell *pCell) { return static_cast<double>(pCell->is_necrotic()); }
 
 double &cell_secretion_rate(Cell *pCell, int i) { return pCell->phenotype.secretion.secretion_rates[i]; }
 double &cell_secretion_target(Cell *pCell, int i) { return pCell->phenotype.secretion.saturation_densities[i]; }
@@ -179,9 +177,10 @@ double &phase_exit_rate(Cell *pCell, int i)
 	auto &phases = pCell->phenotype.cycle.model().phases;
 	if (i >= phases.size())
 	{
-		std::cerr << "ERROR: Attempting to access cycle phase " << i << " exit rate..." << std::endl
+		std::cerr << "Warning: Attempting to access cycle phase " << i << " exit rate..." << std::endl
 				  << "...but cells of type " << pCell->type_name << " only have 0-"
-				  << phases.size() - 1 << " phases." << std::endl;
+				  << phases.size() - 1 << " phases." << std::endl
+				  << "Returning dummy value of 0.0." << std::endl;
 		static double dummy = 0.0;
 		return dummy;
 		// exit(-1);
@@ -247,10 +246,10 @@ double &phase_exit_rate_base(Cell_Definition *pCD, int i)
 	{
 		std::cerr << "ERROR: Attempting to access cycle phase " << i << " exit rate..." << std::endl
 				  << "...but cells of type " << pCD->name << " only have 0-"
-				  << phases.size() - 1 << " phases." << std::endl;
+				  << phases.size() - 1 << " phases." << std::endl
+				  << "Returning dummy value of 0.0." << std::endl;
 		static double dummy = 0.0;
 		return dummy;
-		exit(-1);
 	}
 	return pCD->phenotype.cycle.data.exit_rate(i);
 }
@@ -321,7 +320,7 @@ void setup_signal_behavior_dictionaries( void )
 	// construct signals 
 	
 	std::vector<std::string> synonyms;
-	SignalValue signal_value;
+	Signal::SignalValue signal_value;
 	BehaviorDouble::BehaviorValue behavior_double_value;
 	BehaviorDouble::BehaviorValueBase behavior_double_base_value;
 
@@ -699,10 +698,10 @@ void setup_signal_behavior_dictionaries( void )
 	return;
 }
 
-void add_signal( const std::string& name, SignalValue value )
+void add_signal( const std::string& name, Signal::SignalValue value )
 { return add_signal(std::vector<std::string>{std::move(name)}, std::move(value)); }
 
-void add_signal(const std::vector<std::string> &synonyms, SignalValue value)
+void add_signal(const std::vector<std::string> &synonyms, Signal::SignalValue value)
 {
 	// allocate the callable once
 	auto signal_ptr = std::make_shared<Signal>(synonyms[0], std::move(value));

@@ -83,14 +83,16 @@ namespace PhysiCell{
 // create the signal and behavior dictionaries 
 void setup_signal_behavior_dictionaries( void );
 
-using SignalValue = std::function<double(Cell *)>;
 struct Signal
 {
-	private:
+public:
+	using SignalValue = std::function<double(Cell *)>;
+
+private:
 	std::string name; // primary synonym
 	SignalValue value;
 	
-	public:
+public:
 	std::string get_name() const { return name; }
 	Signal() : name("no name"), value(nullptr) {}
 	Signal(std::string my_name, SignalValue my_value) : name(std::move(my_name)), value(std::move(my_value)) {}
@@ -283,8 +285,8 @@ double &cell_attack_duration_base(Cell_Definition *);
 double &cell_damage_rate_base(Cell_Definition *);
 double &cell_custom_behavior_base(Cell_Definition *, int);
 
-void add_signal(const std::string &name, SignalValue value);
-void add_signal(const std::vector<std::string> &synonyms, SignalValue value);
+void add_signal(const std::string &name, Signal::SignalValue value);
+void add_signal(const std::vector<std::string> &synonyms, Signal::SignalValue value);
 
 void add_double_behavior(const std::string &name, BehaviorDouble::BehaviorValue value, BehaviorDouble::BehaviorValueBase base_value);
 void add_double_behavior(const std::vector<std::string> &synonyms, BehaviorDouble::BehaviorValue value, BehaviorDouble::BehaviorValueBase base_value);
