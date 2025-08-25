@@ -300,14 +300,14 @@ double Hypothesis_Rule::evaluate( Cell* pCell )
 	for (size_t i = 0; i < down_signals.size(); i++)
 	{
 		if(dead && !down_applies_to_dead_cells[i]) { continue; }
-		down_signal_values.push_back(down_signals[i]->get_value(pCell));
+		down_signal_values[i] = down_signals[i]->get_value(pCell);
 		apply = true;
 	}
 	std::vector<double> up_signal_values( up_signals.size() , 0.0 ); 
 	for (size_t i = 0; i < up_signals.size(); i++)
 	{
 		if(dead && !up_applies_to_dead_cells[i]) { continue; }
-		up_signal_values.push_back(up_signals[i]->get_value(pCell));
+		up_signal_values[i] = up_signals[i]->get_value(pCell);
 		apply = true;
 	}
 
