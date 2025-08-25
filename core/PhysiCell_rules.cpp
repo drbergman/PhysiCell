@@ -129,7 +129,7 @@ void Hypothesis_Rule::detailed_display( std::ostream& os )
 	os << "--------------------------------------------------------" << std::endl; 
 	for( int j=0; j < down_signals.size(); j++ )
 	{
-		os << "\t" << down_signals[j] << " decreases " << behavior_name
+		os << "\t" << down_signals[j]->get_name() << " decreases " << behavior_name
 			<< " with half-max " << down_half_maxes[j] << " and Hill power " << down_hill_powers[j] << "."; 
 		if( down_applies_to_dead_cells[j] == true )
 		{ os << " Rule applies to dead cells."; }
@@ -137,7 +137,7 @@ void Hypothesis_Rule::detailed_display( std::ostream& os )
 	}
 	for( int j=0; j < up_signals.size(); j++ )
 	{
-		os << "\t" << up_signals[j] << " increases " << behavior_name
+		os << "\t" << up_signals[j]->get_name() << " increases " << behavior_name
 			<< " with half-max " << up_half_maxes[j] << " and Hill power " << up_hill_powers[j] << "."; 
 		if( up_applies_to_dead_cells[j] == true )
 		{ os << " Rule applies to dead cells."; }
@@ -148,10 +148,11 @@ void Hypothesis_Rule::detailed_display( std::ostream& os )
 
 void Hypothesis_Rule::English_detailed_display( std::ostream& os )
 {
+	std::string behavior_name = behavior->get_name();
 	for( int j=0 ; j < down_signals.size(); j++ )
 	{
-		os << down_signals[j] << " decreases ";
-		os << behavior->get_name() << " from " << base_value << " towards " ;
+		os << down_signals[j]->get_name() << " decreases ";
+		os << behavior_name << " from " << base_value << " towards " ;
 		os << min_value;
 		os << " with a Hill response, with half-max " << down_half_maxes[j] ; 
 		os << " and Hill power " << down_hill_powers[j] << ".";
@@ -161,8 +162,8 @@ void Hypothesis_Rule::English_detailed_display( std::ostream& os )
 	}
 	for( int j=0 ; j < up_signals.size(); j++ )
 	{
-		os << up_signals[j] << " increases ";
-		os << behavior->get_name() << " from " << base_value << " towards " ;
+		os << up_signals[j]->get_name() << " increases ";
+		os << behavior_name << " from " << base_value << " towards " ;
 		os << max_value;
 		os << " with a Hill response, with half-max " << up_half_maxes[j] ; 
 		os << " and Hill power " << up_hill_powers[j] << ".";
@@ -174,10 +175,11 @@ void Hypothesis_Rule::English_detailed_display( std::ostream& os )
 
 void Hypothesis_Rule::English_detailed_display_HTML( std::ostream& os )
 {
+	std::string behavior_name = behavior->get_name();
 	for( int j=0 ; j < down_signals.size(); j++ )
 	{
-		os << "<li>" << down_signals[j] << " decreases ";
-		os << behavior->get_name() << " from " << base_value << " towards " ;
+		os << "<li>" << down_signals[j]->get_name() << " decreases ";
+		os << behavior_name << " from " << base_value << " towards " ;
 		os << min_value;
 		os << " with a Hill response, with half-max " << down_half_maxes[j] ;
 		os << " and Hill power " << down_hill_powers[j] << ".";
@@ -187,8 +189,8 @@ void Hypothesis_Rule::English_detailed_display_HTML( std::ostream& os )
 	}
 	for( int j=0 ; j < up_signals.size(); j++ )
 	{
-		os << "<li>" << up_signals[j] << " increases ";
-		os << behavior->get_name() << " from " << base_value << " towards " ;
+		os << "<li>" << up_signals[j]->get_name() << " increases ";
+		os << behavior_name << " from " << base_value << " towards " ;
 		os << max_value;
 		os << " with a Hill response, with half-max " << up_half_maxes[j] ;
 		os << " and Hill power " << up_hill_powers[j] << ".";
@@ -200,29 +202,31 @@ void Hypothesis_Rule::English_detailed_display_HTML( std::ostream& os )
 
 void Hypothesis_Rule::English_display( std::ostream& os )
 {
+	std::string behavior_name = behavior->get_name();
 	for( int j=0 ; j < down_signals.size(); j++ )
 	{
-		os << down_signals[j] << " decreases "; 
-		os << behavior->get_name() << std::endl; 
+		os << down_signals[j]->get_name() << " decreases "; 
+		os << behavior_name << std::endl; 
 	}
 	for( int j=0 ; j < up_signals.size(); j++ )
 	{
-		os << up_signals[j] << " increases "; 
-		os << behavior->get_name() << std::endl; 
+		os << up_signals[j]->get_name() << " increases "; 
+		os << behavior_name << std::endl; 
 	}
 }
 
 void Hypothesis_Rule::English_display_HTML( std::ostream& os )
 {
+	std::string behavior_name = behavior->get_name();
 	for( int j=0 ; j < down_signals.size(); j++ )
 	{
-		os << "<li>" << down_signals[j] << " decreases "; 
-		os << behavior->get_name() << "</li>" << std::endl; 
+		os << "<li>" << down_signals[j]->get_name() << " decreases "; 
+		os << behavior_name << "</li>" << std::endl; 
 	}
 	for( int j=0 ; j < up_signals.size(); j++ )
 	{
-		os << "<li>" << up_signals[j] << " increases "; 
-		os << behavior->get_name() << "</li>" << std::endl; 
+		os << "<li>" << up_signals[j]->get_name() << " increases "; 
+		os << behavior_name << "</li>" << std::endl; 
 	}
 }
 
