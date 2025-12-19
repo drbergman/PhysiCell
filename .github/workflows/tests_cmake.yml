@@ -36,7 +36,7 @@ jobs:
           {"use_physiboss": false, cwd: "build/sample_projects/episode", name: "PhysiCell Episode", binary: "episode", max_time: 120, config: "config/PhysiCell_settings.xml", validation_output_folder: ""},
         ]
         platform: [
-          {"os": "windows-latest", "c_compiler": "cl", "cpp_compiler": "cl", "build_physiboss": "OFF"},
+          {"os": "windows-latest", "c_compiler": "cl", "cpp_compiler": "cl", "build_physiboss": "ON"},
           {"os": "ubuntu-latest", "c_compiler": "gcc", "cpp_compiler": "g++", "build_physiboss": "ON"},
           {"os": "ubuntu-latest", "c_compiler": "clang", "cpp_compiler": "clang++", "build_physiboss": "ON"},
           {"os": "macos-latest", "c_compiler": "gcc-15", "cpp_compiler": "g++-15", "build_physiboss": "ON"},
