@@ -1,4 +1,4 @@
-set(MABOSS_VERSION v2.5.6)
+set(MABOSS_VERSION v2.6.5.3)
 
 function(create_physiboss_target MAX_NODES)
   set(TARGET_NAME PhysiBoSS_${MAX_NODES}n)
