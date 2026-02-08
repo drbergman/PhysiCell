@@ -17,12 +17,8 @@ OSFLAG 	:=
 ifeq ($(OS),Windows_NT)
 	OSFLAG += -D WIN32
 	OMP_LIB := 
-#	LIBRR_DIR := C:\Users\heiland\libroadrunner\roadrunner-win64-vs14-cp35m
-#	LIBRR_LIBS := C:\Users\heiland\libroadrunner\roadrunner-win64-vs14-cp35m/bin
-#	LIBRR_CFLAGS := -I${LIBRR_DIR}/include/rr/C
-#	CFLAGS := -march=$(ARCH) -fomit-frame-pointer -fopenmp -m64 -std=c++11 -D ADDON_ROADRUNNER 
 	LIBRR_DIR := .\addons\libRoadrunner\roadrunner
-	LIBRR_CFLAGS := -I${LIBRR_DIR}\include\rr\C
+	LIBRR_CFLAGS := -I${LIBRR_DIR}\include\rr
 	LIBRR_LIBS := ${LIBRR_DIR}\lib
 	ifeq ($(PROCESSOR_ARCHITECTURE),AMD64)
 		OSFLAG += -D AMD64
@@ -37,13 +33,13 @@ else
 		OMP_LIB :=
 #		LIBRR_DIR := $(shell pwd)/intracellular_libs/roadrunner
 		LIBRR_DIR := ./addons/libRoadrunner/roadrunner
-		LIBRR_CFLAGS := -I${LIBRR_DIR}/include/rr/C
+		LIBRR_CFLAGS := -I${LIBRR_DIR}/include/rr
 		LIBRR_LIBS := ${LIBRR_DIR}/lib
 	endif
 	ifeq ($(UNAME_S),Darwin)
 		OSFLAG += -D OSX
 		LIBRR_DIR := ./addons/libRoadrunner/roadrunner
-		LIBRR_CFLAGS := -I${LIBRR_DIR}/include/rr/C
+		LIBRR_CFLAGS := -I${LIBRR_DIR}/include/rr
 		LIBRR_LIBS := ${LIBRR_DIR}/lib
 	endif
 
@@ -52,7 +48,7 @@ else
 #	ifeq ($(UNAME_P),x86_64)
 #		OSFLAG += -D AMD64
 #		LIBRR_DIR := $(shell pwd)/intracellular_libs/roadrunner
-#		LIBRR_CFLAGS := -I${LIBRR_DIR}/include/rr/C
+#		LIBRR_CFLAGS := -I${LIBRR_DIR}/include/rr
 #		# CFLAGS := -march=$(ARCH) -fomit-frame-pointer -fopenmp -m64 -std=c++11 -D LIBROADRUNNER 
 #		CFLAGS := -march=$(ARCH) -fomit-frame-pointer -fopenmp -m64 -std=c++11 -D ADDON_ROADRUNNER 
 #	endif
