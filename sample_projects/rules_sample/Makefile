@@ -245,7 +245,7 @@ gif:
 	magick -density $(MAGICK_DENSITY) $(OUTPUT)/s*.svg -resize $(MAGICK_RESIZE) $(OUTPUT)/out.gif 
 	 
 movie:
-	ffmpeg -r $(FRAMERATE) -f image2 -i $(OUTPUT)/snapshot%08d.jpg -vcodec libx264 -pix_fmt yuv420p -strict -2 -tune animation -crf 15 -acodec none $(OUTPUT)/out.mp4
+	ffmpeg -r $(FRAMERATE) -f image2 -i $(OUTPUT)/snapshot%08d.jpg -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" -vcodec libx264 -pix_fmt yuv420p -strict -2 -tune animation -crf 15 -acodec none $(OUTPUT)/out.mp4
 	
 # upgrade rules 
 
