@@ -11,8 +11,8 @@
 #include "../../../core/PhysiCell_cell.h"
 #include "../../../modules/PhysiCell_pugixml.h"
 
-#include "../roadrunner/include/rr/C/rrc_api.h"
-#include "../roadrunner/include/rr/C/rrc_types.h"
+#include "rrc_api.h"
+#include "rrc_types.h"
 #include <functional>
 #include <algorithm>
 

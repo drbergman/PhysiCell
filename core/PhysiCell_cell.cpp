@@ -622,16 +622,26 @@ Cell* Cell::divide( )
 	normalize( &rand_vec ); 
 	rand_vec *= radius; // multiply direction times the displacement 
 	*/
-	
-	// direction to displace daughter cell
-	std::vector<double> rand_vec = cell_division_orientation(); 
-	// make it orthogonal to the cell's orientation
-	rand_vec = rand_vec- phenotype.geometry.polarity*(rand_vec[0]*state.orientation[0]+ 
-		rand_vec[1]*state.orientation[1]+rand_vec[2]*state.orientation[2])*state.orientation;	
-	// make sure it is a unit vector
-	normalize( &rand_vec );
+
+	std::vector<double> rand_vec;
+	if (this->functions.cell_division_direction_function)
+	{
+		rand_vec = this->functions.cell_division_direction_function(this);
+		if (default_microenvironment_options.simulate_2D == true) // ensure vec in XY plane
+		{
+			rand_vec[2] = 0.0;
+		}
+	}
+	else
+	{
+		rand_vec = cell_division_orientation();
+		rand_vec = rand_vec - phenotype.geometry.polarity * (rand_vec[0] * state.orientation[0] + rand_vec[1] * state.orientation[1] + rand_vec[2] * state.orientation[2]) * state.orientation;
+	}
+	normalize(&rand_vec); // ensure normalized
 	// push the cells far enough apart to avoid strong overlap, but still maintain some overlap
 	rand_vec *= 0.5 * phenotype.geometry.radius;
+
+	rand_vec *= phenotype.geometry.radius;
 
 	child->assign_position(position[0] + rand_vec[0],
 						   position[1] + rand_vec[1],
@@ -887,7 +897,7 @@ void Cell::update_position( double dt )
 	if( default_microenvironment_options.simulate_2D == true )
 	{ velocity[2] = 0.0; }
 	
-	std::vector<double> old_position(position); 
+	// std::vector<double> old_position(position); 
 	axpy( &position , d1 , velocity );  
 	axpy( &position , d2 , previous_velocity );  
 	// overwrite previous_velocity for future use 
@@ -1381,6 +1391,7 @@ void Cell::ingest_cell( Cell* pCell_to_eat )
 		pCell_to_eat->functions.update_phenotype = NULL; 
 		pCell_to_eat->functions.contact_function = NULL; 
 		pCell_to_eat->functions.cell_division_function = NULL; 
+		pCell_to_eat->functions.cell_division_direction_function = NULL; 
 		
 		// should set volume fuction to NULL too! 
 		pCell_to_eat->functions.volume_update_function = NULL; 
@@ -1632,6 +1643,7 @@ void Cell::fuse_cell( Cell* pCell_to_fuse )
 		pCell_to_fuse->functions.update_phenotype = NULL; 
 		pCell_to_fuse->functions.contact_function = NULL; 
 		pCell_to_fuse->functions.cell_division_function = NULL; 
+		pCell_to_fuse->functions.cell_division_direction_function = NULL; 
 		pCell_to_fuse->functions.volume_update_function = NULL; 
 
 		// remove all adhesions 
@@ -1672,6 +1684,7 @@ void Cell::lyse_cell( void )
 	functions.update_phenotype = NULL; 
 	functions.contact_function = NULL; 
 	functions.cell_division_function = NULL; 
+	functions.cell_division_direction_function = NULL; 
 	
 	// remove all adhesions 
 	
@@ -1769,6 +1782,13 @@ void display_ptr_as_bool( void (*ptr)(Cell*,Cell*), std::ostream& os )
 	os << "false"; 
 	return;
 }
+void display_ptr_as_bool( std::vector<double> (*ptr)(Cell*), std::ostream& os )
+{
+	if( ptr )
+	{ os << "true"; return; }
+	os << "false"; 
+	return;
+}
 
 void display_cell_definitions( std::ostream& os )
 {
@@ -1854,6 +1874,8 @@ void display_cell_definitions( std::ostream& os )
 		os << "\t\t contact function: "; display_ptr_as_bool( pCF->contact_function , std::cout ); 
 		os << std::endl; 
 		os << "\t\t cell division function: "; display_ptr_as_bool( pCF->cell_division_function , std::cout ); 
+		os << std::endl; 
+		os << "\t\t cell division direction function: "; display_ptr_as_bool( pCF->cell_division_direction_function , std::cout ); 
 		os << std::endl; 
 		
 		// summarize motility 
