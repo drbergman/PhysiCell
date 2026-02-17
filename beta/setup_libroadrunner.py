@@ -62,12 +62,11 @@ else:
         url = "https://github.com/PhysiCell-Tools/intracellular_libs/raw/main/ode/roadrunner_win_x86_64.zip"
     elif os_type.lower().startswith("linux"):
         reminder_dynamic_link_path_linux()
-#        rr_file = "roadrunner_ubuntu_24.zip"
-#        url = "https://github.com/PhysiCell-Tools/intracellular_libs/raw/main/ode/roadrunner_ubuntu_24.zip"
+        # the following "manylinux" seems to work on more flavors/releases of Linux than the roadrunner_ubuntu_24.zip which still exists on github.com/PhysiCell-Tools/intracellular_libs
         rr_file = "roadrunner_manylinux.zip"
         url = "https://github.com/PhysiCell-Tools/intracellular_libs/raw/main/ode/roadrunner_manylinux.zip"
     else:
-        print("Your operating system seems to be unsupported. Please submit a ticket at https://sourceforge.net/p/physicell/tickets/ ")
+        print("Your operating system seems to be unsupported. Please create an issue on the PhysiCell GitHub repo or reach out on our Slack channel.")
         sys.exit(1)
 
     print("url=",url)
@@ -135,20 +134,8 @@ else:
     try:
         with zipfile.ZipFile(rr_file) as zf:
             zf.extractall('.')   # should create "roadrunner" directory
-        # rr_dir = rr_file[:-4]
-        # print(f'renaming dir: {rr_dir} to {new_dir_name}')
-        # os.rename(rr_dir, new_dir_name)
     except:
         print('error unzipping the file')
         exit(1)
 
     print('Done.\n')
-
-    # # LIBRR_DIR := /Users/heiland/libroadrunner/roadrunner-osx-10.9-cp36m
-    # print("Replace the following variables in your PhysiCell Makefile with these:\n")
-    # #print("LIBRR_DIR := /Users/heiland/libroadrunner/roadrunner-osx-10.9-cp36m")
-    # print("LIBRR_DIR := " + rrlib_dir)
-    # if os_type == 'Windows':
-    #     print("LIBRR_LIBS := " + rrlib_dir + "/bin\n")
-    # else:
-    #     print("LIBRR_LIBS := " + rrlib_dir + "/lib\n")
