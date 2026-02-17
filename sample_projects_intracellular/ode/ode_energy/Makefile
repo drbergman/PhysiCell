@@ -34,7 +34,7 @@ else
 #		LIBRR_DIR := $(shell pwd)/intracellular_libs/roadrunner
 		LIBRR_DIR := ./addons/libRoadrunner/roadrunner
 		LIBRR_CFLAGS := -I${LIBRR_DIR}/include/rr
-		LIBRR_LIBS := ${LIBRR_DIR}/lib
+		LIBRR_LIBS := ${LIBRR_DIR}/lib64
 	endif
 	ifeq ($(UNAME_S),Darwin)
 		OSFLAG += -D OSX

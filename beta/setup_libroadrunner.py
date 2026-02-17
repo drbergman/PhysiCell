@@ -21,7 +21,7 @@ def reminder_dynamic_link_path_macos():
 def reminder_dynamic_link_path_linux():
     print("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
     print("*    NOTE: if you have not yet done this, you need to specify where the shared libs can be found, e.g., via bash shell:")
-    print('export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./addons/libRoadrunner/roadrunner/lib')
+    print('export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./addons/libRoadrunner/roadrunner/lib64')
 
     print("\n*      To make this permanent, add this line to the bottom of the respective shell startup file, e.g., .bashrc, .bash_profile, or .zshenv in your home directory.")
     print("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
@@ -62,8 +62,10 @@ else:
         url = "https://github.com/PhysiCell-Tools/intracellular_libs/raw/main/ode/roadrunner_win_x86_64.zip"
     elif os_type.lower().startswith("linux"):
         reminder_dynamic_link_path_linux()
-        rr_file = "roadrunner_ubuntu_24.zip"
-        url = "https://github.com/PhysiCell-Tools/intracellular_libs/raw/main/ode/roadrunner_ubuntu_24.zip"
+#        rr_file = "roadrunner_ubuntu_24.zip"
+#        url = "https://github.com/PhysiCell-Tools/intracellular_libs/raw/main/ode/roadrunner_ubuntu_24.zip"
+        rr_file = "roadrunner_manylinux.zip"
+        url = "https://github.com/PhysiCell-Tools/intracellular_libs/raw/main/ode/roadrunner_manylinux.zip"
     else:
         print("Your operating system seems to be unsupported. Please submit a ticket at https://sourceforge.net/p/physicell/tickets/ ")
         sys.exit(1)
