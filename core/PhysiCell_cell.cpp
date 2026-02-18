@@ -610,8 +610,8 @@ Cell* Cell::divide( )
 	*/
 
 	// direction to displace daughter cell
-  std::vector<double> rand_vec;
-  if( this->functions.cell_division_direction_function )
+	std::vector<double> rand_vec; 
+	if( this->functions.cell_division_direction_function )
 	{ 
 		rand_vec = this->functions.cell_division_direction_function( this ); 
         if( default_microenvironment_options.simulate_2D == true )  // ensure vec in XY plane
@@ -619,8 +619,8 @@ Cell* Cell::divide( )
 	}
 	else
 	{
-		rand_vec = cell_division_orientation();
-    // make it orthogonal to the cell's orientation
+		rand_vec = cell_division_orientation(); 
+		// make it orthogonal to the cell's orientation
 		rand_vec = rand_vec- phenotype.geometry.polarity*(rand_vec[0]*state.orientation[0]+ 
 			rand_vec[1]*state.orientation[1]+rand_vec[2]*state.orientation[2])*state.orientation;	
 	}
