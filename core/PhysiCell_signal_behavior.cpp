@@ -1065,7 +1065,7 @@ double get_single_signal( Cell* pCell, int index )
 	// physical contact with cells (of each type) 
 	// individual contact signals are a bit costly 
 	static int contact_ind = find_signal_index( "contact with " + cell_definitions_by_type[0]->name ); 
-	if( contact_ind <= index && index < contact_ind + n+2 )
+	if( contact_ind <= index && index < contact_ind + n+5 )
 	{
 		std::vector<int> counts( n , 0 ); 
 		// process all neighbors 
