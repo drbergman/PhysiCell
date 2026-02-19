@@ -138,4 +138,21 @@ else:
         print('error unzipping the file')
         exit(1)
 
-    print('Done.\n')
+
+    # Hack to maintain backwards compatibility. Originally our header path was .../include/rr/C, 
+    # but newer releases of the libroadrunner C API seems to have dropped the "/C" directory and put everything in "/rr"
+    dst =  "roadrunner/include/rr/C"
+    try:
+        os.remove(dst)
+    except FileNotFoundError:
+        print(f"File '{dst}' does not exist.")
+
+    try:
+        src =  "."
+        os.symlink(src, dst)
+        print(f"Symbolic link '{dst}' created, pointing to '{src}'")
+    except FileExistsError:
+        print(f"Symlink '{dst}' already exists")
+    except OSError as e:
+        print(f"Error creating symlink: {e}")
+        print('Done.\n')
