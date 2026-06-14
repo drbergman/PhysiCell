@@ -499,6 +499,13 @@ void parse_xml_behavior_rules(const std::string filename)
 		while (behavior_node)
 		{
 			std::string behavior = behavior_node.attribute("name").value();
+			if (find_behavior_index(behavior) < 0)
+			{
+				std::cerr << "XML Rules ERROR: The behavior \"" << behavior << "\" (in the ruleset for " << cell_type << ")" << std::endl
+						  << "\tis not a known behavior in this simulation." << std::endl
+						  << "\tCheck the spelling against the behavior dictionary." << std::endl;
+				exit(-1);
+			}
 			if (std::find(behaviors_ruled.begin(), behaviors_ruled.end(), behavior) != behaviors_ruled.end())
 			{
 				std::cerr << "XML Rules ERROR: The behavior " << behavior << " is being set again for " << cell_type << "." << std::endl
@@ -688,6 +695,17 @@ std::unique_ptr<AbstractSignal> parse_aggregator_signal(pugi::xml_node aggregato
 std::unique_ptr<AbstractSignal> parse_elementary_signal(pugi::xml_node elementary_node)
 {
 	std::string name = elementary_node.attribute("name").value();
+	if (find_signal_index(name) < 0)
+	{
+		std::cerr << "XML Rules ERROR: The signal \"" << name << "\" is not a known signal in this simulation." << std::endl;
+		pugi::xml_node behavior_ancestor = elementary_node;
+		while (behavior_ancestor && std::string(behavior_ancestor.name()) != "behavior")
+		{ behavior_ancestor = behavior_ancestor.parent(); }
+		std::cerr << "\t(used in the rule for behavior \"" << behavior_ancestor.attribute("name").value()
+				  << "\" in the ruleset for " << behavior_ancestor.parent().attribute("name").value() << ")" << std::endl;
+		std::cerr << "\tCheck the spelling against the signal dictionary." << std::endl;
+		exit(-1);
+	}
 	std::string type = "partial_hill"; // default to partial hill
 	if (elementary_node.attribute("type"))
 	{ type = elementary_node.attribute("type").value(); }
