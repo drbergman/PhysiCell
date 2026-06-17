@@ -105,13 +105,23 @@ bool load_PhysiCell_config_file( void )
 	if (!read_PhysiCell_config_file( ))
 	{ return false; }
 
-	PhysiCell_settings.read_from_pugixml(); 
+	PhysiCell_settings.read_from_pugixml();
+
+	// Finalize the output folder before any folder-dependent side effects:
+	// the command-line flag overrides the <save><folder> value from the config.
 	if (argument_parser.path_to_output_folder != "") {
 		PhysiCell_settings.folder = argument_parser.path_to_output_folder; // overwrite output folder if supplied by flag
 	}
-	
-	// now read the microenvironment (optional) 
-	
+
+	// the folder is now final, so create it before writing anything into it
+	create_output_directory( PhysiCell_settings.folder );
+
+	// seed the RNG now that the output folder is known and created, so
+	// random_seed.txt is written into the correct, existing folder
+	setup_random_seed_from_config();
+
+	// now read the microenvironment (optional)
+
 	if( !setup_microenvironment_from_XML( physicell_config_root ) )
 	{
 		std::cout << std::endl
@@ -119,16 +129,49 @@ bool load_PhysiCell_config_file( void )
 			<< "         Either manually setup microenvironment in setup_microenvironment() (custom.cpp)" << std::endl
 			<< "         or consult documentation to add microenvironment_setup to your configuration file." << std::endl << std::endl;
 	}
-	
+
 	// now read user parameters
 	parameters.read_from_pugixml( physicell_config_root );
-
-	create_output_directory( PhysiCell_settings.folder );
 
 	std::string default_basename = "PhysiCell_settings.xml";
 	copy_file_to_output(argument_parser.path_to_config_file, default_basename); // copy the settings file to the output folder
 
 	return true;
+}
+
+void setup_random_seed_from_config( void )
+{
+	pugi::xml_node node_options = xml_find_node( physicell_config_root , "options" );
+	if (!node_options)
+	{
+		// no <options> block: default to system clock
+		std::cout << "Using system clock for random seed" << std::endl;
+		SeedRandom();
+		return;
+	}
+
+	pugi::xml_node random_seed_node = xml_find_node(node_options, "random_seed");
+	std::string random_seed = ""; // default is system clock, even if this element is not present
+	if (random_seed_node)
+	{ random_seed = xml_get_my_string_value(random_seed_node); }
+
+	if (random_seed == "" || random_seed == "random" || random_seed == "system_clock")
+	{
+		std::cout << "Using system clock for random seed" << std::endl;
+		SeedRandom();
+	}
+	else
+	{
+		unsigned int seed;
+		try
+		{ seed = std::stoul(random_seed); }
+		catch(const std::exception& e)
+		{
+			std::cout << "ERROR: " << random_seed << " is not a valid random seed. It must be an integer. Fix this within <options>." << std::endl;
+			exit(-1);
+		}
+		SeedRandom(seed);
+	}
 }
 
 PhysiCell_Settings::PhysiCell_Settings()
@@ -291,28 +334,8 @@ void PhysiCell_Settings::read_from_pugixml( void )
 			PhysiCell_settings.disable_automated_spring_adhesions = true;
 		}
 
-		pugi::xml_node random_seed_node = xml_find_node(node_options, "random_seed");
-		std::string random_seed = ""; // default is system clock, even if this element is not present
-		if (random_seed_node)
-		{ random_seed = xml_get_my_string_value(random_seed_node); }
-
-		if (random_seed == "" || random_seed == "random" || random_seed == "system_clock")
-		{
-			std::cout << "Using system clock for random seed" << std::endl;
-			SeedRandom();
-		}
-		else
-		{
-			unsigned int seed;
-			try
-			{ seed = std::stoul(random_seed); }
-			catch(const std::exception& e)
-			{
-				std::cout << "ERROR: " << random_seed << " is not a valid random seed. It must be an integer. Fix this within <options>." << std::endl;
-				exit(-1);
-			}
-			SeedRandom(seed);
-		}
+		// NOTE: the random seed is read in setup_random_seed_from_config(), which runs
+		// after the output folder is finalized so random_seed.txt is written there.
 
 		// other options can go here, eventually
 	}
@@ -346,11 +369,9 @@ void PhysiCell_Settings::read_from_pugixml( void )
 	default_microenvironment_options.dy = dy; 
 	default_microenvironment_options.dz = dz; 		
 
-	node = node.parent(); 
+	node = node.parent();
 
-	// random seed options 
-	
-	return; 
+	return;
 }
 
 bool create_directories(const std::string &path)

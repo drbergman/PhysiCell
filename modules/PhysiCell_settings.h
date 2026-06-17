@@ -93,6 +93,7 @@ extern pugi::xml_node physicell_config_root;
 
 bool read_PhysiCell_config_file( void );
 bool load_PhysiCell_config_file( void );
+void setup_random_seed_from_config( void );
 
 class PhysiCell_Settings
 {

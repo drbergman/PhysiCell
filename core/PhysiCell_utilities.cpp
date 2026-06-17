@@ -94,9 +94,18 @@ void setup_rng( void )
 	std::cout << "Setting up RNG with seed " << physicell_random_seed << std::endl;
 
 	// save the seed to random_seed.txt
-	std::ofstream out(PhysiCell_settings.folder + "/random_seed.txt");
-	out << physicell_random_seed << std::endl;
-	out.close();
+	std::string seed_filename = PhysiCell_settings.folder + "/random_seed.txt";
+	std::ofstream out(seed_filename);
+	if (!out)
+	{
+		std::cout << "WARNING: Could not write " << seed_filename << "." << std::endl
+ 				  << "\tCheck that the output folder exists and is writable. The random seed will not be recorded." << std::endl;
+	}
+	else
+	{
+		out << physicell_random_seed << std::endl;
+		out.close();
+	}
 
 	physicell_PRNG_generator.seed( physicell_random_seed );
 
