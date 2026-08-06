@@ -2196,7 +2196,10 @@ int recreate_sim_state(std::string filename, Microenvironment& M,
             {
                 if (cell->ID == pair.second)
                 {
+                    // restore both halves, or removing the target later will
+                    // not clear this pointer
                     (pair.first)->phenotype.cell_interactions.pAttackTarget = cell;
+                    cell->add_attacker( pair.first );
                     if (debug_print)
                     { std::cout << "    cell ID=" << (pair.first)->ID << " attacking  cell ID=" << cell->ID << std::endl; }
                     break;

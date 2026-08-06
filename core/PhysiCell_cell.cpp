@@ -238,12 +238,15 @@ Cell_State::Cell_State()
 	neighbors.resize(0); 
 	spring_attachments.resize(0); 
 
+	attacked_by.resize(0);
+
 	orientation.resize( 3 , 0.0 ); 
 	
 	simple_pressure = 0.0; 
 	
 	attached_cells.clear(); 
 	spring_attachments.clear(); 
+	attacked_by.clear();
 	
 	number_of_nuclei = 1; 
 	
@@ -457,6 +460,8 @@ Cell::~Cell()
 		{
 			// release any attached cells (as of 1.7.2 release)
 			this->remove_all_attached_cells(); 
+			this->remove_all_attackers();
+			this->remove_self_from_attacked();
 			// 1.11.0
 			this->remove_all_spring_attachments(); 
 
@@ -551,6 +556,10 @@ Cell* Cell::divide( )
 	
 	// make sure ot remove adhesions 
 	remove_all_attached_cells(); 
+	// the springs below include the one holding an attack together, so end the
+	// attack rather than leave it spring-less
+	remove_all_attackers();
+	remove_self_from_attacked();
 	remove_all_spring_attachments(); 
 
 	// version 1.10.3: 
@@ -651,6 +660,7 @@ Cell* Cell::divide( )
 	set_total_volume(phenotype.volume.total);
 	
 	// child->set_phenotype( phenotype ); 
+	// pAttackTarget was cleared above, so the daughter inherits a NULL one
 	child->phenotype = phenotype; 
 
     if (child->phenotype.intracellular){
@@ -1144,6 +1154,14 @@ void Cell::convert_to_cell_definition( Cell_Definition& cd )
 	Geometry cell_geometry = phenotype.geometry;
 	Molecular cell_molecular = phenotype.molecular;
 	Custom_Cell_Data cell_custom_data = custom_data;
+
+	// pAttackTarget is phenotype state, and the assignment below replaces it, so
+	// end this cell's own attack. attacked_by and the spring are in state, which
+	// transformation preserves, so attacks against this cell continue.
+	remove_self_from_attacked();
+	// should we also remove all attackers?  That would be a change in behavior, so for now we don't.
+	// remove_all_attackers();
+
 	// use the cell defaults; 
 	type = cd.type; 
 	type_name = cd.name; 
@@ -1210,6 +1228,8 @@ void delete_cell( int index )
 	
 	// release any attached cells (as of 1.7.2 release)
 	pDeleteMe->remove_all_attached_cells(); 
+	pDeleteMe->remove_all_attackers();
+	pDeleteMe->remove_self_from_attacked();
 	// 1.11.0 
 	pDeleteMe->remove_all_spring_attachments(); 
 
@@ -1244,6 +1264,8 @@ void delete_cell_original( int index ) // before June 11, 2020
 	
 	// release any attached cells (as of 1.7.2 release)
 	(*all_cells)[index]->remove_all_attached_cells(); 
+	(*all_cells)[index]->remove_all_attackers();
+	(*all_cells)[index]->remove_self_from_attacked();
 	// 1.11.0
 	(*all_cells)[index]->remove_all_spring_attachments(); 
 	
@@ -1473,6 +1495,8 @@ void Cell::ingest_cell( Cell* pCell_to_eat )
 	// things that have their own thread safety 
 	pCell_to_eat->flag_for_removal();
 	pCell_to_eat->remove_all_attached_cells();
+	pCell_to_eat->remove_all_attackers();
+	pCell_to_eat->remove_self_from_attacked();
 	pCell_to_eat->remove_all_spring_attachments();
 	
 	return; 
@@ -1641,6 +1665,8 @@ void Cell::fuse_cell( Cell* pCell_to_fuse )
 	// things that have their own thread safety 
 	pCell_to_fuse->flag_for_removal();
 	pCell_to_fuse->remove_all_attached_cells();
+	pCell_to_fuse->remove_all_attackers();
+	pCell_to_fuse->remove_self_from_attacked();
 	pCell_to_fuse->remove_all_spring_attachments();
 
 	return; 
@@ -1652,11 +1678,11 @@ void Cell::lyse_cell( void )
 	if( phenotype.volume.total < 1e-15 )
 	{ return; } 	
 	
+	// mark it as dead (before flagging, to match ingest_cell and fuse_cell)
+	phenotype.death.dead = true;
+
 	// flag for removal 
 	flag_for_removal(); // should be safe now 
-	
-	// mark it as dead 
-	phenotype.death.dead = true; 
 	
 	// set secretion and uptake to zero 
 	phenotype.secretion.set_all_secretion_to_zero( );  
@@ -1672,6 +1698,9 @@ void Cell::lyse_cell( void )
 	// remove all adhesions 
 	
 	remove_all_attached_cells(); 
+	remove_all_attackers();
+	remove_self_from_attacked();
+	remove_all_spring_attachments();
 	
 	// set volume to zero 
 	set_total_volume( 0.0 ); 
@@ -3457,6 +3486,58 @@ void Cell::remove_all_spring_attachments( void )
 	return; 
 }
 
+void Cell::add_attacker( Cell* pAddMe )
+{
+	#pragma omp critical
+	{
+		if( std::find( state.attacked_by.begin() , state.attacked_by.end() , pAddMe )
+			== state.attacked_by.end() )
+		{ state.attacked_by.push_back( pAddMe ); }
+	}
+	return;
+}
+
+void Cell::remove_attacker( Cell* pRemoveMe )
+{
+	#pragma omp critical
+	{
+		auto search = std::find( state.attacked_by.begin() , state.attacked_by.end() , pRemoveMe );
+		if( search != state.attacked_by.end() )
+		{
+			// copy last entry over it, then shrink by one
+			*search = state.attacked_by.back();
+			state.attacked_by.pop_back();
+		}
+	}
+	return;
+}
+
+void Cell::remove_all_attackers( void )
+{
+	for( int i = 0; i < state.attacked_by.size() ; i++ )
+	{
+		Cell* pAttacker = state.attacked_by[i];
+		if( pAttacker->phenotype.cell_interactions.pAttackTarget == this )
+		{ pAttacker->phenotype.cell_interactions.pAttackTarget = NULL; }
+		detach_cells_as_spring( pAttacker , this );
+	}
+	state.attacked_by.clear();
+	return;
+}
+
+void Cell::remove_self_from_attacked( void )
+{
+	Cell* pTarget = phenotype.cell_interactions.pAttackTarget;
+	if( pTarget == NULL )
+	{ return; }
+	phenotype.cell_interactions.pAttackTarget = NULL;
+	pTarget->remove_attacker( this );
+	// mutual attackers share one spring, so only drop it once both are done
+	if( pTarget->phenotype.cell_interactions.pAttackTarget != this )
+	{ detach_cells_as_spring( this , pTarget ); }
+	return;
+}
+
 
 void attach_cells( Cell* pCell_1, Cell* pCell_2 )
 {
@@ -3483,6 +3564,39 @@ void detach_cells_as_spring( Cell* pCell_1 , Cell* pCell_2 )
 {
 	pCell_1->detach_cell_as_spring( pCell_2 );
 	pCell_2->detach_cell_as_spring( pCell_1 );
+	return;
+}
+
+void begin_attack( Cell* pAttacker , Cell* pTarget )
+{
+	// no self-attack, and nothing to do without both ends
+	if( pAttacker == NULL || pTarget == NULL || pAttacker == pTarget )
+	{ return; }
+
+	// a cell attacks at most one target at a time. if it is already attacking
+	// something, close that attack out cleanly rather than orphaning the link.
+	if( pAttacker->phenotype.cell_interactions.pAttackTarget != NULL )
+	{ pAttacker->remove_self_from_attacked(); }
+
+	pAttacker->phenotype.cell_interactions.pAttackTarget = pTarget;
+	pTarget->add_attacker( pAttacker );
+	// spring-link these cells
+	attach_cells_as_spring( pAttacker , pTarget );
+	return;
+}
+
+void end_attack( Cell* pAttacker , Cell* pTarget )
+{
+	if( pAttacker == NULL || pTarget == NULL )
+	{ return; }
+
+	if( pAttacker->phenotype.cell_interactions.pAttackTarget == pTarget )
+	{ pAttacker->phenotype.cell_interactions.pAttackTarget = NULL; }
+	pTarget->remove_attacker( pAttacker );
+	// two cells can attack each other, and attach_cell_as_spring dedupes, so the
+	// two attacks share ONE spring. Only drop it once nobody still needs it.
+	if( pTarget->phenotype.cell_interactions.pAttackTarget != pAttacker )
+	{ detach_cells_as_spring( pAttacker , pTarget ); }
 	return; 
 }
 
