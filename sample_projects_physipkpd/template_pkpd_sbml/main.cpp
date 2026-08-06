@@ -91,13 +91,6 @@ int main( int argc, char* argv[] )
 	// load and parse settings file(s)
 	load_PhysiCell_config_file();
 	
-	char copy_command [1024]; 
-	
-	// copy config file to output directry
-	system( copy_command );
-
-	sprintf( copy_command , "cp %s %s/PhysiCell_settings.xml" , argument_parser.path_to_config_file.c_str(), PhysiCell_settings.folder.c_str() ); //, PhysiCell_settings.folder.c_str() ); 
-
 	// OpenMP setup
 	omp_set_num_threads(PhysiCell_settings.omp_num_threads);
 	
