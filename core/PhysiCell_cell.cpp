@@ -554,7 +554,7 @@ Cell* Cell::divide( )
 	// phenotype.flagged_for_division = false; 
 	// phenotype.flagged_for_removal = false; 
 	
-	// make sure ot remove adhesions 
+	// make sure to remove adhesions 
 	remove_all_attached_cells(); 
 	// the springs below include the one holding an attack together, so end the
 	// attack rather than leave it spring-less
