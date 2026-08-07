@@ -1211,7 +1211,9 @@ void standard_cell_cell_interactions( Cell* pCell, Phenotype& phenotype, double 
 			{
 				if( UniformRandom() < probability ) 
 				{				
-					pCell->phenotype.cell_interactions.pAttackTarget = pTarget; 
+					// sets pAttackTarget, registers pCell in pTarget's
+					// attacked_by, and spring-links the two
+					begin_attack( pCell , pTarget );
 					attacked = true; 
 					/*					
 					std::cout << "*********   *********  ********  start atack **** " << PhysiCell_globals.current_time << std::endl; 
@@ -1219,8 +1221,6 @@ void standard_cell_cell_interactions( Cell* pCell, Phenotype& phenotype, double 
 					<< "attack duration: " << pCell->phenotype.cell_interactions.attack_duration << " "  
 					<< "attack damage rate: " << pCell->phenotype.cell_interactions.attack_damage_rate <<  std::endl; 
 					*/
-					// spring-link these cells 
-					attach_cells_as_spring(pCell,pTarget); 
 				} 
 			}
 
@@ -1287,9 +1287,7 @@ void standard_cell_cell_interactions( Cell* pCell, Phenotype& phenotype, double 
 				<< "damage delivered: " << pCell->phenotype.cell_interactions.total_damage_delivered << std::endl; 
 				*/
 
-				detach_cells_as_spring(pCell,pTarget); 
-
-				pCell->phenotype.cell_interactions.pAttackTarget = NULL; 
+				end_attack( pCell , pTarget );
 			} 
 		} 
 
