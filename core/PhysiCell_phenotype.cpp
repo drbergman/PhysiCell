@@ -1412,9 +1412,11 @@ double Asymmetric_Division::asymmetric_division_probability( std::string type_na
 std::pair<int, int> Asymmetric_Division::select_daughter_types(int type_1, int type_2)
 {
 	double r = UniformRandom();
+	double cumulative = 0.0;
 	for( auto it = asymmetric_division_probabilities.begin(); it != asymmetric_division_probabilities.end(); ++it )
 	{
-		if( r <= it->second )
+		cumulative += it->second;
+		if( r < cumulative ) // strict: UniformRandom() can return 0, and a 0-probability pair must not win
 		{ return it->first; } // return the pair of types
 	}
 	return std::make_pair(type_1, type_2); // if we reach here, return the original types

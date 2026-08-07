@@ -213,31 +213,25 @@ class Cycle_Model
 	std::ostream& display( std::ostream& os ); // done 
 };
 
-// A hash function for pairs of ints as keys for extended_asymmetric_division_probabilities.
-// Should follow upper-triangular variant of Cantor set to prevent collisions.
-struct pair_hash {
-	
-	std::size_t operator () (const std::pair<int, int>& pair) const
-	{
-		int lower = std::min(pair.first, pair.second);
-		int upper = std::max(pair.first, pair.second);
-		int UT = upper * (upper + 1) / 2 + lower;
-		auto hash = std::hash<int>{}(UT);
-		return hash; 
-	}
-};
-
-struct equality_function {
+// Orders the (i,j) daughter type pairs, which are unordered: (i,j) and (j,i) are the same
+// pair, so keys are compared by their (min,max) form.
+struct pair_compare {
 	bool operator()(const std::pair<int, int>& lhs, const std::pair<int, int>& rhs) const
 	{
-		return ((lhs.first == rhs.first && lhs.second == rhs.second) || (lhs.first == rhs.second && lhs.second == rhs.first));
+		int lhs_lower = std::min(lhs.first, lhs.second);
+		int rhs_lower = std::min(rhs.first, rhs.second);
+		if( lhs_lower != rhs_lower )
+		{ return lhs_lower < rhs_lower; }
+		return std::max(lhs.first, lhs.second) < std::max(rhs.first, rhs.second);
 	}
 };
 
 class Asymmetric_Division
 {
 public:
-	std::unordered_map<std::pair<int, int>, double, pair_hash, equality_function> asymmetric_division_probabilities;
+	// std::map, not unordered_map: select_daughter_types() walks this container, so the order
+	// has to be reproducible from the seed alone rather than depending on the hash table.
+	std::map<std::pair<int, int>, double, pair_compare> asymmetric_division_probabilities;
 
 	void set_asymmetric_division_probability(std::pair<int, int> types, double probability);
 	void set_asymmetric_division_probability(int upper_triangular_index, double probability);

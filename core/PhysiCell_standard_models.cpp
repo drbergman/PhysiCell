@@ -1376,29 +1376,34 @@ void asymmetric_division_function( Cell* pCell_parent, Cell* pCell_daughter )
 {
 	std::string parent_name = pCell_parent->type_name;
 	int parent_type = pCell_parent->type;
-	Cell_Definition* pCD_parent = cell_definitions_by_name[parent_name];
-	double total = pCell_parent->phenotype.cycle.asymmetric_division.probabilities_total();
-	if (total > 1.0)
+	Asymmetric_Division& parent_asym_div = pCell_parent->phenotype.cycle.asymmetric_division;
+	// probabilities meant to sum to exactly 1 land a hair over it in double precision:
+	// 0.11 + 0.33 + 0.56 is 1.000000000000000222
+	static const double tolerance = 1e-12;
+	double total = parent_asym_div.probabilities_total();
+	if (total > 1.0 + tolerance)
 	{
-		double sym_div_prob = pCell_parent->phenotype.cycle.asymmetric_division.asymmetric_division_probability(parent_type, parent_type) + 1.0 - total;
-		if (sym_div_prob < 0.0)
-		{ 
-			std::cerr << "Error: Asymmetric division probabilities for " + pCD_parent->name + " sum to greater than 1.0 and cannot be normalized." << std::endl;
+		double sym_div_prob = parent_asym_div.asymmetric_division_probability(parent_type, parent_type) + 1.0 - total;
+		if (sym_div_prob < -tolerance)
+		{
+			std::cerr << "Error: Asymmetric division probabilities for " + parent_name + " sum to greater than 1.0 and cannot be normalized." << std::endl;
 			std::cerr << "Adjusted sym_div_prob = " << sym_div_prob << std::endl;
-			std::cerr << "List of all asym div probabilities:" << std::endl;
-			for (int i = 0; i < cell_definitions_by_index.size(); i++)
+			std::cerr << "List of all asym div probabilities for this cell:" << std::endl;
+			for (auto& entry : parent_asym_div.asymmetric_division_probabilities)
 			{
-				for (int j = i; j < cell_definitions_by_index.size(); j++)
-				{
-					std::cerr << "  - " << cell_definitions_by_index[i]->name << " and " << cell_definitions_by_index[j]->name << ": " << pCell_parent->phenotype.cycle.asymmetric_division.asymmetric_division_probability(i, j) << std::endl;
-				}
+				std::cerr << "  - " << cell_definitions_by_index[entry.first.first]->name
+					<< " and " << cell_definitions_by_index[entry.first.second]->name
+					<< ": " << entry.second << std::endl;
 			}
 			exit(-1);
 		}
-		pCell_parent->phenotype.cycle.asymmetric_division.set_asymmetric_division_probability(parent_type, parent_type, sym_div_prob);
+		if (sym_div_prob < 0.0)
+		{ sym_div_prob = 0.0; } // round-off only, given the check above
+		parent_asym_div.set_asymmetric_division_probability(parent_type, parent_type, sym_div_prob);
 		pCell_daughter->phenotype.cycle.asymmetric_division.set_asymmetric_division_probability(pCell_daughter->type, pCell_daughter->type, sym_div_prob);
 	}
-	std::pair<int, int> daughter_types = pCell_parent->phenotype.cycle.asymmetric_division.select_daughter_types(pCell_parent->type, pCell_daughter->type);
+
+	std::pair<int, int> daughter_types = parent_asym_div.select_daughter_types(pCell_parent->type, pCell_daughter->type);
 
 	if (daughter_types.first != pCell_parent->type) // only convert if the parent is not already the correct type
 	{ pCell_parent->convert_to_cell_definition( *cell_definitions_by_index[daughter_types.first] ); }
