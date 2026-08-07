@@ -94,8 +94,6 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 	Intracellular* clone()
     {
 		RoadRunnerIntracellular* clone = new RoadRunnerIntracellular(this);
-		// a RoadRunner instance cannot be copied, so the clone makes its own here;
-		// callers get a usable model and never need to know that.
 		clone->start();
 		return static_cast<Intracellular*>(clone);
 	}
