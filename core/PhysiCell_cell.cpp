@@ -1842,7 +1842,9 @@ void display_cell_definitions( std::ostream& os )
 			<< " with rate " << pCD->phenotype.death.rates[k] << " 1/min" << std::endl; 
 
 			Cycle_Model* pCM = (pCD->phenotype.death.models[k] ); 
-			Cycle_Data* pCMD = &(pCD->phenotype.death.models[k]->data ); 
+			// phases and links come from the shared model, but the parameters are
+			// per-definition now, so take those from model_data (#199) 
+			Cycle_Data* pCMD = &(pCD->phenotype.death.model_data[k] ); 
 
 			
 			os << "\t\tdeath phase transitions: " << std::endl 
