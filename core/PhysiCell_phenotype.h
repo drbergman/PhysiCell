@@ -243,21 +243,9 @@ public:
 	double asymmetric_division_probability(int type_1, int type_2);
 	double asymmetric_division_probability(std::string type_name_1, std::string type_name_2);
 
-	// Total assigned probability, including the (parent,parent) self-pair. Whatever is left
-	// over falls through to (parent,parent) too, so the self-pair entry has no effect of its
-	// own while the total is at most 1 -- it only records how much was asked for explicitly.
 	double probabilities_total( void );
 
-	// Total over pairs OTHER than (parent_type,parent_type). This, not probabilities_total(),
-	// is what determines the outcome distribution.
-	double probabilities_total_excluding_self( int parent_type );
 
-	// Makes the probabilities a valid distribution for a parent of type parent_type. If the
-	// total exceeds 1 but the other pairs still fit, (parent_type,parent_type) takes the
-	// remainder and this returns false. If the other pairs alone exceed 1 nothing can absorb
-	// it: the probabilities are left untouched and this returns true for the caller to report.
-	// Idempotent -- it runs on every division.
-	bool enforce_valid_distribution( int parent_type );
 
 	std::pair<int, int> select_daughter_types(int type_1, int type_2);
 };

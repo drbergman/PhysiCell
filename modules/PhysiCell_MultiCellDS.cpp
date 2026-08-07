@@ -2114,9 +2114,7 @@ int recreate_sim_state(std::string filename, Microenvironment& M,
 
         if (create_cells)
 		{
-			// no reserve(): asymmetric_division_probabilities is a std::map, which is a node-based
-			// container with nothing to reserve. It is a std::map rather than a std::unordered_map
-			// so that select_daughter_types() walks it in the same order in every run.
+			// no reserve(): asymmetric_division_probabilities is a std::map
 			pCell->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities.clear();
 		}
 		for ( int i1 = 0; i1 < n_cell_types; i1++ )
