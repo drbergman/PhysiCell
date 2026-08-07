@@ -43,7 +43,14 @@ RoadRunnerIntracellular::RoadRunnerIntracellular(RoadRunnerIntracellular* copy)
 	// initial_values = copy->initial_values;
 	// mutations = copy->mutations;
 	parameters = copy->parameters;
-	
+	// rrHandle and result are left at their in-class initializers; a RoadRunner instance
+	// cannot be copied, so clone() calls start() to create this one's own.
+}
+
+RoadRunnerIntracellular::~RoadRunnerIntracellular()
+{
+	rrc::freeRRInstance( rrHandle );
+	rrc::freeRRCData( result );
 }
 
 // Parse the <intracellular> info in the .xml for (possibly) each <cell_definition ...>, e.g.
