@@ -213,31 +213,25 @@ class Cycle_Model
 	std::ostream& display( std::ostream& os ); // done 
 };
 
-// A hash function for pairs of ints as keys for extended_asymmetric_division_probabilities.
-// Should follow upper-triangular variant of Cantor set to prevent collisions.
-struct pair_hash {
-	
-	std::size_t operator () (const std::pair<int, int>& pair) const
-	{
-		int lower = std::min(pair.first, pair.second);
-		int upper = std::max(pair.first, pair.second);
-		int UT = upper * (upper + 1) / 2 + lower;
-		auto hash = std::hash<int>{}(UT);
-		return hash; 
-	}
-};
-
-struct equality_function {
+// Orders the (i,j) daughter type pairs, which are unordered: (i,j) and (j,i) are the same
+// pair, so keys are compared by their (min,max) form.
+struct pair_compare {
 	bool operator()(const std::pair<int, int>& lhs, const std::pair<int, int>& rhs) const
 	{
-		return ((lhs.first == rhs.first && lhs.second == rhs.second) || (lhs.first == rhs.second && lhs.second == rhs.first));
+		int lhs_lower = std::min(lhs.first, lhs.second);
+		int rhs_lower = std::min(rhs.first, rhs.second);
+		if( lhs_lower != rhs_lower )
+		{ return lhs_lower < rhs_lower; }
+		return std::max(lhs.first, lhs.second) < std::max(rhs.first, rhs.second);
 	}
 };
 
 class Asymmetric_Division
 {
 public:
-	std::unordered_map<std::pair<int, int>, double, pair_hash, equality_function> asymmetric_division_probabilities;
+	// std::map, not unordered_map: select_daughter_types() walks this container, so the order
+	// has to be reproducible from the seed alone rather than depending on the hash table.
+	std::map<std::pair<int, int>, double, pair_compare> asymmetric_division_probabilities;
 
 	void set_asymmetric_division_probability(std::pair<int, int> types, double probability);
 	void set_asymmetric_division_probability(int upper_triangular_index, double probability);
@@ -249,7 +243,21 @@ public:
 	double asymmetric_division_probability(int type_1, int type_2);
 	double asymmetric_division_probability(std::string type_name_1, std::string type_name_2);
 
-	double probabilities_total();
+	// Total assigned probability, including the (parent,parent) self-pair. Whatever is left
+	// over falls through to (parent,parent) too, so the self-pair entry has no effect of its
+	// own while the total is at most 1 -- it only records how much was asked for explicitly.
+	double probabilities_total( void );
+
+	// Total over pairs OTHER than (parent_type,parent_type). This, not probabilities_total(),
+	// is what determines the outcome distribution.
+	double probabilities_total_excluding_self( int parent_type );
+
+	// Makes the probabilities a valid distribution for a parent of type parent_type. If the
+	// total exceeds 1 but the other pairs still fit, (parent_type,parent_type) takes the
+	// remainder and this returns false. If the other pairs alone exceed 1 nothing can absorb
+	// it: the probabilities are left untouched and this returns true for the caller to report.
+	// Idempotent -- it runs on every division.
+	bool enforce_valid_distribution( int parent_type );
 
 	std::pair<int, int> select_daughter_types(int type_1, int type_2);
 };

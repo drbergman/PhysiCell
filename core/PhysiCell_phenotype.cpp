@@ -1428,9 +1428,11 @@ double Asymmetric_Division::asymmetric_division_probability( std::string type_na
 std::pair<int, int> Asymmetric_Division::select_daughter_types(int type_1, int type_2)
 {
 	double r = UniformRandom();
+	double cumulative = 0.0;
 	for( auto it = asymmetric_division_probabilities.begin(); it != asymmetric_division_probabilities.end(); ++it )
 	{
-		if( r <= it->second )
+		cumulative += it->second;
+		if( r < cumulative ) // strict: UniformRandom() can return 0, and a 0-probability pair must not win
 		{ return it->first; } // return the pair of types
 	}
 	return std::make_pair(type_1, type_2); // if we reach here, return the original types
@@ -1442,6 +1444,44 @@ double Asymmetric_Division::probabilities_total( void )
 	for (const auto& pair : asymmetric_division_probabilities)
 	{ total += pair.second; }
 	return total; 
+}
+
+double Asymmetric_Division::probabilities_total_excluding_self( int parent_type )
+{
+	double total = 0.0;
+	for (const auto& entry : asymmetric_division_probabilities)
+	{
+		if( entry.first.first == parent_type && entry.first.second == parent_type )
+		{ continue; }
+		total += entry.second;
+	}
+	return total;
+}
+
+bool Asymmetric_Division::enforce_valid_distribution( int parent_type )
+{
+	static const double tolerance = 1e-12; // 0.11 + 0.33 + 0.56 is 1.000000000000000222
+
+	double total = probabilities_total();
+	if( total <= 1.0 + tolerance )
+	{ return false; } // already valid: the leftover 1 - total goes to (parent_type,parent_type)
+
+	// summed directly, not as total - self, so the value written below depends only on the
+	// other pairs and repeating this repair is a no-op
+	double total_others = probabilities_total_excluding_self( parent_type );
+	if( total_others <= 1.0 + tolerance )
+	{
+		// the symmetric outcome absorbs the rest; clamp for round-off
+		double symmetric_probability = 1.0 - total_others;
+		if( symmetric_probability < 0.0 )
+		{ symmetric_probability = 0.0; }
+		set_asymmetric_division_probability( parent_type , parent_type , symmetric_probability );
+		return false;
+	}
+
+	// Nothing left to absorb the excess. Left exactly as configured -- rescaling would change
+	// the model's daughter frequencies without saying so -- and the caller reports and stops.
+	return true;
 }
 
 std::pair<int, int> extended_asym_index_to_upper_triangle(int index)
