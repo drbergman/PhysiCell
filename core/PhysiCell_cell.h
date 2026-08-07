@@ -248,6 +248,7 @@ class Cell : public Basic_Agent
 	// call these wherever remove_all_spring_attachments() is called
 	void remove_all_attackers( void ); // everyone attacking me stops
 	void remove_self_from_attacked( void ); // I stop attacking whomever I attack
+	bool is_attacked_by( Cell* pCell ); // is pCell currently attacking me?
 
 	// I want to eventually deprecate this, by ensuring that 
 	// critical BioFVM and PhysiCell data elements are synced when they are needed 

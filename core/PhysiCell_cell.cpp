@@ -3514,15 +3514,33 @@ void Cell::remove_attacker( Cell* pRemoveMe )
 
 void Cell::remove_all_attackers( void )
 {
-	for( int i = 0; i < state.attacked_by.size() ; i++ )
+	// Swap the list out under the same lock add_attacker / remove_attacker use, then
+	// walk the local copy. Holding the lock across the loop is not an option:
+	// detach_cells_as_spring() takes the same unnamed critical and OpenMP criticals
+	// are not reentrant, so that would deadlock.
+	std::vector<Cell*> attackers;
+	#pragma omp critical
+	{ attackers.swap( state.attacked_by ); }
+
+	for( int i = 0; i < attackers.size() ; i++ )
 	{
-		Cell* pAttacker = state.attacked_by[i];
+		Cell* pAttacker = attackers[i];
 		if( pAttacker->phenotype.cell_interactions.pAttackTarget == this )
 		{ pAttacker->phenotype.cell_interactions.pAttackTarget = NULL; }
 		detach_cells_as_spring( pAttacker , this );
 	}
-	state.attacked_by.clear();
 	return;
+}
+
+bool Cell::is_attacked_by( Cell* pCell )
+{
+	bool found = false;
+	#pragma omp critical
+	{
+		found = std::find( state.attacked_by.begin() , state.attacked_by.end() , pCell )
+			!= state.attacked_by.end();
+	}
+	return found;
 }
 
 void Cell::remove_self_from_attacked( void )
@@ -3532,8 +3550,10 @@ void Cell::remove_self_from_attacked( void )
 	{ return; }
 	phenotype.cell_interactions.pAttackTarget = NULL;
 	pTarget->remove_attacker( this );
-	// mutual attackers share one spring, so only drop it once both are done
-	if( pTarget->phenotype.cell_interactions.pAttackTarget != this )
+	// mutual attackers share one spring, so only drop it once both are done.
+	// "does pTarget attack me?" is asked of our own attacked_by, which we can lock,
+	// rather than by reading pTarget's pAttackTarget unsynchronised.
+	if( !is_attacked_by( pTarget ) )
 	{ detach_cells_as_spring( this , pTarget ); }
 	return;
 }
@@ -3595,7 +3615,7 @@ void end_attack( Cell* pAttacker , Cell* pTarget )
 	pTarget->remove_attacker( pAttacker );
 	// two cells can attack each other, and attach_cell_as_spring dedupes, so the
 	// two attacks share ONE spring. Only drop it once nobody still needs it.
-	if( pTarget->phenotype.cell_interactions.pAttackTarget != pAttacker )
+	if( !pAttacker->is_attacked_by( pTarget ) )
 	{ detach_cells_as_spring( pAttacker , pTarget ); }
 	return; 
 }
