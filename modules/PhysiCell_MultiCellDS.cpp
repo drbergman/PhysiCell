@@ -2114,8 +2114,8 @@ int recreate_sim_state(std::string filename, Microenvironment& M,
 
         if (create_cells)
 		{
+			// no reserve(): asymmetric_division_probabilities is a std::map
 			pCell->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities.clear();
-			pCell->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities.reserve(n_cell_types * (n_cell_types + 1) / 2);
 		}
 		for ( int i1 = 0; i1 < n_cell_types; i1++ )
 		{
