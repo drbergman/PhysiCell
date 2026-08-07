@@ -74,10 +74,7 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 		clone->substrate_species = this->substrate_species;
         clone->phenotype_species = this->phenotype_species;
 		clone->custom_data_species = this->custom_data_species;
-		// a RoadRunner instance cannot be copied, so the clone makes its own here;
-		// callers get a usable model and never need to know that. Must follow the
-		// assignments above: start() loads sbml_filename.
-		clone->start();
+		clone->start(); // must follow the assignments above: start() loads sbml_filename
 		return static_cast<Intracellular*>(clone);
 	}
 
