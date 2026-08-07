@@ -132,11 +132,11 @@ void Cycle_Data::sync_to_cycle_model( void )
 	for( int i=0 ; i < pCycle_Model->phase_links.size() ; i++ )
 	{
 		inverse_index_maps[i].clear(); 
+		transition_rates[i].resize( pCycle_Model->phase_links[i].size() ); 
+		fixed_durations[i].resize( pCycle_Model->phase_links[i].size() , (char) 0 ); 
 		for( int j=0 ; j < pCycle_Model->phase_links[i].size() ; j++ )
 		{
 			inverse_index_maps[i][ pCycle_Model->phase_links[i][j].end_phase_index ] = j;
-			transition_rates[i].resize( pCycle_Model->phase_links[i].size() ); 
-			fixed_durations[i].resize( pCycle_Model->phase_links[i].size() , (char) 0 ); 
 		}
 	}
 
@@ -560,7 +560,7 @@ void Cycle::sync_to_cycle_model( Cycle_Model& cm )
 	return; 
 }	
 
-void Cycle::sync_to_cycle_model( Cycle_Model& cm , Cycle_Data& cd )
+void Cycle::sync_to_cycle_model( Cycle_Model& cm , const Cycle_Data& cd )
 {
 	pCycle_Model = &cm; 
 	data = cd; 

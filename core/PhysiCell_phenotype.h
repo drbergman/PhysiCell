@@ -259,7 +259,7 @@ class Cycle
 	// as above, but take the parameters from cd rather than from cm.data. Needed
 	// because death Cycle_Models are shared between cell definitions, so the
 	// per-definition parameters live elsewhere -- see Death::model_data (#199). 
-	void sync_to_cycle_model( Cycle_Model& cm , Cycle_Data& cd ); // done 
+	void sync_to_cycle_model( Cycle_Model& cm , const Cycle_Data& cd ); // done 
 
 	Asymmetric_Division asymmetric_division;
 };

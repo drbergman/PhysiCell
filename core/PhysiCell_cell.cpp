@@ -363,8 +363,10 @@ void Cell::advance_bundled_phenotype_functions( double dt_ )
 	// check for new death events 
 	if( phenotype.death.check_for_death( dt_ ) == true )
 	{
-		// if so, change the cycle model to the current death model 
-		phenotype.cycle.sync_to_cycle_model( phenotype.death.current_model() ); 
+		// if so, change the cycle model to the current death model, taking the
+		// parameters from this cell definition rather than from the shared model (#199) 
+		phenotype.cycle.sync_to_cycle_model( phenotype.death.current_model() , 
+			phenotype.death.current_model_data() ); 
 		
 		// also, turn off motility.
 		
