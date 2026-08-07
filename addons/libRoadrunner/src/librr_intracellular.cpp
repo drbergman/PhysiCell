@@ -557,6 +557,18 @@ RoadRunnerIntracellular::~RoadRunnerIntracellular()
     rrc::freeRRCData( result );
 }
 
+// Fatal, like the setup-time check in validate_SBML_species(): there is no value to return
+// and nothing sensible to write, so continuing would feed a fabricated number into the model.
+static void librr_unknown_species_fatal(const std::string& species_name, const char* caller)
+{
+    std::cerr << std::endl
+              << "ERROR: " << caller << "() was asked for the SBML species \"" << species_name
+              << "\", which is not present in this model." << std::endl
+              << "       Check the spelling against the species in the SBML file." << std::endl
+              << std::endl;
+    exit(-1);
+}
+
 void RoadRunnerIntracellular::initialize_intracellular_from_pugixml(pugi::xml_node& node)
 {
 	pugi::xml_node node_sbml = node.child( "sbml_filename" );
@@ -749,10 +761,17 @@ double RoadRunnerIntracellular::get_parameter_value(std::string param_name)
 {
     rrc::RRVectorPtr vptr;
 
-    vptr = rrc::getFloatingSpeciesConcentrations(this->rrHandle);
+    // find(), not operator[]: the inserting form silently yields column 0 for an unknown
+    // species, so a typo reads a different species than the caller named, and a read
+    // mutates the map.
+    std::map<std::string,int>::const_iterator it = species_result_column_index.find( param_name );
+    if( it == species_result_column_index.end() )
+    {
+        librr_unknown_species_fatal( param_name, __FUNCTION__ );
+    }
 
-    int offset = species_result_column_index[param_name];
-    double res = vptr->Data[offset];
+    vptr = rrc::getFloatingSpeciesConcentrations(this->rrHandle);
+    double res = vptr->Data[it->second];
     rrc::freeVector(vptr);
     return res;
 }
@@ -762,9 +781,16 @@ void RoadRunnerIntracellular::set_parameter_value(std::string species_name, doub
 {
     rrc::RRVectorPtr vptr;
 
+    // see get_parameter_value(): operator[] would silently write column 0 for an unknown
+    // species, i.e. corrupt a different species than the caller named.
+    std::map<std::string,int>::const_iterator it = species_result_column_index.find( species_name );
+    if( it == species_result_column_index.end() )
+    {
+        librr_unknown_species_fatal( species_name, __FUNCTION__ );
+    }
+
     vptr = rrc::getFloatingSpeciesConcentrations(this->rrHandle);
-    int idx = species_result_column_index[species_name];
-    vptr->Data[idx] = value;
+    vptr->Data[it->second] = value;
     rrc::setFloatingSpeciesConcentrations(this->rrHandle, vptr);
     rrc::freeVector(vptr);
 }
