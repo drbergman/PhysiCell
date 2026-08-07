@@ -1492,12 +1492,13 @@ void Cell::ingest_cell( Cell* pCell_to_eat )
 		
 	}
 
-	// things that have their own thread safety 
+	// Teardown is deferred rather than done here. flag_for_removal() queues this
+	// cell, and the serial cells_ready_to_die -> die() -> delete_cell() pass does
+	// the same four steps off-thread. Doing them here means mutating other cells'
+	// lists from inside the mechanics parallel-for, where remove_all_* walks a
+	// vector unlocked while attach/detach_cell_as_spring edits it under the
+	// critical -- a real race, not a theoretical one. 
 	pCell_to_eat->flag_for_removal();
-	pCell_to_eat->remove_all_attached_cells();
-	pCell_to_eat->remove_all_attackers();
-	pCell_to_eat->remove_self_from_attacked();
-	pCell_to_eat->remove_all_spring_attachments();
 	
 	return; 
 }
@@ -1663,11 +1664,13 @@ void Cell::fuse_cell( Cell* pCell_to_fuse )
 	}
 
 	// things that have their own thread safety 
+	// Teardown is deferred rather than done here. flag_for_removal() queues this
+	// cell, and the serial cells_ready_to_die -> die() -> delete_cell() pass does
+	// the same four steps off-thread. Doing them here means mutating other cells'
+	// lists from inside the mechanics parallel-for, where remove_all_* walks a
+	// vector unlocked while attach/detach_cell_as_spring edits it under the
+	// critical -- a real race, not a theoretical one. 
 	pCell_to_fuse->flag_for_removal();
-	pCell_to_fuse->remove_all_attached_cells();
-	pCell_to_fuse->remove_all_attackers();
-	pCell_to_fuse->remove_self_from_attacked();
-	pCell_to_fuse->remove_all_spring_attachments();
 
 	return; 
 }
@@ -1697,10 +1700,12 @@ void Cell::lyse_cell( void )
 	
 	// remove all adhesions 
 	
-	remove_all_attached_cells(); 
-	remove_all_attackers();
-	remove_self_from_attacked();
-	remove_all_spring_attachments();
+	// Teardown is deferred rather than done here. flag_for_removal() queues this
+	// cell, and the serial cells_ready_to_die -> die() -> delete_cell() pass does
+	// the same four steps off-thread. Doing them here means mutating other cells'
+	// lists from inside the mechanics parallel-for, where remove_all_* walks a
+	// vector unlocked while attach/detach_cell_as_spring edits it under the
+	// critical -- a real race, not a theoretical one. 
 	
 	// set volume to zero 
 	set_total_volume( 0.0 ); 
