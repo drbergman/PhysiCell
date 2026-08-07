@@ -545,6 +545,16 @@ RoadRunnerIntracellular::RoadRunnerIntracellular(RoadRunnerIntracellular* copy)
     mappings_initialized = copy->mappings_initialized;
     input_delay_terms = copy->input_delay_terms;
     output_delay_terms = copy->output_delay_terms;
+    // rrHandle and result are left at their in-class initializers; a RoadRunner instance
+    // cannot be copied, so start() creates this clone's own.
+}
+
+RoadRunnerIntracellular::~RoadRunnerIntracellular()
+{
+    // input_mappings / output_mappings are deliberately not deleted: the copy constructor
+    // above copies those vectors of raw pointers, so every clone shares the pointees.
+    rrc::freeRRInstance( rrHandle );
+    rrc::freeRRCData( result );
 }
 
 void RoadRunnerIntracellular::initialize_intracellular_from_pugixml(pugi::xml_node& node)
