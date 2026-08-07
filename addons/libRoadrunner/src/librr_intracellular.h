@@ -72,7 +72,7 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 	std::map<std::string, std::deque<double>> input_delay_terms;
 	std::map<std::string, std::deque<double>> output_delay_terms;
 	
-    rrc::RRHandle rrHandle;
+    rrc::RRHandle rrHandle = nullptr;  // created by start(), released by the destructor
 	rrc::RRCDataPtr result = 0;  // start time, end time, and number of points
 
 	double update_time_step = 0.01;
@@ -84,10 +84,19 @@ class RoadRunnerIntracellular : public PhysiCell::Intracellular
 	RoadRunnerIntracellular(pugi::xml_node& node);
 	
 	RoadRunnerIntracellular(RoadRunnerIntracellular* copy);
-	
+
+	~RoadRunnerIntracellular();
+
+	// owns rrHandle, so the implicit copies would double-free it; clone() is the way to copy
+	RoadRunnerIntracellular( const RoadRunnerIntracellular& ) = delete;
+	RoadRunnerIntracellular& operator=( const RoadRunnerIntracellular& ) = delete;
+
 	Intracellular* clone()
     {
 		RoadRunnerIntracellular* clone = new RoadRunnerIntracellular(this);
+		// a RoadRunner instance cannot be copied, so the clone makes its own here;
+		// callers get a usable model and never need to know that.
+		clone->start();
 		return static_cast<Intracellular*>(clone);
 	}
 
