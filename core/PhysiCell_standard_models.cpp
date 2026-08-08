@@ -1262,11 +1262,14 @@ void standard_cell_cell_interactions( Cell* pCell, Phenotype& phenotype, double 
 
 	// move effector attack here. 
 
-		if( pCell->phenotype.cell_interactions.pAttackTarget != NULL ) 
+		// read the target once. attack_cell() dereferences without a null check, so
+		// testing this field and then reloading it would let any concurrent clear
+		// hand it a NULL. One load is free and does not depend on which teardown
+		// paths currently run inside this loop. 
+		Cell* pAttackTarget = pCell->phenotype.cell_interactions.pAttackTarget; 
+		if( pAttackTarget != NULL ) 
 		{
-			Cell* pTarget = pCell->phenotype.cell_interactions.pAttackTarget; 
-
-			pCell->attack_cell(pTarget,dt); 
+			pCell->attack_cell(pAttackTarget,dt); 
 			attacked = true; // attacked at least one cell in this time step 
 
 			// attack_cell
@@ -1276,18 +1279,18 @@ void standard_cell_cell_interactions( Cell* pCell, Phenotype& phenotype, double 
 			probability = dt / (1e-15 + pCell->phenotype.cell_interactions.attack_duration); 
 
 
-			if( UniformRandom() < probability || pTarget->phenotype.death.dead ) 
+			if( UniformRandom() < probability || pAttackTarget->phenotype.death.dead ) 
 			{
 				/*
 				std::cout << "*********   *********  ********  attack done **** " << PhysiCell_globals.current_time << " " 
 				<< probability << " "
-				<< "attack time: " << pTarget->state.total_attack_time << " " 		
-				<< "damage: " << pTarget->phenotype.cell_integrity.damage <<  " " 		
-				<< "dead? " << (int) pTarget->phenotype.death.dead << " " 
+				<< "attack time: " << pAttackTarget->state.total_attack_time << " " 		
+				<< "damage: " << pAttackTarget->phenotype.cell_integrity.damage <<  " " 		
+				<< "dead? " << (int) pAttackTarget->phenotype.death.dead << " " 
 				<< "damage delivered: " << pCell->phenotype.cell_interactions.total_damage_delivered << std::endl; 
 				*/
 
-				end_attack( pCell , pTarget );
+				end_attack( pCell , pAttackTarget );
 			} 
 		} 
 
