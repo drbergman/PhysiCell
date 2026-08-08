@@ -1316,10 +1316,10 @@ void standard_cell_cell_interactions( Cell* pCell, Phenotype& phenotype, double 
 
 	// move effector attack here. 
 
-		// read the target once. another thread can clear this field while we are in
-		// here -- remove_all_attackers() does exactly that when our target is eaten,
-		// fused or lysed -- and attack_cell() dereferences without a null check, so
-		// testing the field and then reloading it can hand it a NULL. 
+		// read the target once. attack_cell() dereferences without a null check, so
+		// testing this field and then reloading it would let any concurrent clear
+		// hand it a NULL. One load is free and does not depend on which teardown
+		// paths currently run inside this loop. 
 		Cell* pAttackTarget = pCell->phenotype.cell_interactions.pAttackTarget; 
 		if( pAttackTarget != NULL ) 
 		{
