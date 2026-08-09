@@ -334,6 +334,19 @@ void PhysiCell_Settings::read_from_pugixml( void )
 			PhysiCell_settings.disable_automated_spring_adhesions = true;
 		}
 
+		if( node_options.child( "asymmetric_division_probability_tolerance" ) )
+		{
+			double tol = xml_get_double_value( node_options, "asymmetric_division_probability_tolerance" );
+			if( tol < 0.0 )
+			{
+				std::cerr << "Error: <asymmetric_division_probability_tolerance> is " << tol
+					<< ", but it must not be negative." << std::endl;
+				exit(-1);
+			}
+			PhysiCell_settings.asymmetric_division_probability_tolerance = tol;
+			std::cout << "Using asymmetric division probability tolerance " << tol << std::endl;
+		}
+
 		// NOTE: the random seed is read in setup_random_seed_from_config(), which runs
 		// after the output folder is finalized so random_seed.txt is written there.
 
