@@ -1379,7 +1379,10 @@ void asymmetric_division_function( Cell* pCell_parent, Cell* pCell_daughter )
 	Asymmetric_Division& parent_asym_div = pCell_parent->phenotype.cycle.asymmetric_division;
 	// probabilities meant to sum to exactly 1 land a hair over it in double precision:
 	// 0.11 + 0.33 + 0.56 is 1.000000000000000222
-	static const double tolerance = 1e-12;
+	// probabilities meant to sum to exactly 1 land a hair over it in double precision:
+	// 0.11 + 0.33 + 0.56 is 1.000000000000000222. Configurable because how much slack a model
+	// needs depends on how many probabilities it sums and how they are computed.
+	const double tolerance = PhysiCell_settings.asymmetric_division_probability_tolerance;
 	double total = parent_asym_div.probabilities_total();
 	if (total > 1.0 + tolerance)
 	{

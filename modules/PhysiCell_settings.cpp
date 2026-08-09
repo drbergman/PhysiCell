@@ -269,6 +269,19 @@ void PhysiCell_Settings::read_from_pugixml( void )
 			PhysiCell_settings.disable_automated_spring_adhesions = true;
 		}
 
+		if( node_options.child( "asymmetric_division_probability_tolerance" ) )
+		{
+			double tol = xml_get_double_value( node_options, "asymmetric_division_probability_tolerance" );
+			if( tol < 0.0 )
+			{
+				std::cerr << "Error: <asymmetric_division_probability_tolerance> is " << tol
+					<< ", but it must not be negative." << std::endl;
+				exit(-1);
+			}
+			PhysiCell_settings.asymmetric_division_probability_tolerance = tol;
+			std::cout << "Using asymmetric division probability tolerance " << tol << std::endl;
+		}
+
 		pugi::xml_node random_seed_node = xml_find_node(node_options, "random_seed");
 		std::string random_seed = ""; // default is system clock, even if this element is not present
 		if (random_seed_node)
