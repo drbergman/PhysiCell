@@ -1406,10 +1406,25 @@ void dynamic_spring_attachments( Cell* pCell , Phenotype& phenotype, double dt )
 {
     // check for detachments 
     double detachment_probability = phenotype.mechanics.detachment_rate * dt; 
+
+	// This runs inside the mechanics parallel-for, and this loop is not the only
+	// thing touching pCell's spring list: another thread running this same function
+	// for a neighbor calls attach_cells_as_spring(), which reaches into THIS cell's
+	// spring_attachments and push_back()s. Those writers serialize on the unnamed
+	// critical in Cell::attach_cell_as_spring() / detach_cell_as_spring(); reading
+	// here without it means a concurrent push_back that reallocates leaves the loop
+	// indexing a freed buffer and dereferencing garbage. Copy under the same lock
+	// and walk the copy.
+	// The lock is not held across the loop body: detach_cells_as_spring() takes the
+	// same unnamed critical, and OpenMP criticals are not reentrant.
+	std::vector<Cell*> spring_attachments_snapshot;
+	#pragma omp critical
+	{ spring_attachments_snapshot = pCell->state.spring_attachments; }
+
 	// detach_cells_as_spring swaps the detached cell with the last cell in the vector, so we need to iterate backwards
-	for (size_t j = pCell->state.spring_attachments.size(); j-- > 0; )
+	for (size_t j = spring_attachments_snapshot.size(); j-- > 0; )
     {
-        Cell* pTest = pCell->state.spring_attachments[j];
+        Cell* pTest = spring_attachments_snapshot[j];
 		if (phenotype.cell_interactions.pAttackTarget==pTest || pTest->phenotype.cell_interactions.pAttackTarget==pCell) // do not let attackers detach randomly
 		{ continue; }
         if( UniformRandom() <= detachment_probability )
