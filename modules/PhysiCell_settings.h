@@ -117,6 +117,12 @@ class PhysiCell_Settings
 	bool enable_legacy_saves = false;
 
 	bool disable_automated_spring_adhesions = false;
+
+	// slack allowed when checking that asymmetric division probabilities sum to at most 1.
+	// Probabilities meant to sum to exactly 1 land a hair over it in double precision:
+	// 0.11 + 0.33 + 0.56 is 1.000000000000000222. Override with <asymmetric_division_probability_tolerance>
+	// in the <options> block.
+	double asymmetric_division_probability_tolerance = 1e-12;
 	
 	double SVG_save_interval = 60;
 	bool enable_SVG_saves = true;
