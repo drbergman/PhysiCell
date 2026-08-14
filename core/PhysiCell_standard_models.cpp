@@ -691,7 +691,6 @@ void standard_domain_edge_avoidance_interactions( Cell* pCell, Phenotype& phenot
 	{ pCell->functions.calculate_distance_to_membrane = distance_to_domain_edge; }
 	phenotype.mechanics.cell_BM_repulsion_strength = 100;  
 		
-	double max_interactive_distance = phenotype.mechanics.relative_maximum_adhesion_distance * phenotype.geometry.radius;
 	double distance = pCell->functions.calculate_distance_to_membrane(pCell,phenotype,dt); 
 	//Note that the distance_to_membrane function must set displacement values (as a normal vector)
 		
@@ -1382,7 +1381,8 @@ void standard_asymmetric_division_function( Cell* pCell_parent, Cell* pCell_daug
 		double sym_div_prob = pCell_parent->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities[pCell_parent->type] + 1.0 - total;
 		if (sym_div_prob < 0.0)
 		{ 
-			throw std::runtime_error("Error: Asymmetric division probabilities for " + pCD_parent->name + " sum to greater than 1.0 and cannot be normalized.");
+			std::cerr << "Error: Asymmetric division probabilities for " + pCD_parent->name + " sum to greater than 1.0 and cannot be normalized." << std::endl;
+			exit(-1);
 		}
 		pCell_parent->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities[pCell_parent->type] = sym_div_prob;
 		pCell_daughter->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities[pCell_daughter->type] = sym_div_prob;
@@ -1423,7 +1423,8 @@ void dynamic_attachments( Cell* pCell , Phenotype& phenotype, double dt )
 {
     // check for detachments 
     double detachment_probability = phenotype.mechanics.detachment_rate * dt; 
-    for( int j=0; j < pCell->state.attached_cells.size(); j++ )
+	// detach_cells swaps the detached cell with the last cell in the vector, so we need to iterate backwards
+    for( int j=pCell->state.attached_cells.size()-1; j >= 0; j-- )
     {
         Cell* pTest = pCell->state.attached_cells[j]; 
         if( UniformRandom() <= detachment_probability )
@@ -1441,8 +1442,6 @@ void dynamic_attachments( Cell* pCell , Phenotype& phenotype, double dt )
     while( done == false && j < pCell->state.neighbors.size() )
     {
         Cell* pTest = pCell->state.neighbors[j]; 
-		if (phenotype.cell_interactions.pAttackTarget==pTest || pTest->phenotype.cell_interactions.pAttackTarget==pCell) // do not let attackers detach randomly
-		{ continue; }
         if( pTest->state.number_of_attached_cells() < pTest->phenotype.mechanics.maximum_number_of_attachments )
         {
             // std::string search_string = "adhesive affinity to " + pTest->type_name; 
@@ -1467,9 +1466,27 @@ void dynamic_spring_attachments( Cell* pCell , Phenotype& phenotype, double dt )
 {
     // check for detachments 
     double detachment_probability = phenotype.mechanics.detachment_rate * dt; 
-    for( int j=0; j < pCell->state.spring_attachments.size(); j++ )
+
+	// This runs inside the mechanics parallel-for, and this loop is not the only
+	// thing touching pCell's spring list: another thread running this same function
+	// for a neighbor calls attach_cells_as_spring(), which reaches into THIS cell's
+	// spring_attachments and push_back()s. Those writers serialize on the unnamed
+	// critical in Cell::attach_cell_as_spring() / detach_cell_as_spring(); reading
+	// here without it means a concurrent push_back that reallocates leaves the loop
+	// indexing a freed buffer and dereferencing garbage. Copy under the same lock
+	// and walk the copy.
+	// The lock is not held across the loop body: detach_cells_as_spring() takes the
+	// same unnamed critical, and OpenMP criticals are not reentrant.
+	std::vector<Cell*> spring_attachments_snapshot;
+	#pragma omp critical
+	{ spring_attachments_snapshot = pCell->state.spring_attachments; }
+
+	// detach_cells_as_spring swaps the detached cell with the last cell in the vector, so we need to iterate backwards
+    for( int j=spring_attachments_snapshot.size()-1; j >= 0; j-- )
     {
-        Cell* pTest = pCell->state.spring_attachments[j]; 
+        Cell* pTest = spring_attachments_snapshot[j];
+		if (phenotype.cell_interactions.pAttackTarget==pTest || pTest->phenotype.cell_interactions.pAttackTarget==pCell) // do not let attackers detach randomly
+		{ continue; }
         if( UniformRandom() <= detachment_probability )
         { detach_cells_as_spring( pCell , pTest ); }
     }
