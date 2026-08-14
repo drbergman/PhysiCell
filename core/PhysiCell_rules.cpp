@@ -2324,28 +2324,19 @@ std::vector<double> UniformInAnnulus( double r1, double r2 )
     return {x,y,0.0}; 
 }
 
-std::vector<double> UniformInShell( double r1, double r2 )
+std::vector<double> UniformInShell(double r1, double r2)
 {
-	static double two_pi = 6.283185307179586; 
+    double r1_3 = r1 * r1 * r1;
+    double r2_3 = r2 * r2 * r2;
+    
+    double xi = UniformRandom();
+    double r = pow(r1_3 + xi * (r2_3 - r1_3), 1.0 / 3.0);
 
-    double T = UniformRandom(); 
-	double sqrt_T = sqrt(T); 
-	double sqrt_one_minus_T = 1.0;
-	sqrt_one_minus_T -= T; 
-	sqrt_one_minus_T = sqrt( sqrt_one_minus_T ); 
+    std::vector<double> dir = UniformOnUnitSphere();
+    for (int i = 0; i < 3; ++i)
+        dir[i] *= r;
 
-	double param1 = pow( UniformRandom() , 0.33333333333333333333333333333333333333 );  //  xi^(1/3), 
-	// param1 *= (r2-r1); 
-	// param1 += r1; 
-    double param2 = param1; // xi^(1/3)
-	param2 *= 2.0; // 2 * xi^(1/3)
-	param2 *= sqrt_T; // 2 * xi(1) * T^(1/2)
-	param2 *= sqrt_one_minus_T; //  2 * xi(1) * T^(1/2) * (1-T)^(1/2)
-	
-    double theta = UniformRandom(); // U(0,1)
-	theta *= two_pi; // U(0,2*pi)
-	
-	return { param2*sin(theta) , param2*cos(theta), param1*(1-2*T) }; 
+    return dir;
 }
 
 void setup_cell_rules( void )
