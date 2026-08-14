@@ -1373,122 +1373,122 @@ void Cell::ingest_cell( Cell* pCell_to_eat )
 	#pragma omp critical
 	{
 		// don't ingest a cell that's already ingested 
-		if( pCell_to_eat->phenotype.volume.total < 1e-15 )
-		{ return; } 
+		if( pCell_to_eat->phenotype.volume.total >= 1e-15 )
+		{ 
+			/*
+			if( pCell_to_eat->phenotype.death.dead == true )
+			{ std::cout << this->type_name << " (" << this << ")" << " eats dead " << pCell_to_eat->type_name << " (" << pCell_to_eat 
+				<< ") of size " << pCell_to_eat->phenotype.volume.total << std::endl; }
+			else
+			{ std::cout << this->type_name << " (" << this << ")" << " eats live " << pCell_to_eat->type_name << " (" << pCell_to_eat 
+				<< ") of size " << pCell_to_eat->phenotype.volume.total << std::endl; }
+			*/
 
-		/*
-		if( pCell_to_eat->phenotype.death.dead == true )
-		{ std::cout << this->type_name << " (" << this << ")" << " eats dead " << pCell_to_eat->type_name << " (" << pCell_to_eat 
-			<< ") of size " << pCell_to_eat->phenotype.volume.total << std::endl; }
-		else
-		{ std::cout << this->type_name << " (" << this << ")" << " eats live " << pCell_to_eat->type_name << " (" << pCell_to_eat 
-			<< ") of size " << pCell_to_eat->phenotype.volume.total << std::endl; }
-		*/
-
-		// mark it as dead 
-		pCell_to_eat->phenotype.death.dead = true; 
-		// set secretion and uptake to zero 
-		pCell_to_eat->phenotype.secretion.set_all_secretion_to_zero( );  
-		pCell_to_eat->phenotype.secretion.set_all_uptake_to_zero( ); 
-		
-		// deactivate all custom function 
-		pCell_to_eat->functions.custom_cell_rule = NULL; 
-		pCell_to_eat->functions.update_phenotype = NULL; 
-		pCell_to_eat->functions.contact_function = NULL; 
-		pCell_to_eat->functions.cell_division_function = NULL; 
-		pCell_to_eat->functions.cell_division_direction_function = NULL; 
-		
-		// should set volume fuction to NULL too! 
-		pCell_to_eat->functions.volume_update_function = NULL; 
-
-		// set cell as unmovable and non-secreting 
-		pCell_to_eat->is_movable = false; 
-		pCell_to_eat->is_active = false; 
-
-		// absorb all the volume(s)
-
-		// absorb fluid volume (all into the cytoplasm) 
-		phenotype.volume.cytoplasmic_fluid += pCell_to_eat->phenotype.volume.fluid; 
-		pCell_to_eat->phenotype.volume.cytoplasmic_fluid = 0.0; 
-		
-		// absorb nuclear and cyto solid volume (into the cytoplasm) 
-		phenotype.volume.cytoplasmic_solid += pCell_to_eat->phenotype.volume.cytoplasmic_solid; 
-		pCell_to_eat->phenotype.volume.cytoplasmic_solid = 0.0; 
-		
-		phenotype.volume.cytoplasmic_solid += pCell_to_eat->phenotype.volume.nuclear_solid; 
-		pCell_to_eat->phenotype.volume.nuclear_solid = 0.0; 
-		
-		// consistency calculations 
-		
-		phenotype.volume.fluid = phenotype.volume.nuclear_fluid + 
-			phenotype.volume.cytoplasmic_fluid; 
-		pCell_to_eat->phenotype.volume.fluid = 0.0; 
-		
-		phenotype.volume.solid = phenotype.volume.cytoplasmic_solid + 
-			phenotype.volume.nuclear_solid; 
-		pCell_to_eat->phenotype.volume.solid = 0.0; 
-		
-		// no change to nuclear volume (initially) 
-		pCell_to_eat->phenotype.volume.nuclear = 0.0; 
-		pCell_to_eat->phenotype.volume.nuclear_fluid = 0.0; 
-		
-		phenotype.volume.cytoplasmic = phenotype.volume.cytoplasmic_solid + 
-			phenotype.volume.cytoplasmic_fluid; 
-		pCell_to_eat->phenotype.volume.cytoplasmic = 0.0; 
-		
-		phenotype.volume.total = phenotype.volume.nuclear + 
-			phenotype.volume.cytoplasmic; 
-		pCell_to_eat->phenotype.volume.total = 0.0; 
-
-		phenotype.volume.fluid_fraction = phenotype.volume.fluid / 
-			(  phenotype.volume.total + 1e-16 ); 
-		pCell_to_eat->phenotype.volume.fluid_fraction = 0.0; 
-
-		phenotype.volume.cytoplasmic_to_nuclear_ratio = phenotype.volume.cytoplasmic_solid / 
-			( phenotype.volume.nuclear_solid + 1e-16 );
+			// mark it as dead 
+			pCell_to_eat->phenotype.death.dead = true; 
+			// set secretion and uptake to zero 
+			pCell_to_eat->phenotype.secretion.set_all_secretion_to_zero( );  
+			pCell_to_eat->phenotype.secretion.set_all_uptake_to_zero( ); 
 			
-		// update corresponding BioFVM parameters (self-consistency) 
-		set_total_volume( phenotype.volume.total ); 
-		pCell_to_eat->set_total_volume( 0.0 ); 
-		
-		// absorb the internalized substrates 
-		
-		// multiply by the fraction that is supposed to be ingested (for each substrate) 
+			// deactivate all custom function 
+			pCell_to_eat->functions.custom_cell_rule = NULL; 
+			pCell_to_eat->functions.update_phenotype = NULL; 
+			pCell_to_eat->functions.contact_function = NULL; 
+			pCell_to_eat->functions.cell_division_function = NULL; 
+			pCell_to_eat->functions.cell_division_direction_function = NULL; 
+			
+			// should set volume fuction to NULL too! 
+			pCell_to_eat->functions.volume_update_function = NULL; 
 
-		*(pCell_to_eat->internalized_substrates) *= 
-			*(pCell_to_eat->fraction_transferred_when_ingested); // 
+			// set cell as unmovable and non-secreting 
+			pCell_to_eat->is_movable = false; 
+			pCell_to_eat->is_active = false; 
 
-		*internalized_substrates += *(pCell_to_eat->internalized_substrates); 
-		static int n_substrates = internalized_substrates->size(); 
-		pCell_to_eat->internalized_substrates->assign( n_substrates , 0.0 ); 	
+			// absorb all the volume(s)
 
-		// conserved quantitites in custom data during phagocytosis
-		// so that phagocyte cell absorbs the full amount from the engulfed cell;
-		for( int nn = 0 ; nn < custom_data.variables.size() ; nn++ )
-		{
-			if( custom_data.variables[nn].conserved_quantity == true )
+			// absorb fluid volume (all into the cytoplasm) 
+			phenotype.volume.cytoplasmic_fluid += pCell_to_eat->phenotype.volume.fluid; 
+			pCell_to_eat->phenotype.volume.cytoplasmic_fluid = 0.0; 
+			
+			// absorb nuclear and cyto solid volume (into the cytoplasm) 
+			phenotype.volume.cytoplasmic_solid += pCell_to_eat->phenotype.volume.cytoplasmic_solid; 
+			pCell_to_eat->phenotype.volume.cytoplasmic_solid = 0.0; 
+			
+			phenotype.volume.cytoplasmic_solid += pCell_to_eat->phenotype.volume.nuclear_solid; 
+			pCell_to_eat->phenotype.volume.nuclear_solid = 0.0; 
+			
+			// consistency calculations 
+			
+			phenotype.volume.fluid = phenotype.volume.nuclear_fluid + 
+				phenotype.volume.cytoplasmic_fluid; 
+			pCell_to_eat->phenotype.volume.fluid = 0.0; 
+			
+			phenotype.volume.solid = phenotype.volume.cytoplasmic_solid + 
+				phenotype.volume.nuclear_solid; 
+			pCell_to_eat->phenotype.volume.solid = 0.0; 
+			
+			// no change to nuclear volume (initially) 
+			pCell_to_eat->phenotype.volume.nuclear = 0.0; 
+			pCell_to_eat->phenotype.volume.nuclear_fluid = 0.0; 
+			
+			phenotype.volume.cytoplasmic = phenotype.volume.cytoplasmic_solid + 
+				phenotype.volume.cytoplasmic_fluid; 
+			pCell_to_eat->phenotype.volume.cytoplasmic = 0.0; 
+			
+			phenotype.volume.total = phenotype.volume.nuclear + 
+				phenotype.volume.cytoplasmic; 
+			pCell_to_eat->phenotype.volume.total = 0.0; 
+
+			phenotype.volume.fluid_fraction = phenotype.volume.fluid / 
+				(  phenotype.volume.total + 1e-16 ); 
+			pCell_to_eat->phenotype.volume.fluid_fraction = 0.0; 
+
+			phenotype.volume.cytoplasmic_to_nuclear_ratio = phenotype.volume.cytoplasmic_solid / 
+				( phenotype.volume.nuclear_solid + 1e-16 );
+				
+			// update corresponding BioFVM parameters (self-consistency) 
+			set_total_volume( phenotype.volume.total ); 
+			pCell_to_eat->set_total_volume( 0.0 ); 
+			
+			// absorb the internalized substrates 
+			
+			// multiply by the fraction that is supposed to be ingested (for each substrate) 
+
+			*(pCell_to_eat->internalized_substrates) *= 
+				*(pCell_to_eat->fraction_transferred_when_ingested); // 
+
+			*internalized_substrates += *(pCell_to_eat->internalized_substrates); 
+			static int n_substrates = internalized_substrates->size(); 
+			pCell_to_eat->internalized_substrates->assign( n_substrates , 0.0 ); 	
+
+			// conserved quantitites in custom data during phagocytosis
+			// so that phagocyte cell absorbs the full amount from the engulfed cell;
+			for( int nn = 0 ; nn < custom_data.variables.size() ; nn++ )
 			{
-				custom_data.variables[nn].value += 
-				pCell_to_eat->custom_data.variables[nn].value; 			
+				if( custom_data.variables[nn].conserved_quantity == true )
+				{
+					custom_data.variables[nn].value += 
+					pCell_to_eat->custom_data.variables[nn].value; 			
+				}
 			}
-		}
-		for( int nn = 0 ; nn < custom_data.vector_variables.size() ; nn++ )
-		{
-			if( custom_data.vector_variables[nn].conserved_quantity == true )
+			for( int nn = 0 ; nn < custom_data.vector_variables.size() ; nn++ )
 			{
-				custom_data.vector_variables[nn].value += 
-				pCell_to_eat->custom_data.vector_variables[nn].value; 
+				if( custom_data.vector_variables[nn].conserved_quantity == true )
+				{
+					custom_data.vector_variables[nn].value += 
+					pCell_to_eat->custom_data.vector_variables[nn].value; 
+				}
 			}
-		}
-		
-		// trigger removal from the simulation 
-		// pCell_to_eat->die(); // I don't think this is safe if it's in an OpenMP loop 
-		
-		// flag it for removal 
-		// pCell_to_eat->flag_for_removal(); 
+			
+			// trigger removal from the simulation 
+			// pCell_to_eat->die(); // I don't think this is safe if it's in an OpenMP loop 
+			
+			// flag it for removal 
+			// pCell_to_eat->flag_for_removal(); 
 
-		// remove all adhesions 
-		// pCell_to_eat->remove_all_attached_cells();
+			// remove all adhesions 
+			// pCell_to_eat->remove_all_attached_cells();
+		}
 		
 	}
 
@@ -1541,128 +1541,129 @@ void Cell::fuse_cell( Cell* pCell_to_fuse )
 	#pragma omp critical
 	{
 		// don't fuse a cell that's already fused or ingested
-		if( pCell_to_fuse->phenotype.volume.total < 1e-15)
-		{ return; } 
+		if( pCell_to_fuse->phenotype.volume.total >= 1e-15)
+		{ 
 
-		// set new position at center of volume 
-			// x_new = (vol_B * x_B + vol_S * x_S ) / (vol_B + vol_S )
-		
-		std::vector<double> new_position = position; // x_B
-		new_position *= phenotype.volume.total; // vol_B * x_B 
-		double total_volume = phenotype.volume.total; 
-		total_volume += pCell_to_fuse->phenotype.volume.total ;  
-
-		axpy( &new_position , pCell_to_fuse->phenotype.volume.total , pCell_to_fuse->position ); // vol_B*x_B + vol_S*x_S
-		new_position /= total_volume; // (vol_B*x_B+vol_S*x_S)/(vol_B+vol_S);
-
-		static double xL = get_default_microenvironment()->mesh.bounding_box[0];		 
-		static double xU = get_default_microenvironment()->mesh.bounding_box[3]; 
-
-		static double yL = get_default_microenvironment()->mesh.bounding_box[1];		 
-		static double yU = get_default_microenvironment()->mesh.bounding_box[4]; 
-
-		static double zL = get_default_microenvironment()->mesh.bounding_box[2];		 
-		static double zU = get_default_microenvironment()->mesh.bounding_box[5]; 
-
-		if( new_position[0] < xL || new_position[0] > xU || 
-		    new_position[1] < yL || new_position[1] > yU || 
-			new_position[2] < zL || new_position[2] > zU )
-		{
-			std::cout << "cell fusion at " << new_position << " violates domain bounds" << std::endl; 
-			std::cout << get_default_microenvironment()->mesh.bounding_box << std::endl << std::endl; 
-		}
-		position = new_position; 
-		update_voxel_in_container();
-
-		// set number of nuclei 
-
-		state.number_of_nuclei += pCell_to_fuse->state.number_of_nuclei; 
-
-		// absorb all the volume(s)
-
-		// absorb fluid volume (all into the cytoplasm) 
-		phenotype.volume.cytoplasmic_fluid += pCell_to_fuse->phenotype.volume.cytoplasmic_fluid; 
-		pCell_to_fuse->phenotype.volume.cytoplasmic_fluid = 0.0; 
-
-		phenotype.volume.nuclear_fluid += pCell_to_fuse->phenotype.volume.nuclear_fluid; 
-		pCell_to_fuse->phenotype.volume.nuclear_fluid = 0.0; 
-
-		// absorb nuclear and cyto solid volume (into the cytoplasm) 
-		phenotype.volume.cytoplasmic_solid += pCell_to_fuse->phenotype.volume.cytoplasmic_solid; 
-		pCell_to_fuse->phenotype.volume.cytoplasmic_solid = 0.0; 
-		
-		phenotype.volume.nuclear_solid += pCell_to_fuse->phenotype.volume.nuclear_solid; 
-		pCell_to_fuse->phenotype.volume.nuclear_solid = 0.0; 
-
-		// consistency calculations 
-		
-		phenotype.volume.fluid = phenotype.volume.nuclear_fluid + 
-			phenotype.volume.cytoplasmic_fluid; 
-		pCell_to_fuse->phenotype.volume.fluid = 0.0; 
-		
-		phenotype.volume.solid = phenotype.volume.cytoplasmic_solid + 
-			phenotype.volume.nuclear_solid; 
-		pCell_to_fuse->phenotype.volume.solid = 0.0; 
-		
-		phenotype.volume.nuclear = phenotype.volume.nuclear_fluid + 
-			phenotype.volume.nuclear_solid; 
-		pCell_to_fuse->phenotype.volume.nuclear = 0.0; 
-
-		phenotype.volume.cytoplasmic = phenotype.volume.cytoplasmic_fluid + 
-			phenotype.volume.cytoplasmic_solid; 
-		pCell_to_fuse->phenotype.volume.cytoplasmic = 0.0; 
-		
-		phenotype.volume.total = phenotype.volume.nuclear + 
-			phenotype.volume.cytoplasmic; 
-		pCell_to_fuse->phenotype.volume.total = 0.0; 
-
-		phenotype.volume.fluid_fraction = phenotype.volume.fluid / 
-			(  phenotype.volume.total + 1e-16 ); 
-		pCell_to_fuse->phenotype.volume.fluid_fraction = 0.0; 
-
-		phenotype.volume.cytoplasmic_to_nuclear_ratio = phenotype.volume.cytoplasmic_solid / 
-			( phenotype.volume.nuclear_solid + 1e-16 );
+			// set new position at center of volume 
+				// x_new = (vol_B * x_B + vol_S * x_S ) / (vol_B + vol_S )
 			
-		// update corresponding BioFVM parameters (self-consistency) 
-		set_total_volume( phenotype.volume.total ); 
-		pCell_to_fuse->set_total_volume( 0.0 ); 
+			std::vector<double> new_position = position; // x_B
+			new_position *= phenotype.volume.total; // vol_B * x_B 
+			double total_volume = phenotype.volume.total; 
+			total_volume += pCell_to_fuse->phenotype.volume.total ;  
 
-		// absorb the internalized substrates 
-		
-		*internalized_substrates += *(pCell_to_fuse->internalized_substrates); 
-		static int n_substrates = internalized_substrates->size(); 
-		pCell_to_fuse->internalized_substrates->assign( n_substrates , 0.0 ); 	
+			axpy( &new_position , pCell_to_fuse->phenotype.volume.total , pCell_to_fuse->position ); // vol_B*x_B + vol_S*x_S
+			new_position /= total_volume; // (vol_B*x_B+vol_S*x_S)/(vol_B+vol_S);
 
-		// set target volume(s)
+			static double xL = get_default_microenvironment()->mesh.bounding_box[0];		 
+			static double xU = get_default_microenvironment()->mesh.bounding_box[3]; 
 
-		phenotype.volume.target_solid_cytoplasmic += pCell_to_fuse->phenotype.volume.target_solid_cytoplasmic;
-		phenotype.volume.target_solid_nuclear += pCell_to_fuse->phenotype.volume.target_solid_nuclear;
-		
-		// trigger removal from the simulation 
-		// pCell_to_eat->die(); // I don't think this is safe if it's in an OpenMP loop 
-		
-		// flag it for removal 
-		// pCell_to_eat->flag_for_removal(); 
-		// mark it as dead 
-		pCell_to_fuse->phenotype.death.dead = true; 
-		// set secretion and uptake to zero 
-		pCell_to_fuse->phenotype.secretion.set_all_secretion_to_zero( );  
-		pCell_to_fuse->phenotype.secretion.set_all_uptake_to_zero( ); 
-		
-		// deactivate all custom function 
-		pCell_to_fuse->functions.custom_cell_rule = NULL; 
-		pCell_to_fuse->functions.update_phenotype = NULL; 
-		pCell_to_fuse->functions.contact_function = NULL; 
-		pCell_to_fuse->functions.cell_division_function = NULL; 
-		pCell_to_fuse->functions.cell_division_direction_function = NULL; 
-		pCell_to_fuse->functions.volume_update_function = NULL; 
+			static double yL = get_default_microenvironment()->mesh.bounding_box[1];		 
+			static double yU = get_default_microenvironment()->mesh.bounding_box[4]; 
 
-		// remove all adhesions 
-		// pCell_to_eat->remove_all_attached_cells();
-		
-		// set cell as unmovable and non-secreting 
-		pCell_to_fuse->is_movable = false; 
-		pCell_to_fuse->is_active = false; 
+			static double zL = get_default_microenvironment()->mesh.bounding_box[2];		 
+			static double zU = get_default_microenvironment()->mesh.bounding_box[5]; 
+
+			if( new_position[0] < xL || new_position[0] > xU || 
+				new_position[1] < yL || new_position[1] > yU || 
+				new_position[2] < zL || new_position[2] > zU )
+			{
+				std::cout << "cell fusion at " << new_position << " violates domain bounds" << std::endl; 
+				std::cout << get_default_microenvironment()->mesh.bounding_box << std::endl << std::endl; 
+			}
+			position = new_position; 
+			update_voxel_in_container();
+
+			// set number of nuclei 
+
+			state.number_of_nuclei += pCell_to_fuse->state.number_of_nuclei; 
+
+			// absorb all the volume(s)
+
+			// absorb fluid volume (all into the cytoplasm) 
+			phenotype.volume.cytoplasmic_fluid += pCell_to_fuse->phenotype.volume.cytoplasmic_fluid; 
+			pCell_to_fuse->phenotype.volume.cytoplasmic_fluid = 0.0; 
+
+			phenotype.volume.nuclear_fluid += pCell_to_fuse->phenotype.volume.nuclear_fluid; 
+			pCell_to_fuse->phenotype.volume.nuclear_fluid = 0.0; 
+
+			// absorb nuclear and cyto solid volume (into the cytoplasm) 
+			phenotype.volume.cytoplasmic_solid += pCell_to_fuse->phenotype.volume.cytoplasmic_solid; 
+			pCell_to_fuse->phenotype.volume.cytoplasmic_solid = 0.0; 
+			
+			phenotype.volume.nuclear_solid += pCell_to_fuse->phenotype.volume.nuclear_solid; 
+			pCell_to_fuse->phenotype.volume.nuclear_solid = 0.0; 
+
+			// consistency calculations 
+			
+			phenotype.volume.fluid = phenotype.volume.nuclear_fluid + 
+				phenotype.volume.cytoplasmic_fluid; 
+			pCell_to_fuse->phenotype.volume.fluid = 0.0; 
+			
+			phenotype.volume.solid = phenotype.volume.cytoplasmic_solid + 
+				phenotype.volume.nuclear_solid; 
+			pCell_to_fuse->phenotype.volume.solid = 0.0; 
+			
+			phenotype.volume.nuclear = phenotype.volume.nuclear_fluid + 
+				phenotype.volume.nuclear_solid; 
+			pCell_to_fuse->phenotype.volume.nuclear = 0.0; 
+
+			phenotype.volume.cytoplasmic = phenotype.volume.cytoplasmic_fluid + 
+				phenotype.volume.cytoplasmic_solid; 
+			pCell_to_fuse->phenotype.volume.cytoplasmic = 0.0; 
+			
+			phenotype.volume.total = phenotype.volume.nuclear + 
+				phenotype.volume.cytoplasmic; 
+			pCell_to_fuse->phenotype.volume.total = 0.0; 
+
+			phenotype.volume.fluid_fraction = phenotype.volume.fluid / 
+				(  phenotype.volume.total + 1e-16 ); 
+			pCell_to_fuse->phenotype.volume.fluid_fraction = 0.0; 
+
+			phenotype.volume.cytoplasmic_to_nuclear_ratio = phenotype.volume.cytoplasmic_solid / 
+				( phenotype.volume.nuclear_solid + 1e-16 );
+				
+			// update corresponding BioFVM parameters (self-consistency) 
+			set_total_volume( phenotype.volume.total ); 
+			pCell_to_fuse->set_total_volume( 0.0 ); 
+
+			// absorb the internalized substrates 
+			
+			*internalized_substrates += *(pCell_to_fuse->internalized_substrates); 
+			static int n_substrates = internalized_substrates->size(); 
+			pCell_to_fuse->internalized_substrates->assign( n_substrates , 0.0 ); 	
+
+			// set target volume(s)
+
+			phenotype.volume.target_solid_cytoplasmic += pCell_to_fuse->phenotype.volume.target_solid_cytoplasmic;
+			phenotype.volume.target_solid_nuclear += pCell_to_fuse->phenotype.volume.target_solid_nuclear;
+			
+			// trigger removal from the simulation 
+			// pCell_to_eat->die(); // I don't think this is safe if it's in an OpenMP loop 
+			
+			// flag it for removal 
+			// pCell_to_eat->flag_for_removal(); 
+			// mark it as dead 
+			pCell_to_fuse->phenotype.death.dead = true; 
+			// set secretion and uptake to zero 
+			pCell_to_fuse->phenotype.secretion.set_all_secretion_to_zero( );  
+			pCell_to_fuse->phenotype.secretion.set_all_uptake_to_zero( ); 
+			
+			// deactivate all custom function 
+			pCell_to_fuse->functions.custom_cell_rule = NULL; 
+			pCell_to_fuse->functions.update_phenotype = NULL; 
+			pCell_to_fuse->functions.contact_function = NULL; 
+			pCell_to_fuse->functions.cell_division_function = NULL; 
+			pCell_to_fuse->functions.cell_division_direction_function = NULL; 
+			pCell_to_fuse->functions.volume_update_function = NULL; 
+
+			// remove all adhesions 
+			// pCell_to_eat->remove_all_attached_cells();
+			
+			// set cell as unmovable and non-secreting 
+			pCell_to_fuse->is_movable = false; 
+			pCell_to_fuse->is_active = false; 
+		}
 
 	}
 
