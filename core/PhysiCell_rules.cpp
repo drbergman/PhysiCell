@@ -1535,8 +1535,9 @@ void parse_csv_rules_v0( std::string filename )
 
 	while( fs.eof() == false )
 	{
-		std::string line; 	
-		std::getline( fs , line, '\n'); 
+		std::string line;
+		std::getline( fs , line, '\n');
+		trim_cr(line);
 		if( line.size() > 0 )
 		{ parse_csv_rule_v0(line); }
 	}
@@ -1671,8 +1672,9 @@ void parse_csv_rules_v1( std::string filename )
 
 	while( fs.eof() == false )
 	{
-		std::string line; 	
-		std::getline( fs , line, '\n'); 
+		std::string line;
+		std::getline( fs , line, '\n');
+		trim_cr(line);
 		if( line.size() > 0 )
 		{ parse_csv_rule_v1(line); }
 	}
@@ -1804,8 +1806,9 @@ void parse_csv_rules_v3( std::string filename )
 
 	while( fs.eof() == false )
 	{
-		std::string line; 	
-		std::getline( fs , line, '\n'); 
+		std::string line;
+		std::getline( fs , line, '\n');
+		trim_cr(line);
 		if( line.size() > 0 )
 		{ parse_csv_rule_v3(line); }
 	}

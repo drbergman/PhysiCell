@@ -308,6 +308,7 @@ void load_cells_csv_v1( std::string filename )
 	std::string line;
 	while (std::getline(file, line))
 	{
+		trim_cr(line);
 		std::vector<double> data;
 		csv_to_vector( line.c_str() , data ); 
 
@@ -840,6 +841,7 @@ void load_cells_csv_v2( std::string filename )
 
 	std::string line; 
 	std::getline( file , line ); 
+	trim_cr(line);
 
 	// tokenize the labels 
 
@@ -848,7 +850,10 @@ void load_cells_csv_v2( std::string filename )
 	// process all remaining lines 
 
 	while (std::getline(file, line))
-	{ process_csv_v2_line(line,labels); }	
+	{
+		trim_cr(line);
+		process_csv_v2_line(line,labels);
+	}
 
 	// close the file 
 
@@ -871,6 +876,7 @@ void load_cells_csv( std::string filename )
 	// determine version 
 	std::string line; 
 	std::getline( file , line );
+	trim_cr(line);
 	char c = line.c_str()[0]; 
 
 	file.close(); 
