@@ -250,8 +250,9 @@ void Hypothesis_Rule::English_display_HTML( std::ostream& os )
 
 void Hypothesis_Rule::add_signal( std::string signal , double half_max , double hill_power , std::string response )
 {
+	int signal_index = find_signal_index(signal);
     // check: is this a valid signal? (is it in the dictionary?)
-    if( find_signal_index(signal) < 0 )
+    if( signal_index < 0 )
     {
         std::cout << "Error! Attempted to add signal " << signal << " which is not in the dictionary." << std::endl; 
         std::cout << "Either fix your model or add the missing signal to the simulation." << std::endl; 
@@ -260,6 +261,9 @@ void Hypothesis_Rule::add_signal( std::string signal , double half_max , double 
 
         exit(-1); 
     }
+
+	// canonicalize the name so that synonyms of the same signal are treated as one signal
+	signal = signal_name( signal_index );
 
 	// check to see if the signal and response already there 
 	int n = find_signal(signal); 
@@ -278,8 +282,8 @@ void Hypothesis_Rule::add_signal( std::string signal , double half_max , double 
 		exit(-1); 
 	}
 
-	// add the signal; 
-	signals_map[signal] = signals_map.size(); 
+	// add the signal;
+	signals_map[signal] = signals.size();
 
 	signals.push_back( signal ); 
 	half_maxes.push_back( half_max ); 
@@ -411,6 +415,11 @@ void Hypothesis_Rule::sync_to_cell_definition( std::string cell_name )
 
 int Hypothesis_Rule::find_signal( std::string name )
 {
+	int index = find_signal_index( name );
+	if( index < 0 )
+	{ return -1; }
+	name = signal_name( index );
+
 	auto search = signals_map.find(name);
 
 	if( search == signals_map.end() )
@@ -420,7 +429,11 @@ int Hypothesis_Rule::find_signal( std::string name )
 }
 
 void Hypothesis_Rule::set_half_max( std::string name , double hm )
-{	
+{
+	int index = find_signal_index( name );
+	if( index >= 0 )
+	{ name = signal_name( index ); }
+
 	int n = find_signal( name ); 
 	if( n < 0 )
 	{ return; }
@@ -448,6 +461,10 @@ void Hypothesis_Rule::set_half_max( std::string name , double hm )
 
 void Hypothesis_Rule::set_hill_power( std::string name , double hp )
 {
+	int index = find_signal_index( name );
+	if( index >= 0 )
+	{ name = signal_name( index ); }
+
 	int n = find_signal( name ); 
 	if( n < 0 )
 	{ return; }
@@ -474,6 +491,10 @@ void Hypothesis_Rule::set_hill_power( std::string name , double hp )
 
 void Hypothesis_Rule::set_response( std::string name , std::string response )
 {
+	int index = find_signal_index( name );
+	if( index >= 0 )
+	{ name = signal_name( index ); }
+
 	int n = find_signal( name ); 
 	if( n < 0 )
 	{ return; }
@@ -757,7 +778,8 @@ void Hypothesis_Ruleset::sync_to_cell_definition( Cell_Definition* pCD )
 Hypothesis_Rule* Hypothesis_Ruleset::add_behavior( std::string behavior , double min_behavior, double max_behavior )
 {
     // check: is this a valid signal? (is it in the dictionary?)
-    if( find_behavior_index(behavior) < 0 )
+    int behavior_index = find_behavior_index(behavior);
+    if( behavior_index < 0 )
     {
         std::cout << "Warning! Attempted to add behavior " << behavior << " which is not in the dictionary." << std::endl; 
         std::cout << "Either fix your model or add the missing behavior to the simulation." << std::endl; 
@@ -766,6 +788,10 @@ Hypothesis_Rule* Hypothesis_Ruleset::add_behavior( std::string behavior , double
 
         exit(-1); 
     }
+
+	// canonicalize the name so that synonyms of the same behavior share a single rule
+	// (and hence a single multivariate Hill response) instead of one overwriting another
+	behavior = behavior_name( behavior_index );
 
 	// first, check. Is there already a ruleset? 
 	auto search = rules_map.find( behavior ); 
@@ -812,6 +838,11 @@ void Hypothesis_Ruleset::sync_to_cell_definition( std::string cell_name )
 
 Hypothesis_Rule* Hypothesis_Ruleset::find_behavior( std::string name )
 {
+    int index = find_behavior_index( name );
+	if( index < 0 )
+	{ return NULL; }
+	name = behavior_name( index );
+
     auto search = rules_map.find( name); 
 	if( search == rules_map.end() )
 	{
@@ -903,12 +934,6 @@ void add_rule( std::string cell_type, std::string signal, std::string behavior ,
         exit(-1); 
     }
 
-	if( pHRS->find_behavior(behavior) )
-	{
-		if( (*pHRS)[behavior].behavior != behavior )
-		{ (*pHRS)[behavior].behavior = behavior; std::cout << "wha?" << std::endl; }
-	}
-
 	pHRS->add_behavior(behavior); 
 
 	(*pHRS)[behavior].add_signal(signal,response); 
@@ -933,12 +958,6 @@ void add_rule( std::string cell_type, std::string signal, std::string behavior ,
             << ", but no hypothesis ruleset found for this type." << std::endl; 
         exit(-1); 
     }
-
-	if( pHRS->find_behavior(behavior) )
-	{
-		if( (*pHRS)[behavior].behavior != behavior )
-		{ (*pHRS)[behavior].behavior = behavior; std::cout << "wha?" << std::endl; }
-	}
 
 	pHRS->add_behavior(behavior); 
 
