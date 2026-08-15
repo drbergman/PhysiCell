@@ -1096,64 +1096,8 @@ double distance_to_domain_edge(Cell* pCell, Phenotype& phenotype, double dummy)
 			min_distance = temp_distance; 
 			nearest_boundary = 5; 
 		}			
-		
-		// check for 3D exceptions 
-		
-		// lines 
-		if( fabs( (pCell->position[0]) - (pCell->position[1]) ) < tolerance && 
-			fabs( (pCell->position[1]) - (pCell->position[2]) ) < tolerance && 
-			fabs( (pCell->position[0]) - (pCell->position[2]) ) < tolerance )
-		{
-			if( pCell->position[0] > 0 )
-			{
-				if( pCell->position[0] > 0 && pCell->position[1] > 0 )
-				{ pCell->displacement = { -one_over_sqrt_3 , -one_over_sqrt_3 , -one_over_sqrt_3 }; }
-				if( pCell->position[0] < 0 && pCell->position[1] > 0 )
-				{ pCell->displacement = { one_over_sqrt_3 , -one_over_sqrt_3 , -one_over_sqrt_3 }; }
-				
-				if( pCell->position[0] > 0 && pCell->position[1] < 0 )
-				{ pCell->displacement = { -one_over_sqrt_3 , one_over_sqrt_3 , -one_over_sqrt_3 }; }
-				if( pCell->position[0] < 0 && pCell->position[1] < 0 )
-				{ pCell->displacement = { one_over_sqrt_3 , one_over_sqrt_3 , -one_over_sqrt_3 }; }
-			} 
-			else
-			{
-				if( pCell->position[0] > 0 && pCell->position[1] > 0 )
-				{ pCell->displacement = { -one_over_sqrt_3 , -one_over_sqrt_3 , one_over_sqrt_3 }; }
-				if( pCell->position[0] < 0 && pCell->position[1] > 0 )
-				{ pCell->displacement = { one_over_sqrt_3 , -one_over_sqrt_3 , one_over_sqrt_3 }; }
-				
-				if( pCell->position[0] > 0 && pCell->position[1] < 0 )
-				{ pCell->displacement = { -one_over_sqrt_3 , one_over_sqrt_3 , one_over_sqrt_3 }; }
-				if( pCell->position[0] < 0 && pCell->position[1] < 0 )
-				{ pCell->displacement = { one_over_sqrt_3 , one_over_sqrt_3 , one_over_sqrt_3 }; }				
-			}
-			return min_distance; 
-		}
-		
-		// planes - let's not worry for today 
-		
-	}
-	else
-	{
-		// check for 2D  exceptions 
-		
-		if( fabs( (pCell->position[0]) - (pCell->position[1]) ) < tolerance )
-		{
-			if( pCell->position[0] > 0 && pCell->position[1] > 0 )
-			{ pCell->displacement = { -one_over_sqrt_2 , -one_over_sqrt_2 , 0 }; }
-			if( pCell->position[0] < 0 && pCell->position[1] > 0 )
-			{ pCell->displacement = { one_over_sqrt_2 , -one_over_sqrt_2 , 0 }; }
-			
-			if( pCell->position[0] > 0 && pCell->position[1] < 0 )
-			{ pCell->displacement = { -one_over_sqrt_2 , one_over_sqrt_2 , 0 }; }
-			if( pCell->position[0] < 0 && pCell->position[1] < 0 )
-			{ pCell->displacement = { one_over_sqrt_2 , one_over_sqrt_2 , 0 }; }
-			return min_distance; 
-		}
 	}
 	
-	// no exceptions 
 	switch(nearest_boundary)
 	{
 		case 0:
