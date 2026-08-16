@@ -1158,12 +1158,11 @@ void Cell::convert_to_cell_definition( Cell_Definition& cd )
 	Molecular cell_molecular = phenotype.molecular;
 	Custom_Cell_Data cell_custom_data = custom_data;
 
-	// pAttackTarget is phenotype state, and the assignment below replaces it, so
-	// end this cell's own attack. attacked_by and the spring are in state, which
-	// transformation preserves, so attacks against this cell continue.
-	remove_self_from_attacked();
-	// should we also remove all attackers?  That would be a change in behavior, so for now we don't.
-	// remove_all_attackers();
+	// pAttackTarget is phenotype state, and the assignment below replaces it, so hold
+	// on to it and put it back afterwards. attacked_by and the spring are in state,
+	// which transformation preserves, so restoring pAttackTarget keeps the whole
+	// attack link intact -- matching attacks against this cell, which already persist.
+	Cell* cell_attack_target = phenotype.cell_interactions.pAttackTarget;
 
 	// use the cell defaults; 
 	type = cd.type; 
@@ -1184,6 +1183,7 @@ void Cell::convert_to_cell_definition( Cell_Definition& cd )
 	
 	phenotype.geometry = cell_geometry; // leave the geometry alone
 	phenotype.molecular.internalized_total_substrates = cell_molecular.internalized_total_substrates;
+	phenotype.cell_interactions.pAttackTarget = cell_attack_target; // leave any ongoing attack alone
 	
 	for( int nn = 0 ; nn < custom_data.variables.size() ; nn++ )
 	{
