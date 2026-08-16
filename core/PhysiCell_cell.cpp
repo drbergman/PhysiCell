@@ -1163,6 +1163,9 @@ void Cell::convert_to_cell_definition( Cell_Definition& cd )
 	// which transformation preserves, so restoring pAttackTarget keeps the whole
 	// attack link intact -- matching attacks against this cell, which already persist.
 	Cell* cell_attack_target = phenotype.cell_interactions.pAttackTarget;
+	// a lifetime tally of this cell's own doing, so carry it across the transformation
+	// rather than restarting it partway through an attack that is still running
+	double cell_total_damage_delivered = phenotype.cell_interactions.total_damage_delivered;
 
 	// use the cell defaults; 
 	type = cd.type; 
@@ -1184,6 +1187,7 @@ void Cell::convert_to_cell_definition( Cell_Definition& cd )
 	phenotype.geometry = cell_geometry; // leave the geometry alone
 	phenotype.molecular.internalized_total_substrates = cell_molecular.internalized_total_substrates;
 	phenotype.cell_interactions.pAttackTarget = cell_attack_target; // leave any ongoing attack alone
+	phenotype.cell_interactions.total_damage_delivered = cell_total_damage_delivered;
 	
 	for( int nn = 0 ; nn < custom_data.variables.size() ; nn++ )
 	{
