@@ -1151,6 +1151,63 @@ Cell* create_cell( Cell_Definition& cd )
 	return pNew; 
 }
 
+// A transformation hands any in-progress attack to the new cell definition, which may be
+// one that would never have started it: attack_rates default to zero, so a type the user
+// never wrote attack parameters for inherits the attack anyway, and it is then the
+// attack_damage_rate (1.0) and attack_duration (30 min) defaults that decide how much
+// damage gets done. Whether such an attack should continue is a modelling question we
+// cannot answer for the user, so nothing is changed here -- but this is easy to reach by
+// accident, so say it out loud.
+static void warn_if_attack_inherited_by_nonattacking_type( Cell_Definition& cd,
+	const std::string& old_type_name , Cell* pTarget )
+{
+	if( pTarget == NULL )
+	{ return; }
+
+	// go through the target's type (an int) rather than its type_name: a target
+	// transforming on another thread in this same step would be rewriting that string
+	// underneath us. find_cell_definition_index only reads its map, so it is safe here.
+	int nTarget = find_cell_definition_index( pTarget->type );
+	if( nTarget < 0 || nTarget >= (int) cd.phenotype.cell_interactions.attack_rates.size() )
+	{ return; }
+
+	// the new type does attack this type, so inheriting the attack is self-consistent
+	if( cd.phenotype.cell_interactions.attack_rates[nTarget] > 0.0 )
+	{ return; }
+
+	std::string target_type_name = cell_definitions_by_index[nTarget]->name;
+
+	// the same transformation recurs throughout a run, so report each combination of
+	// (old type, new type, target type) once instead of once per cell per time step.
+	static std::vector<std::string> already_reported;
+
+	// a named critical: detach_cells_as_spring() and the attacked_by helpers take the
+	// unnamed one, and OpenMP criticals are not reentrant.
+	#pragma omp critical( attack_transformation_warning )
+	{
+		std::string key = old_type_name + ">" + cd.name + ">" + target_type_name;
+		if( std::find( already_reported.begin() , already_reported.end() , key )
+			== already_reported.end() )
+		{
+			already_reported.push_back( key );
+			std::cout << "Warning: a '" << old_type_name << "' transformed into a '" << cd.name
+				<< "' while attacking a '" << target_type_name << "'," << std::endl
+				<< "\tbut '" << cd.name << "' has an attack rate of 0 against '"
+				<< target_type_name << "', i.e. it would never start this attack itself."
+				<< std::endl
+				<< "\tThe attack continues regardless, for up to attack_duration = "
+				<< cd.phenotype.cell_interactions.attack_duration
+				<< " min at attack_damage_rate = "
+				<< cd.phenotype.cell_interactions.attack_damage_rate << "." << std::endl
+				<< "\tIf that is not what you intend, set the attack parameters for '" << cd.name
+				<< "' explicitly, or end the attack in a custom function." << std::endl
+				<< "\t(reported once per combination of transformation and target type)"
+				<< std::endl;
+		}
+	}
+	return;
+}
+
 void Cell::convert_to_cell_definition( Cell_Definition& cd )
 {	
 	Volume cell_volume = phenotype.volume;
@@ -1166,6 +1223,8 @@ void Cell::convert_to_cell_definition( Cell_Definition& cd )
 	// a lifetime tally of this cell's own doing, so carry it across the transformation
 	// rather than restarting it partway through an attack that is still running
 	double cell_total_damage_delivered = phenotype.cell_interactions.total_damage_delivered;
+	// type_name is still this cell's old one until it is overwritten below
+	warn_if_attack_inherited_by_nonattacking_type( cd , type_name , cell_attack_target );
 
 	// use the cell defaults; 
 	type = cd.type; 
