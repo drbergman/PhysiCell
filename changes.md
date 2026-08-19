@@ -250,6 +250,7 @@ We are grateful for contributions by Vincent Noël, Randy Heiland, Daniel Bergma
 ### Bugfixes: 
 #### 1.14.3
 + Fixed a family of latent bugs in which a vector sized by the number of cell definitions was indexed by a cell's `type` rather than by its cell definition index. In any model whose `<cell_definition>` `ID` attributes were not `0, 1, 2, ...` in order, these silently painted the wrong SVG cell colors, applied the wrong asymmetric division probabilities, and could insert (and then dereference) a null `Cell_Definition*` while building the signal and behavior dictionaries. Making a cell definition's type equal its index fixes all of them at the source.
++ Resuming from a MultiCellDS snapshot looked up each cell's type with `unordered_map::operator[]`, which inserts a null `Cell_Definition*` for a type the model does not have and then dereferences it. It now names the offending cell type and quits.
 
 #### 1.14.2 
 + [PR350](https://github.com/MathCancer/PhysiCell/pull/350) (minor fix): use standard save event triggers in asymmetric division example

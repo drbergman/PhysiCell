@@ -322,6 +322,7 @@ void load_cells_csv_v1( std::string filename )
 
 		std::vector<double> position = { data[0] , data[1] , data[2] };
 
+		// the fourth column is the cell definition's index in <cell_definitions> 
 		int my_type = (int) data[3]; 
 		Cell_Definition* pCD = find_cell_definition( my_type );
 		if( pCD != NULL )

@@ -1524,8 +1524,18 @@ int recreate_sim_state(std::string filename, Microenvironment& M,
 
         if (create_cells)
         {
-            // Cell_Definition* pCD = cell_definitions_by_type[cell_type]; 
-            pCD = cell_definitions_by_type[cell_type];    // rwh: better?
+            // the cell type in a snapshot is the cell definition's index in <cell_definitions> 
+            pCD = find_cell_definition( cell_type ); 
+            if( pCD == NULL )
+            {
+                std::cout << std::endl 
+                << "Error! This snapshot contains cell type " << cell_type 
+                << ", but the model has no cell definition with that index." << std::endl 
+                << "\tIf the snapshot came from a build that still read the ID attribute of" << std::endl 
+                << "\t<cell_definition>, its cell types are those IDs, which are no longer used." << std::endl 
+                << "\tQuitting." << std::endl << std::endl; 
+                exit(-1); 
+            }
             pCell = create_cell( *pCD );
 
             pCell->ID = cell_ID;
