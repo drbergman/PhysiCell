@@ -374,7 +374,7 @@ void set_microenvironment_initial_condition( void );
 
 void load_initial_conditions_from_matlab( std::string filename );
 void load_initial_conditions_from_csv( std::string filename );
-void get_row_from_substrate_initial_condition_csv(std::vector<bool> &voxel_is_set, const std::string line, const std::vector<int> substrate_indices, const bool header_provided);
+void get_row_from_substrate_initial_condition_csv(std::vector<bool> &voxel_is_set, const std::string &line, const std::vector<int> &substrate_indices, const unsigned int line_number);
 
 void set_dirichlet_initial_condition( void );
 void set_dirichlet_boundaries_from_XML( void );
