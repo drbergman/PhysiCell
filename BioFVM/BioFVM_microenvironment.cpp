@@ -1452,10 +1452,11 @@ void load_initial_conditions_from_matlab(std::string filename)
 
 void load_initial_conditions_from_csv(std::string filename)
 {
-	// The .csv file needs to contain one row per voxel.
 	// Each row is a vector of values as follows: [x coord, y coord, z coord, substrate id 0 value, substrate id 1 value, ...]
-	// Thus, your table should be of size #voxels x (3 + #densities) (rows x columns)
-	// Do not include a header row.
+	// A header row "x,y,z,[substrate name],..." is optional; with one, the named substrates may be any subset of the
+	// densities, in any order. Without one, the first #densities columns after x,y,z are assumed.
+	// Rows need not cover every voxel: a voxel with no row keeps the initial condition set from the XML config.
+	// Within a row, a field may be left empty (e.g. x,y,z,,3.5) to set that substrate to 0.
 
 	// open file 
 	std::ifstream file( filename, std::ios::in );
@@ -1536,13 +1537,38 @@ void load_initial_conditions_from_csv(std::string filename)
 void get_row_from_substrate_initial_condition_csv(std::vector<bool> &voxel_is_set, const std::string line, const std::vector<int> substrate_indices, const bool header_provided)
 {
 	static bool warning_issued = false;
+
+	if (line.find_first_not_of(" \t\r") == std::string::npos)
+	{ return; } // skip blank lines
+
 	std::vector<double> data;
 	substrate_csv_to_vector(line.c_str(), data);
+
+	// need x,y,z to locate a voxel. Not redundant against the check below: substrate_indices is empty
+	// when no header is given, which would leave data[0..2] unguarded.
+	if (data.size() < 3)
+	{
+		std::cout << "ERROR : Too few columns in a row of the .csv file specifying BioFVM initial conditions." << std::endl
+				  << "\tExpected: at least 3 (x, y, z)" << std::endl
+				  << "\tFound: " << data.size() << std::endl
+				  << "\tOffending row: " << line << std::endl;
+		exit(-1);
+	}
+
+	if (data.size() < substrate_indices.size() + 3) // need one value per substrate column
+	{
+		std::cout << "ERROR : Too few density values in a row of the .csv file specifying BioFVM initial conditions." << std::endl
+				  << "\tExpected: " << substrate_indices.size() << " value(s) after x, y, z" << std::endl
+				  << "\tFound: " << data.size() - 3 << std::endl
+				  << "\tTo omit a value, leave the field empty but keep the comma (e.g. x,y,z,,3.5)." << std::endl
+				  << "\tOffending row: " << line << std::endl;
+		exit(-1);
+	}
 
 	if (!(warning_issued) && !(header_provided) && (data.size() != (microenvironment.number_of_densities() + 3)))
 	{
 		std::cout << "WARNING: Wrong number of density values supplied in the .csv file specifying BioFVM initial conditions." << std::endl
-				  << "\tExpected: " << microenvironment.number_of_voxels() << std::endl
+				  << "\tExpected: " << microenvironment.number_of_densities() << std::endl
 				  << "\tFound: " << data.size() - 3 << std::endl
 				  << "\tRemember, save your csv with columns as: x, y, z, substrate_0, substrate_1,...." << std::endl
 				  << "\tThis could also be resolved by including a header row \"x,y,z,[substrate_i0,substrate_i1]\"" << std::endl;
