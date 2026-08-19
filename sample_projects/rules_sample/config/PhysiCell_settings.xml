@@ -148,7 +148,7 @@
     </microenvironment_setup>
 
     <cell_definitions>
-        <cell_definition name="malignant epithelial cell" ID="0">
+        <cell_definition name="malignant epithelial cell">
             <phenotype>
                 <cycle code="6" name="Flow cytometry model (separated)">
                     <phase_transition_rates units="1/min">
@@ -330,7 +330,7 @@
             <initial_parameter_distributions enabled="false">
           </initial_parameter_distributions>
         </cell_definition>
-        <cell_definition name="M0 macrophage" ID="1">
+        <cell_definition name="M0 macrophage">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -509,7 +509,7 @@
             <initial_parameter_distributions enabled="false">
           </initial_parameter_distributions>
         </cell_definition>
-        <cell_definition name="M1 macrophage" ID="2">
+        <cell_definition name="M1 macrophage">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -688,7 +688,7 @@
             <initial_parameter_distributions enabled="false">
           </initial_parameter_distributions>
         </cell_definition>
-        <cell_definition name="M2 macrophage" ID="3">
+        <cell_definition name="M2 macrophage">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -867,7 +867,7 @@
             <initial_parameter_distributions enabled="false">
           </initial_parameter_distributions>
         </cell_definition>
-        <cell_definition name="effector T cell" ID="4">
+        <cell_definition name="effector T cell">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -1046,7 +1046,7 @@
             <initial_parameter_distributions enabled="false">
           </initial_parameter_distributions>
         </cell_definition>
-        <cell_definition name="exhausted T cell" ID="5">
+        <cell_definition name="exhausted T cell">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">

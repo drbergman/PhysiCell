@@ -99,7 +99,7 @@
     </microenvironment_setup>
 
     <cell_definitions>
-        <cell_definition name="default" ID="0">
+        <cell_definition name="default">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -270,7 +270,7 @@
                 <sample conserved="false" units="dimensionless" description="">1.0</sample>
             </custom_data>
         </cell_definition>
-        <cell_definition name="mutant" ID="1">
+        <cell_definition name="mutant">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">

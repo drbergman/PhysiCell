@@ -120,6 +120,14 @@ We are grateful for contributions by Vincent Noël, Randy Heiland, Daniel Bergma
 **NOTE 2:** Windows users need to follow an updated (from v1.8) MinGW64 installation procedure. This will install an updated version of g++, plus libraries that are needed for some of the intracellular models. See the [Setup Guides](https://github.com/physicell-training/ws2023/blob/main/agenda.md#set-up-physicell) for details.
 
 ### Major new features and changes in the 1.14.z versions
+#### 1.14.3
++ A cell definition's type is now its *index*: its order of appearance in `<cell_definitions>` in the configuration file.
+  + The `ID` attribute of `<cell_definition>` is deprecated and ignored, and it has been removed from every sample project configuration file. You can safely delete it from your own configuration files.
+  + `Cell_Definition::type` (and hence `Cell::type`) is now guaranteed to equal the cell definition's index in `cell_definitions_by_index`. `cell_definitions_by_type` and `cell_definition_indices_by_type` are therefore now identity maps, and `find_cell_definition_index( int type )` is the identity on valid types.
+  + Configuration files that still supply `ID` attributes continue to load: a one-time deprecation note is printed, plus a warning for any `ID` that does not match its cell definition's index.
+  + The first `<cell_definition>` in the configuration file is `cell_defaults` (as is any cell definition named `default`). Previously this was decided by `ID="0"`.
+  + Cell definitions are now identified solely by `name`, so two cell definitions sharing a name is a fatal error rather than a silent overwrite.
+
 #### 1.14.2
 + In anticipation with the upcoming `PhysiGym` addon (for machine learning / reinforcement learning), it is now possible to run multiple consecutive episodes from a single PhysiCell model within a runtime. The episode sample project demonstrates this possibility.
  
@@ -240,6 +248,9 @@ We are grateful for contributions by Vincent Noël, Randy Heiland, Daniel Bergma
 + throw error if duplicate substrate or user_parameter name found
  
 ### Bugfixes: 
+#### 1.14.3
++ Fixed a family of latent bugs in which a vector sized by the number of cell definitions was indexed by a cell's `type` rather than by its cell definition index. In any model whose `<cell_definition>` `ID` attributes were not `0, 1, 2, ...` in order, these silently painted the wrong SVG cell colors, applied the wrong asymmetric division probabilities, and could insert (and then dereference) a null `Cell_Definition*` while building the signal and behavior dictionaries. Making a cell definition's type equal its index fixes all of them at the source.
+
 #### 1.14.2 
 + [PR350](https://github.com/MathCancer/PhysiCell/pull/350) (minor fix): use standard save event triggers in asymmetric division example
 + [PR351](https://github.com/MathCancer/PhysiCell/pull/351) (minor fix): re-round template project cycle durations
@@ -266,6 +277,8 @@ We are grateful for contributions by Vincent Noël, Randy Heiland, Daniel Bergma
 + fix bug in storing rules that occasionally resulted in seg faults
 
 ### Notices for intended changes that may affect backwards compatibility:
++ The `ID` attribute of `<cell_definition>` is ignored as of 1.14.3 and will eventually be rejected outright. Anything that identifies a cell type by number---custom C++ code, or the legacy (v1) CSV format for initial cell positions, whose fourth column is a numeric cell type---must use the cell definition's index in `<cell_definitions>`. Referring to cell types by name is preferred everywhere it is available (including the v2 CSV format).
+
 + Future releases may further refine `Cell_Integrity` with more specific forms of damage (and accompanying damage and repair rates).
 
 + We intend to deprecate the unused phenotype variables `relative_maximum_attachment_distance`, `relative_detachment_distance`, and `maximum_attachment_rate` from `phenotype.mechanics.` 

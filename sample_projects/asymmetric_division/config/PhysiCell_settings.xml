@@ -84,7 +84,7 @@
     </microenvironment_setup>
 
     <cell_definitions>
-        <cell_definition name="stem" ID="0">
+        <cell_definition name="stem">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_durations units="min">
@@ -236,7 +236,7 @@
                 </distribution>
             </initial_parameter_distributions>
         </cell_definition>
-        <cell_definition name="progenitor_1" ID="1">
+        <cell_definition name="progenitor_1">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -377,7 +377,7 @@
             <initial_parameter_distributions enabled="false">
           </initial_parameter_distributions>
         </cell_definition>
-        <cell_definition name="progenitor_2" ID="2">
+        <cell_definition name="progenitor_2">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">

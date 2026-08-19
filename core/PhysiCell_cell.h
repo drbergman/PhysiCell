@@ -275,6 +275,11 @@ void save_all_cells_to_matlab( std::string filename );
 bool is_neighbor_voxel(Cell* pCell, std::vector<double> myVoxelCenter, std::vector<double> otherVoxelCenter, int otherVoxelIndex);  
 
 
+// A cell definition's type is its index: its order of appearance in 
+// <cell_definitions> in the configuration file. So cell_definitions_by_type 
+// and cell_definitions_by_index hold the same cell definition at the same 
+// key, and cell_definition_indices_by_type is the identity map. 
+
 extern std::unordered_map<std::string,Cell_Definition*> cell_definitions_by_name; 
 extern std::unordered_map<int,Cell_Definition*> cell_definitions_by_type; 
 extern std::vector<Cell_Definition*> cell_definitions_by_index; // works 

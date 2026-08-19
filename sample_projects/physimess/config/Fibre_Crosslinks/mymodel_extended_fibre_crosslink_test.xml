@@ -83,7 +83,7 @@
 	</microenvironment_setup>	
 	
 	<cell_definitions>
-		<cell_definition name="cell" ID="0">
+		<cell_definition name="cell">
         <phenotype>
           <cycle code="5" name="live">
             <phase_transition_rates units="1/min">
@@ -194,7 +194,7 @@
         </custom_data>
       </cell_definition>
 
-      <cell_definition name="fibre" ID="1">
+      <cell_definition name="fibre">
         <phenotype>
           <cycle code="5" name="live">
             <phase_transition_rates units="1/min">
@@ -299,7 +299,7 @@
         </custom_data>
       </cell_definition>
 
-      <cell_definition name="attractant" ID="2">
+      <cell_definition name="attractant">
         <phenotype>
           <cycle code="5" name="live">
             <phase_transition_rates units="1/min">

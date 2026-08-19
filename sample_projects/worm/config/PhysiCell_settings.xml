@@ -85,7 +85,7 @@
     </microenvironment_setup>
 
     <cell_definitions>
-        <cell_definition name="worm" ID="0">
+        <cell_definition name="worm">
             <phenotype>
                 <cycle code="6" name="Flow cytometry model (separated)">
                     <phase_transition_rates units="1/min">

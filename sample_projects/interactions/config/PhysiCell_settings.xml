@@ -158,7 +158,7 @@
     </microenvironment_setup>
 
     <cell_definitions>
-        <cell_definition name="bacteria" ID="0">
+        <cell_definition name="bacteria">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -357,7 +357,7 @@
             <initial_parameter_distributions enabled="false">
           </initial_parameter_distributions>
         </cell_definition>
-        <cell_definition name="blood vessel" ID="1">
+        <cell_definition name="blood vessel">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -556,7 +556,7 @@
             <initial_parameter_distributions enabled="false">
           </initial_parameter_distributions>
         </cell_definition>
-        <cell_definition name="stem" ID="2">
+        <cell_definition name="stem">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -755,7 +755,7 @@
             <initial_parameter_distributions enabled="false">
           </initial_parameter_distributions>
         </cell_definition>
-        <cell_definition name="differentiated" ID="3">
+        <cell_definition name="differentiated">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -954,7 +954,7 @@
             <initial_parameter_distributions enabled="false">
           </initial_parameter_distributions>
         </cell_definition>
-        <cell_definition name="macrophage" ID="4">
+        <cell_definition name="macrophage">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -1153,7 +1153,7 @@
             <initial_parameter_distributions enabled="false">
           </initial_parameter_distributions>
         </cell_definition>
-        <cell_definition name="CD8+ T cell" ID="5">
+        <cell_definition name="CD8+ T cell">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -1352,7 +1352,7 @@
             <initial_parameter_distributions enabled="false">
           </initial_parameter_distributions>
         </cell_definition>
-        <cell_definition name="neutrophil" ID="6">
+        <cell_definition name="neutrophil">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">

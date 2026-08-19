@@ -77,7 +77,7 @@
     </microenvironment_setup>
 
     <cell_definitions>
-        <cell_definition name="default" ID="0">
+        <cell_definition name="default">
             <phenotype>
                 <cycle code="2" name="flow cytometry">
                     <phase_transition_rates units="1/min">
@@ -238,7 +238,7 @@
                 <somedata conserved="false" units="dimensionless" description="">1.0</somedata>
             </custom_data>
         </cell_definition>
-        <cell_definition name="other" ID="1">
+        <cell_definition name="other">
             <phenotype>
                 <cycle code="2" name="flow cytometry">
                     <phase_transition_rates units="1/min">
@@ -399,7 +399,7 @@
                 <somedata conserved="false" units="dimensionless" description="">1.0</somedata>
             </custom_data>
         </cell_definition>
-        <cell_definition name="another" ID="2">
+        <cell_definition name="another">
             <phenotype>
                 <cycle code="2" name="flow cytometry">
                     <phase_transition_rates units="1/min">
@@ -563,7 +563,7 @@
                 <somedata conserved="false" units="dimensionless" description="">1.0</somedata>
             </custom_data>
         </cell_definition>
-        <cell_definition name="yet_another" ID="3">
+        <cell_definition name="yet_another">
             <phenotype>
                 <cycle code="2" name="flow cytometry">
                     <phase_transition_rates units="1/min">
@@ -727,7 +727,7 @@
                 <somedata conserved="false" units="dimensionless" description="">1.0</somedata>
             </custom_data>
         </cell_definition>
-        <cell_definition name="yet_yet_another" ID="4">
+        <cell_definition name="yet_yet_another">
             <phenotype>
                 <cycle code="2" name="flow cytometry">
                     <phase_transition_rates units="1/min">
@@ -888,7 +888,7 @@
                 <somedata conserved="false" units="dimensionless" description="">1.0</somedata>
             </custom_data>
         </cell_definition>
-        <cell_definition name="last_one" ID="5">
+        <cell_definition name="last_one">
             <phenotype>
                 <cycle code="2" name="flow cytometry">
                     <phase_transition_rates units="1/min">

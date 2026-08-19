@@ -76,7 +76,7 @@
 	</microenvironment_setup>	
 	
 	<cell_definitions>
-		<cell_definition name="bacteria" ID="0">
+		<cell_definition name="bacteria">
         <phenotype>
           <cycle code="5" name="live">
             <phase_transition_rates units="1/min">
@@ -182,7 +182,7 @@
         </custom_data>
       </cell_definition>
 
-      <cell_definition name="fibre_vertical" ID="1">
+      <cell_definition name="fibre_vertical">
         <phenotype>
           <cycle code="5" name="live">
             <phase_transition_rates units="1/min">
@@ -283,7 +283,7 @@
           </custom_data>
           </cell_definition>
           
-          <cell_definition name="attractant" ID="2">
+          <cell_definition name="attractant">
         <phenotype>
           <cycle code="5" name="live">
             <phase_transition_rates units="1/min">

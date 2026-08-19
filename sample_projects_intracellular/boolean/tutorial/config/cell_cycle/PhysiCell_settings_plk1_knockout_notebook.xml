@@ -91,7 +91,7 @@
     </microenvironment_setup>
 
     <cell_definitions>
-        <cell_definition name="default" ID="0">
+        <cell_definition name="default">
             <phenotype>
                 <cycle code="2" name="flow cytometry">
                     <phase_transition_rates units="1/min">

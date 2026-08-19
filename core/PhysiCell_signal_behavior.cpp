@@ -85,7 +85,6 @@ void setup_signal_behavior_dictionaries( void )
 {
 	extern std::unordered_map<std::string,int> cell_definition_indices_by_name; 
 	extern std::unordered_map<int,int> cell_definition_indices_by_type; 
-	extern std::unordered_map<int,Cell_Definition*> cell_definitions_by_type; 
 	
 	// set key parameters on number of signals, etc. 
 	// make registry of signals 
@@ -159,7 +158,7 @@ void setup_signal_behavior_dictionaries( void )
 	for( int i=0; i < n ; i++ )
 	{
 		map_index++; 
-		Cell_Definition* pCD = cell_definitions_by_type[i]; 
+		Cell_Definition* pCD = cell_definitions_by_index[i]; 
 		std::string temp =  "contact with " + pCD->name; 
 		signal_to_int[temp] = map_index; 
 		// synonym 
@@ -285,7 +284,7 @@ void setup_signal_behavior_dictionaries( void )
 	for( int i=0; i < n ; i++ )
 	{
 		map_index++; 
-		Cell_Definition* pCD = cell_definitions_by_type[i]; 
+		Cell_Definition* pCD = cell_definitions_by_index[i]; 
 		std::string temp =  "immunogenicity to " + pCD->name; 
 		signal_to_int[temp] = map_index; 
 		int_to_signal[map_index] = temp; 		
@@ -409,7 +408,7 @@ void setup_signal_behavior_dictionaries( void )
 	for( int i=0; i < n ; i++ )
 	{
 		map_index++; 
-		Cell_Definition* pCD = cell_definitions_by_type[i]; 
+		Cell_Definition* pCD = cell_definitions_by_index[i]; 
 		std::string temp =  "adhesive affinity to " + pCD->name; 
 		behavior_to_int[temp] = map_index; 
 		int_to_behavior[map_index] = temp; 
@@ -476,7 +475,7 @@ void setup_signal_behavior_dictionaries( void )
 	for( int i=0; i < n ; i++ )
 	{
 		map_index++; 
-		Cell_Definition* pCD = cell_definitions_by_type[i]; 
+		Cell_Definition* pCD = cell_definitions_by_index[i]; 
 		std::string temp =  "phagocytose " + pCD->name; 
 		behavior_to_int[temp] = map_index; 
 		int_to_behavior[map_index] = temp; 
@@ -494,7 +493,7 @@ void setup_signal_behavior_dictionaries( void )
 	for( int i=0; i < n ; i++ )
 	{
 		map_index++; 
-		Cell_Definition* pCD = cell_definitions_by_type[i]; 
+		Cell_Definition* pCD = cell_definitions_by_index[i]; 
 		std::string temp =  "attack " + pCD->name; 
 		behavior_to_int[temp] = map_index; 
 		int_to_behavior[map_index] = temp; 
@@ -507,7 +506,7 @@ void setup_signal_behavior_dictionaries( void )
 	for( int i=0; i < n ; i++ )
 	{
 		map_index++; 
-		Cell_Definition* pCD = cell_definitions_by_type[i]; 
+		Cell_Definition* pCD = cell_definitions_by_index[i]; 
 		std::string temp =  "fuse to " + pCD->name; 
 		behavior_to_int[temp] = map_index; 
 		int_to_behavior[map_index] = temp; 
@@ -520,7 +519,7 @@ void setup_signal_behavior_dictionaries( void )
 	for( int i=0; i < n ; i++ )
 	{
 		map_index++; 
-		Cell_Definition* pCD = cell_definitions_by_type[i]; 
+		Cell_Definition* pCD = cell_definitions_by_index[i]; 
 		// std::string temp =  "transform to " + pCD->name; 
 		std::string temp =  "transition to " + pCD->name; 
 		behavior_to_int[temp] = map_index; 
@@ -544,7 +543,7 @@ void setup_signal_behavior_dictionaries( void )
 	for( int i=0; i < n ; i++ )
 	{
 		map_index++;
-		Cell_Definition* pCD = cell_definitions_by_type[i];
+		Cell_Definition* pCD = cell_definitions_by_index[i];
 		std::string temp =  "asymmetric division to " + pCD->name;
 		behavior_to_int[temp] = map_index;
 		int_to_behavior[map_index] = temp;
@@ -581,7 +580,7 @@ void setup_signal_behavior_dictionaries( void )
 	for( int i=0; i < n ; i++ )
 	{
 		map_index++; 
-		Cell_Definition* pCD = cell_definitions_by_type[i]; 
+		Cell_Definition* pCD = cell_definitions_by_index[i]; 
 		std::string map_name =  "immunogenicity to " + pCD->name; 
 		behavior_to_int[map_name ] = map_index;
 		int_to_behavior[map_index] = map_name; 

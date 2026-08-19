@@ -92,7 +92,7 @@
     </microenvironment_setup>
 
     <cell_definitions>
-        <cell_definition name="ctype1" ID="0">
+        <cell_definition name="ctype1">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_durations units="min">
@@ -237,7 +237,7 @@
             <initial_parameter_distributions enabled="false">
           </initial_parameter_distributions>
         </cell_definition>
-        <cell_definition name="ctype2" ID="1">
+        <cell_definition name="ctype2">
             <phenotype>
                 <cycle code="1" name="basic Ki67">
                     <phase_durations units="min">
@@ -383,7 +383,7 @@
             <initial_parameter_distributions enabled="false">
           </initial_parameter_distributions>
         </cell_definition>
-        <cell_definition name="ctype3" ID="2">
+        <cell_definition name="ctype3">
             <phenotype>
                 <cycle code="6" name="Flow cytometry model (separated)">
                     <phase_durations units="min">

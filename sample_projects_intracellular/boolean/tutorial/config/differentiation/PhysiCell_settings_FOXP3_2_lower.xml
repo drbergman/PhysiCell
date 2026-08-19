@@ -96,7 +96,7 @@
     </microenvironment_setup>
 
     <cell_definitions>
-        <cell_definition name="T0" ID="0">
+        <cell_definition name="T0">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -340,7 +340,7 @@
                 <somedata conserved="false" units="dimensionless" description="">1.0</somedata>
             </custom_data>
         </cell_definition>
-        <cell_definition name="Treg" ID="1">
+        <cell_definition name="Treg">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -481,7 +481,7 @@
                 <somedata conserved="false" units="dimensionless" description="">1.0</somedata>
             </custom_data>
         </cell_definition>
-        <cell_definition name="Th1" ID="2">
+        <cell_definition name="Th1">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -622,7 +622,7 @@
                 <somedata conserved="false" units="dimensionless" description="">1.0</somedata>
             </custom_data>
         </cell_definition>
-        <cell_definition name="Th17" ID="3">
+        <cell_definition name="Th17">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -763,7 +763,7 @@
                 <somedata conserved="false" units="dimensionless" description="">1.0</somedata>
             </custom_data>
         </cell_definition>
-        <cell_definition name="dendritic_cell" ID="4">
+        <cell_definition name="dendritic_cell">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">
@@ -950,7 +950,7 @@
                 <somedata conserved="false" units="dimensionless" description="">1.0</somedata>
             </custom_data>
         </cell_definition>
-        <cell_definition name="endothelial_cell" ID="5">
+        <cell_definition name="endothelial_cell">
             <phenotype>
                 <cycle code="5" name="live">
                     <phase_transition_rates units="1/min">

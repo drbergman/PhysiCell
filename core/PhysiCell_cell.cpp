@@ -1726,6 +1726,41 @@ void Cell::lyse_cell( void )
 
 bool cell_definitions_by_name_constructed = false; 
 
+// A cell definition's type is its index: its 0-based order of appearance in 
+// <cell_definitions> in the configuration file. The legacy "ID" attribute is 
+// no longer used to set the type. 
+
+void check_legacy_cell_definition_ID( pugi::xml_node cd_node , int index )
+{
+	pugi::xml_attribute ID_attribute = cd_node.attribute( "ID" ); 
+	if( !ID_attribute )
+	{ return; }
+
+	static bool deprecation_notice_given = false; 
+	if( deprecation_notice_given == false )
+	{
+		std::cout << std::endl 
+		<< "Note: the ID attribute of <cell_definition> is deprecated and is now ignored." << std::endl 
+		<< "\tA cell definition's type is its order of appearance in <cell_definitions>." << std::endl 
+		<< "\tYou can safely delete the ID attributes from your configuration file." << std::endl << std::endl; 
+		deprecation_notice_given = true; 
+	}
+
+	if( ID_attribute.as_int() != index )
+	{
+		std::cout << std::endl 
+		<< "Warning! Cell definition " << cd_node.attribute( "name" ).value() 
+		<< " has ID=" << ID_attribute.value() << " but is entry " << index 
+		<< " of <cell_definitions>." << std::endl 
+		<< "\tThe ID is ignored: this cell definition's type is " << index << "." << std::endl 
+		<< "\tAnything that refers to this cell type by number---custom C++ code, or a" << std::endl 
+		<< "\tv1 CSV of initial cell positions---must now use " << index << " instead of " 
+		<< ID_attribute.value() << "." << std::endl << std::endl; 
+	}
+
+	return; 
+}
+
 void prebuild_cell_definition_index_maps( void )
 {
 	// look in config file 
@@ -1737,24 +1772,35 @@ void prebuild_cell_definition_index_maps( void )
 	node = node.child( "cell_definition" ); 
 	
 	// We won't declare and build the cell definitions just yet. 
-	// All we want to do is know in advance the IDs and names 
+	// All we want to do is know in advance the indices and names 
 	// of all cell definitions, so we can appropriately size 
 	// Cell_Interactions and Cell_Transformations in the phenotype 
 	// when we set up the cell definitions. 
 	
+	// cell definitions are identified by name, so the names must be unique 
+	std::unordered_map<std::string,int> names_in_this_config; 
+	
 	int n = 0; 
 	while( node )
 	{
-		int ID = node.attribute( "ID" ).as_int();  
 		std::string type_name = node.attribute( "name" ).value();   
 
-		std::cout << "Pre-processing type " << ID << " named " << type_name << std::endl; 
-		
-//		cell_definitions_by_name[ type_name ] = pCD; 
-//		cell_definitions_by_type[ pCD->type ] = pCD; 
+		check_legacy_cell_definition_ID( node , n ); 
+
+		if( names_in_this_config.count( type_name ) > 0 )
+		{
+			std::cout << std::endl << "Error! Cell definitions " << names_in_this_config[ type_name ] 
+			<< " and " << n << " are both named " << type_name << "." << std::endl 
+			<< "\tCell definitions are identified by name, so every name must be unique. Quitting." 
+			<< std::endl << std::endl; 
+			exit(-1); 
+		}
+		names_in_this_config[ type_name ] = n; 
+
+		std::cout << "Pre-processing type " << n << " named " << type_name << std::endl; 
 		
 		cell_definition_indices_by_name[ type_name ] = n; 
-		cell_definition_indices_by_type[ ID ] = n; 
+		cell_definition_indices_by_type[ n ] = n; 
 		
 		node = node.next_sibling( "cell_definition" ); 
 		n++; 
@@ -2058,21 +2104,27 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 {
 	Cell_Definition* pCD; 
 	
-	// if this is not "default" then create a new one 
-	if( std::strcmp( cd_node.attribute( "name" ).value() , "default" ) != 0 
-	    && std::strcmp( cd_node.attribute( "ID" ).value() , "0" ) != 0 )
+	std::string name = cd_node.attribute( "name" ).value(); 
+	
+	// a cell definition's type is its index: its order of appearance in <cell_definitions>, 
+	// as recorded by prebuild_cell_definition_index_maps(). A cell definition that is not in 
+	// the configuration file (and so is not in the map) is appended after the ones that are. 
+	int index = find_cell_definition_index( name ); 
+	if( index < 0 )
+	{ index = (int) cell_definitions_by_index.size(); }
+	
+	// the first cell definition (or one explicitly named "default") is cell_defaults; 
+	// anything else gets a new cell definition 
+	if( index > 0 && name != "default" )
 	{ pCD = new Cell_Definition; }
 	else
 	{ pCD = &cell_defaults; }
 	
 	// set the name 
-	pCD->name = cd_node.attribute("name").value();
+	pCD->name = name; 
 	
-	// set the ID 
-	if( cd_node.attribute("ID" ) )
-	{ pCD->type = cd_node.attribute("ID").as_int(); }
-	else
-	{ pCD->type = -1; } 
+	// set the type 
+	pCD->type = index; 
 
 	// get the parent definition (if any) 
 	Cell_Definition* pParent = NULL;
@@ -2092,9 +2144,9 @@ Cell_Definition* initialize_cell_definition_from_pugixml( pugi::xml_node cd_node
 		// this is where we copy data from the first cell definition, including custom_data
 		*pCD = *pParent; 
 		
-		// but recover the name and ID (type)
-		pCD->name = cd_node.attribute("name").value();
-		pCD->type = cd_node.attribute("ID").as_int(); 
+		// but recover the name and type (index) 
+		pCD->name = name; 
+		pCD->type = index; 
 	} 
 
 	/* bugfix on April 24, 2022 */ 

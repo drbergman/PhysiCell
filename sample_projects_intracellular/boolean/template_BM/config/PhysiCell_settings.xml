@@ -160,7 +160,7 @@
 	</microenvironment_setup>	
 	
 	<cell_definitions>
-		<cell_definition name="default" ID="0">
+		<cell_definition name="default">
 			<phenotype>
 				<cycle code="6" name="Flow cytometry model (separated)">  
 					<!-- phases are: G0/G1 , S, G2, M --> 

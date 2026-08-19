@@ -81,7 +81,7 @@
 	</microenvironment_setup>	
 	
 	<cell_definitions>
-		<cell_definition name="cell" ID="0">
+		<cell_definition name="cell">
         <phenotype>
           <cycle code="5" name="live">
             <phase_transition_rates units="1/min">
@@ -186,7 +186,7 @@
           </custom_data>
           </cell_definition>
 
-      <cell_definition name="ecm" ID="1">
+      <cell_definition name="ecm">
         <phenotype>
           <cycle code="5" name="live">
             <phase_transition_rates units="1/min">
@@ -284,7 +284,7 @@
         </custom_data>
       </cell_definition>
 
-      <cell_definition name="fibre_horizontal" ID="2">
+      <cell_definition name="fibre_horizontal">
         <phenotype>
           <cycle code="5" name="live">
             <phase_transition_rates units="1/min">
@@ -381,7 +381,7 @@
           <angle_normdist_sd units="radians" description="standard deviation of fibre orientation angle">0.0</angle_normdist_sd>          </custom_data>
           </cell_definition>
           
-          <cell_definition name="attractant" ID="3">
+          <cell_definition name="attractant">
         <phenotype>
           <cycle code="5" name="live">
             <phase_transition_rates units="1/min">

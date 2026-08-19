@@ -219,7 +219,7 @@
 	</microenvironment_setup>	
 	
 	<cell_definitions>
-		<cell_definition name="default" ID="0">
+		<cell_definition name="default">
 			<phenotype>
 				<cycle code="5" name="live">
 					<!-- phases are:live --> 
@@ -349,7 +349,7 @@
 			</custom_data>
 		</cell_definition>
 		
-		<cell_definition name="A" ID="1" parent_type="default">
+		<cell_definition name="A" parent_type="default">
 			<phenotype>
 				<cycle code="5" name="live">
 					<phase_transition_rates units="1/min"> 
@@ -404,7 +404,7 @@
 			</custom_data>
 		</cell_definition>
 
-		<cell_definition name="B" ID="2" parent_type="default">
+		<cell_definition name="B" parent_type="default">
 			<phenotype>
 				<cycle code="5" name="live">
 					<phase_transition_rates units="1/min"> 
@@ -459,7 +459,7 @@
 			</custom_data>
 		</cell_definition>
 
-		<cell_definition name="C" ID="3" parent_type="default">
+		<cell_definition name="C" parent_type="default">
 			<phenotype>
 				<cycle code="5" name="live">
 					<phase_transition_rates units="1/min"> 
