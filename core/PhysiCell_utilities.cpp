@@ -381,7 +381,11 @@ void copy_file_to_output(const std::string &filename, const std::string &default
 	// copy filename to output_filename
 	char copy_command[1024];
 	sprintf(copy_command, "cp %s %s", filename.c_str(), output_filename.c_str());
-	(void)system(copy_command); // make it explicit that we are ignoring the return value
+
+	int ret_code = system(copy_command);
+	if (ret_code != 0) {
+		std::cerr << "Error: Failed to execute command: " << copy_command << std::endl;
+	}
 
 	if (default_basename.empty() || default_basename == basename) {
 		return;
@@ -390,7 +394,11 @@ void copy_file_to_output(const std::string &filename, const std::string &default
 	// copy the file to the output folder with the default basename
 	std::string default_output_filename = PhysiCell_settings.folder + "/" + default_basename;
 	sprintf(copy_command, "cp %s %s", filename.c_str(), default_output_filename.c_str());
-	(void)system(copy_command); // make it explicit that we are ignoring the return value
+
+	ret_code = system(copy_command);
+	if (ret_code != 0) {
+		std::cerr << "Error: Failed to execute command: " << copy_command << std::endl;
+	}
 	return;
 }
 
