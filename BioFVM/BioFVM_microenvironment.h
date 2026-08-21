@@ -381,7 +381,7 @@ void set_dirichlet_boundaries_from_XML( void );
 void set_dirichlet_boundaries_from_file( void );
 void load_dirichlet_conditions_from_matlab( std::string filename );
 void load_dirichlet_conditions_from_csv(std::string filename);
-void get_row_from_dirichlet_condition_csv(std::vector<bool> &voxel_is_set, const std::string &line, const std::vector<int> &substrate_indices, const bool header_provided, int n_cols);
+void get_row_from_dirichlet_condition_csv(std::vector<bool> &voxel_is_set, const std::string &line, const std::vector<int> &substrate_indices, const unsigned int line_number);
 };
 
 #endif
