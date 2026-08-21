@@ -1699,7 +1699,7 @@ void load_dirichlet_conditions_from_csv(std::string filename)
 	return;
 }
 
-void get_row_from_dirichlet_condition_csv(std::vector<bool> &voxel_is_set, const std::string line, const std::vector<int> substrate_indices, const bool header_provided, int n_cols)
+void get_row_from_dirichlet_condition_csv(std::vector<bool> &voxel_is_set, const std::string &line, const std::vector<int> &substrate_indices, const bool header_provided, int n_cols)
 {
 	static bool warning_issued = false;
 	std::vector<bool> is_missing;
@@ -1712,7 +1712,7 @@ void get_row_from_dirichlet_condition_csv(std::vector<bool> &voxel_is_set, const
 	if (!(warning_issued) && !(header_provided) && (data.size() != (microenvironment.number_of_densities() + 3)))
 	{
 		std::cout << "WARNING: Wrong number of density data supplied in the .csv file specifying BioFVM dirichlet conditions." << std::endl
-				  << "\tExpected: " << microenvironment.number_of_voxels() << std::endl
+				  << "\tExpected: " << microenvironment.number_of_densities() << std::endl
 				  << "\tFound: " << data.size() - 3 << std::endl
 				  << "\tRemember, save your csv with columns as: x, y, z, substrate_0, substrate_1,...." << std::endl
 				  << "\tThis could also be resolved by including a header row \"x,y,z,[substrate_i0,substrate_i1]\"" << std::endl;
