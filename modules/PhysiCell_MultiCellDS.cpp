@@ -2107,15 +2107,21 @@ int recreate_sim_state(std::string filename, Microenvironment& M,
         }
 
         if (create_cells)
-        { pCell->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities.resize(n_cell_types); }
-        for (int idx=0; idx < n_cell_types; idx++)
-        {
-            fread(&dTemp, sizeof(double), 1, fp);
-            if (debug_print)
-            { std::cout << " phenotype.cycle.asymmetric_division.asymmetric_division_probabilities[" << idx << "] = " << dTemp << std::endl; }
-            if (create_cells)
-            { pCell->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities[idx] = dTemp; }
-        }
+		{
+			// no reserve(): asymmetric_division_probabilities is a std::map
+			pCell->phenotype.cycle.asymmetric_division.asymmetric_division_probabilities.clear();
+		}
+		for ( int i1 = 0; i1 < n_cell_types; i1++ )
+		{
+			for ( int i2 = i1; i2 < n_cell_types; i2++ )
+			{
+				fread(&dTemp, sizeof(double), 1, fp);
+				if (debug_print)
+				{ std::cout << " phenotype.cycle.asymmetric_division.set_asymmetric_division_probability(" << i1 << "," << i2 << ", " << dTemp << ")" << std::endl; }
+				if (create_cells)
+				{ pCell->phenotype.cycle.asymmetric_division.set_asymmetric_division_probability(i1, i2, dTemp); }
+			}
+		}
         
         // Cell integrity
         fread(&dTemp, sizeof(double), 1, fp);
