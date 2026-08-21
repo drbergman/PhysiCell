@@ -1321,16 +1321,17 @@ void asymmetric_division_function( Cell* pCell_parent, Cell* pCell_daughter )
 	std::string parent_name = pCell_parent->type_name;
 	int parent_type = pCell_parent->type;
 	Asymmetric_Division& parent_asym_div = pCell_parent->phenotype.cycle.asymmetric_division;
-	// probabilities meant to sum to exactly 1 land a hair over it in double precision:
-	// 0.11 + 0.33 + 0.56 is 1.000000000000000222
-	// probabilities meant to sum to exactly 1 land a hair over it in double precision:
-	// 0.11 + 0.33 + 0.56 is 1.000000000000000222. Configurable because how much slack a model
-	// needs depends on how many probabilities it sums and how they are computed.
+	// The tolerance decides only whether an overshoot is an error, never whether the probabilities
+	// get adjusted: this block rewrites the symmetric division probability, so gating entry on a
+	// user-settable threshold would let the tolerance change the model rather than just its strictness.
 	const double tolerance = PhysiCell_settings.asymmetric_division_probability_tolerance;
 	double total = parent_asym_div.probabilities_total();
-	if (total > 1.0 + tolerance)
+	if (total > 1.0)
 	{
 		double sym_div_prob = parent_asym_div.asymmetric_division_probability(parent_type, parent_type) + 1.0 - total;
+		// probabilities meant to sum to exactly 1 land a hair over it in double precision:
+		// 0.11 + 0.33 + 0.56 is 1.000000000000000222. How much slack a model needs depends on how
+		// many probabilities it sums and how they are computed, hence the configurable tolerance.
 		if (sym_div_prob < -tolerance)
 		{
 			std::cerr << "Error: Asymmetric division probabilities for " + parent_name + " sum to greater than 1.0 and cannot be normalized." << std::endl;
