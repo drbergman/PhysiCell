@@ -1403,7 +1403,7 @@ void get_row_from_substrate_initial_condition_csv(std::vector<int> &voxel_set, c
 	if (!(warning_issued) && !(header_provided) && (data.size() != (microenvironment.number_of_densities() + 3)))
 	{
 		std::cout << "WARNING: Wrong number of density values supplied in the .csv file specifying BioFVM initial conditions." << std::endl
-				  << "\tExpected: " << microenvironment.number_of_voxels() << std::endl
+				  << "\tExpected: " << microenvironment.number_of_densities() << std::endl
 				  << "\tFound: " << data.size() - 3 << std::endl
 				  << "\tRemember, save your csv with columns as: x, y, z, substrate_0, substrate_1,...." << std::endl
 				  << "\tThis could also be resolved by including a header row \"x,y,z,[substrate_i0,substrate_i1]\"" << std::endl;
@@ -1746,7 +1746,7 @@ void get_row_from_dirichlet_condition_csv(std::vector<int> &voxel_set, const std
 	if (!(warning_issued) && !(header_provided) && (data.size() != (microenvironment.number_of_densities() + 3)))
 	{
 		std::cout << "WARNING: Wrong number of density data supplied in the .csv file specifying BioFVM dirichlet conditions." << std::endl
-				  << "\tExpected: " << microenvironment.number_of_voxels() << std::endl
+				  << "\tExpected: " << microenvironment.number_of_densities() << std::endl
 				  << "\tFound: " << data.size() - 3 << std::endl
 				  << "\tRemember, save your csv with columns as: x, y, z, substrate_0, substrate_1,...." << std::endl
 				  << "\tThis could also be resolved by including a header row \"x,y,z,[substrate_i0,substrate_i1]\"" << std::endl;
