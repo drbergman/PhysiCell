@@ -255,8 +255,10 @@ public:
 	double probabilities_total( void );
 
 
-
-	std::pair<int, int> select_daughter_types(int type_1, int type_2);
+	// total_weight scales the draw. Leave it at 1.0 and the stored values are read as absolute
+	// probabilities, so whatever they leave short of 1 falls through to symmetric division; pass the
+	// map's own total and they are read as relative weights, normalized by that total.
+	std::pair<int, int> select_daughter_types(int type_1, int type_2, double total_weight = 1.0);
 };
 
 std::pair<int, int> extended_asym_index_to_upper_triangle(int index);
