@@ -1317,31 +1317,19 @@ static std::vector<std::string> split_substrate_csv_row(const std::string &line)
 static bool is_csv_label(const std::string &field, const char lower, const char upper)
 { return field.size() == 1 && (field[0] == lower || field[0] == upper); }
 
-void load_initial_conditions_from_csv(std::string filename)
+// Resolve which densities the columns of a substrate csv map to, and leave `file` positioned at its
+// first data row. The initial-condition and dirichlet-condition readers share this: both take the same
+// optional "x,y,z,<substrate name>,..." header, the same headerless "first n densities" convention, and
+// the same well-formedness rules. They differ only in what a parsed row does to the microenvironment,
+// and in the word `kind` puts into their diagnostics.
+static std::vector<int> resolve_substrate_csv_columns( std::ifstream &file , const std::string &filename ,
+                                                      const std::string &kind , bool &header_provided )
 {
-	// Each row locates one voxel and sets substrate densities in it:
-	//     [x coord, y coord, z coord, value, value, ...]
-	// An optional header row "x,y,z,<substrate name>,..." names the substrates being set, which may be
-	// any subset of the densities, in any order. Without a header, the columns after x,y,z are taken to
-	// be the first n densities in index order.
-	// Rows need not cover every voxel: a voxel with no row keeps the initial condition from the config file.
-	// Within a row, an entry may be omitted by leaving the field empty (e.g. "0,0,0,,3.5"), which sets 0.
-	// Every row must otherwise be well formed -- the same column count as the header (or as the first row),
-	// a position inside the domain, and a finite number in every field that is not empty.
-
-	// open file 
-	std::ifstream file( filename, std::ios::in );
-	if( !file )
-	{ 
-		std::cout << "ERROR: " << filename << " not found during cell loading. Quitting." << std::endl; 
-		exit(-1);
-	}
-
-	std::string line; 
+	std::string line;
 	if( !std::getline( file , line ) )
 	{
 		std::cout << "ERROR: " << filename << " is empty." << std::endl
-				  << "\tIt must contain at least one row of substrate initial conditions." << std::endl;
+				  << "\tIt must contain at least one row of substrate " << kind << "." << std::endl;
 		file.close();
 		exit(-1);
 	}
@@ -1349,7 +1337,7 @@ void load_initial_conditions_from_csv(std::string filename)
 
 	// determine if header row exists 
 	std::vector<std::string> first_row = split_substrate_csv_row(line);
-	bool header_provided = is_csv_label(first_row[0], 'x', 'X'); // split always returns at least one field
+	header_provided = is_csv_label(first_row[0], 'x', 'X'); // split always returns at least one field
 	std::vector<int> substrate_indices;
 
 	if( header_provided )
@@ -1416,14 +1404,41 @@ void load_initial_conditions_from_csv(std::string filename)
 		for( unsigned int i = 0; i < number_supplied; i++ )
 		{ substrate_indices.push_back(i); }
 
-		// the first row is data, not labels, so rewind and let the loop below read it again
+		// the first row is data, not labels, so rewind and let the caller's loop read it again
 		file.clear();
 		file.seekg(0, std::ios::beg);
 	}
 
+	return substrate_indices;
+}
+
+void load_initial_conditions_from_csv(std::string filename)
+{
+	// Each row locates one voxel and sets substrate densities in it:
+	//     [x coord, y coord, z coord, value, value, ...]
+	// An optional header row "x,y,z,<substrate name>,..." names the substrates being set, which may be
+	// any subset of the densities, in any order. Without a header, the columns after x,y,z are taken to
+	// be the first n densities in index order.
+	// Rows need not cover every voxel: a voxel with no row keeps the initial condition from the config file.
+	// Within a row, an entry may be omitted by leaving the field empty (e.g. "0,0,0,,3.5"), which sets 0.
+	// Every row must otherwise be well formed -- the same column count as the header (or as the first row),
+	// a position inside the domain, and a finite number in every field that is not empty.
+
+	// open file 
+	std::ifstream file( filename, std::ios::in );
+	if( !file )
+	{ 
+		std::cout << "ERROR: " << filename << " not found during cell loading. Quitting." << std::endl; 
+		exit(-1);
+	}
+
+	bool header_provided;
+	std::vector<int> substrate_indices = resolve_substrate_csv_columns( file , filename , "initial conditions" , header_provided );
+
 	std::cout << "Loading substrate initial conditions from CSV file " << filename << " ... " << std::endl;
 	std::vector<bool> voxel_is_set(microenvironment.number_of_voxels(), false); // set to check that no voxel value is set twice
 
+	std::string line;
 	unsigned int line_number = header_provided ? 1 : 0; // only a header leaves the first line already consumed
 	while (std::getline(file, line))
 	{
@@ -1436,6 +1451,7 @@ void load_initial_conditions_from_csv(std::string filename)
 	
 	return;
 }
+
 
 void get_row_from_substrate_initial_condition_csv(std::vector<bool> &voxel_is_set, const std::string &line, const std::vector<int> &substrate_indices, const unsigned int line_number)
 {
@@ -1711,13 +1727,12 @@ void load_dirichlet_conditions_from_matlab(std::string filename)
 
 void load_dirichlet_conditions_from_csv(std::string filename)
 {
-	// The .csv file needs to contain one row per voxel.
-	// Each row is a vector of values as follows: [x coord, y coord, z coord, substrate id 0 value, substrate id 1 value, ...]
-	// Thus, your table should be of size #voxels x (3 + #densities) (rows x columns)
-
-	// alternatively, include a header row that begins "x,y,z" and then lists the substrate names to have DC values set
-
-	// In either case, an empty value in the table will be interpreted as not changing the DC condition for that voxel-substrate pair
+	// Each row locates one voxel and sets dirichlet conditions in it:
+	//     [x coord, y coord, z coord, value, value, ...]
+	// The format is the one load_initial_conditions_from_csv reads, with one difference in meaning:
+	// an entry left empty (e.g. "0,0,0,,3.5") leaves that voxel-substrate pair's dirichlet condition
+	// alone, where the initial-condition reader would set it to 0.
+	// Rows need not cover every voxel: a voxel with no row gets no dirichlet condition from this file.
 
 	// open file 
 	std::ifstream file( filename, std::ios::in );
@@ -1727,70 +1742,19 @@ void load_dirichlet_conditions_from_csv(std::string filename)
 		exit(-1);
 	}
 
-	// determine if header row exists
-	std::string line;
-	std::getline( file , line );
-	trim_cr(line);
-	char c = line.c_str()[0];
-	std::vector<int> substrate_indices;
-	bool header_provided = false;
-	int n_cols;
-	if( c == 'X' || c == 'x' )
-	{
-		if ((line.c_str()[2] != 'Y' && line.c_str()[2] != 'y') || (line.c_str()[4] != 'Z' && line.c_str()[4] != 'z'))
-		{
-			std::cout << "ERROR: Header row starts with x but then not y,z? What is this? Exiting now." << std::endl;
-			file.close();
-			exit(-1);
-		}
-		std::vector< std::string> column_names; // this will include x,y,z (so make sure to skip those below)
-		std::stringstream stream(line);
-		std::string field;
-
-		while (std::getline(stream, field, ','))
-		{
-			column_names.push_back(field);
-		}
-		for (int i = 3; i<column_names.size(); i++) // skip x,y,z by starting at 3, not 0
-		{
-			int substrate_index = microenvironment.find_density_index(column_names[i]);
-			if (substrate_index == -1)
-			{
-				std::cout << "ERROR: Substrate " << column_names[i] << " not found in the BioFVM microenvironment. Exiting now." << std::endl;
-				file.close();
-				exit(-1);
-			}
-			substrate_indices.push_back(microenvironment.find_density_index(column_names[i]));
-		}
-		header_provided = true;
-		n_cols = column_names.size();
-	}
-	else // no column labels given; just assume that the first n substrates are supplied (n = # columns after x,y,z)
-	{
-		std::stringstream stream(line);
-		std::string field;
-		int i = 0;
-		while (std::getline(stream, field, ','))
-		{
-			if (i<3) {continue;} // skip (x,y,z)
-			substrate_indices.push_back(i-3); // the substrate index is the column index - 3 (since x,y,z are the first 3 columns)
-			i++;
-		}
-		// in this case, we want to read this first line, so close the file and re-open so that we start with this line
-		n_cols = 3 + substrate_indices.size();
-		file.close();
-		std::ifstream file(filename, std::ios::in);
-		std::getline(file, line);
-		trim_cr(line);
-	}
+	bool header_provided;
+	std::vector<int> substrate_indices = resolve_substrate_csv_columns( file , filename , "dirichlet conditions" , header_provided );
 
 	std::cout << "Loading substrate dirichlet conditions from CSV file " << filename << " ... " << std::endl;
 	std::vector<bool> voxel_is_set(microenvironment.number_of_voxels(), false); // set to check that no voxel value is set twice
 
+	std::string line;
+	unsigned int line_number = header_provided ? 1 : 0; // only a header leaves the first line already consumed
 	while (std::getline(file, line))
 	{
+		line_number++;
 		trim_cr(line);
-		get_row_from_dirichlet_condition_csv(voxel_is_set, line, substrate_indices, header_provided, n_cols);
+		get_row_from_dirichlet_condition_csv(voxel_is_set, line, substrate_indices, line_number);
 	}
 
 	file.close();
@@ -1798,43 +1762,70 @@ void load_dirichlet_conditions_from_csv(std::string filename)
 	return;
 }
 
-void get_row_from_dirichlet_condition_csv(std::vector<bool> &voxel_is_set, const std::string &line, const std::vector<int> &substrate_indices, const bool header_provided, int n_cols)
+void get_row_from_dirichlet_condition_csv(std::vector<bool> &voxel_is_set, const std::string &line, const std::vector<int> &substrate_indices, const unsigned int line_number)
 {
-	static bool warning_issued = false;
-	std::vector<bool> is_missing;
+	if (line.find_first_not_of(" \t\r") == std::string::npos)
+	{ return; } // skip blank lines
+
 	std::vector<double> data;
-	is_missing.resize(n_cols);
-	data.resize(n_cols);
-
-	dirichlet_csv_to_vector(line.c_str(), is_missing, data);
-
-	if (!(warning_issued) && !(header_provided) && (data.size() != (microenvironment.number_of_densities() + 3)))
+	unsigned int bad_field = substrate_csv_to_vector(line.c_str(), data);
+	if (bad_field != 0)
 	{
-		std::cout << "WARNING: Wrong number of density data supplied in the .csv file specifying BioFVM dirichlet conditions." << std::endl
-				  << "\tExpected: " << microenvironment.number_of_densities() << std::endl
-				  << "\tFound: " << data.size() - 3 << std::endl
-				  << "\tRemember, save your csv with columns as: x, y, z, substrate_0, substrate_1,...." << std::endl
-				  << "\tThis could also be resolved by including a header row \"x,y,z,[substrate_i0,substrate_i1]\"" << std::endl;
-		warning_issued = true;
+		std::cout << "ERROR : Column " << bad_field << " of line " << line_number << " of the .csv file specifying BioFVM dirichlet conditions is not a number." << std::endl
+				  << "\tEvery column must hold a finite number, or nothing at all to leave a dirichlet condition unset." << std::endl
+				  << "\tOffending row: " << line << std::endl;
+		exit(-1);
+	}
+
+	// holding every row to the expected column count is also what keeps every data[...] access below in bounds
+	if (data.size() != substrate_indices.size() + 3)
+	{
+		std::cout << "ERROR : Line " << line_number << " of the .csv file specifying BioFVM dirichlet conditions has the wrong number of columns." << std::endl
+				  << "\tExpected: " << substrate_indices.size() + 3 << " (x, y, z and " << substrate_indices.size() << " substrate value(s))" << std::endl
+				  << "\tFound: " << data.size() << std::endl
+				  << "\tTo leave a dirichlet condition unset, leave the field empty but keep the comma (e.g. x,y,z,,3.5)." << std::endl
+				  << "\tOffending row: " << line << std::endl;
+		exit(-1);
+	}
+
+	for (unsigned int i = 0; i < 3; i++) // a position cannot be omitted the way a dirichlet value can
+	{
+		if (std::isnan(data[i]))
+		{
+			std::cout << "ERROR : Line " << line_number << " of the .csv file specifying BioFVM dirichlet conditions omits an x, y or z coordinate." << std::endl
+					  << "\tOffending row: " << line << std::endl;
+			exit(-1);
+		}
 	}
 
 	std::vector<double> position = {data[0], data[1], data[2]};
+	if (!microenvironment.mesh.is_position_valid(position[0], position[1], position[2])) // otherwise it would silently snap to an edge voxel
+	{
+		std::cout << "ERROR : Line " << line_number << " of the .csv file specifying BioFVM dirichlet conditions lies outside the microenvironment domain." << std::endl
+				  << "\tPosition: " << position << std::endl
+				  << "\tDomain: x in [" << microenvironment.mesh.bounding_box[0] << ", " << microenvironment.mesh.bounding_box[3] << "]"
+				  << ", y in [" << microenvironment.mesh.bounding_box[1] << ", " << microenvironment.mesh.bounding_box[4] << "]"
+				  << ", z in [" << microenvironment.mesh.bounding_box[2] << ", " << microenvironment.mesh.bounding_box[5] << "]" << std::endl;
+		exit(-1);
+	}
+
 	int voxel_ind = microenvironment.mesh.nearest_voxel_index(position);
 	if (voxel_is_set[voxel_ind])
 	{
-			std::cout << "ERROR : the csv-supplied dirichlet conditions for BioFVM repeat the same voxel. Fix the .csv file and try again." << std::endl
-					  << "\tPosition that was repeated: " << position << std::endl;
+		std::cout << "ERROR : the csv-supplied dirichlet conditions for BioFVM repeat the same voxel. Fix the .csv file and try again." << std::endl
+				  << "\tPosition that was repeated: " << position << std::endl
+				  << "\tRepeated on line: " << line_number << std::endl;
 		exit(-1);
 	}
 	voxel_is_set[voxel_ind] = true;
 	for (unsigned int ci = 0; ci < substrate_indices.size(); ci++) // column index, counting from the first substrate (or just the index of the vector substrate_indices)
 	{
-		if (!is_missing[ci + 3])
-		{
-			microenvironment.update_dirichlet_node(voxel_ind, substrate_indices[ci], data[ci + 3]);
-			microenvironment.set_only_substrate_dirichlet_activation(substrate_indices[ci], true);
-		}
+		if (std::isnan(data[ci + 3]))
+		{ continue; } // an entry the row omitted: leave this voxel-substrate pair's dirichlet condition alone
+		microenvironment.update_dirichlet_node(voxel_ind, substrate_indices[ci], data[ci + 3]);
+		microenvironment.set_only_substrate_dirichlet_activation(substrate_indices[ci], true);
 	}
 }
+
 
 };
