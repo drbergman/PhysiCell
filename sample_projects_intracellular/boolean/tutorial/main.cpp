@@ -90,7 +90,7 @@ int main( int argc, char* argv[] )
 	argument_parser.parse(argc, argv);
 
 	// load and parse settings file(s)
-	if( !load_PhysiCell_config_file(); )
+	if( !load_PhysiCell_config_file() )
 	{ exit(-1);}
 
 	if( argc > 1 )

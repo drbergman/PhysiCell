@@ -89,7 +89,7 @@ int main( int argc, char* argv[] )
 	// read arguments
 	argument_parser.parse(argc, argv);
 	
-	if( !load_PhysiCell_config_file(); )
+	if( !load_PhysiCell_config_file() )
 	{ exit(-1);}
 	
 	// OpenMP setup
