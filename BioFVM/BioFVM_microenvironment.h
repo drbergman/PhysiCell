@@ -231,6 +231,7 @@ class Microenvironment
 	
 	void display_information( std::ostream& os ); 
 
+	// Dirichlet setters/clearers: invalid input (unknown substrate name, mismatched vector sizes) is fatal
 	void fix_substrate_at_voxel( std::string substrate, int voxel_index, double new_value );
 	void fix_substrate_at_voxel( std::string substrate, int voxel_index );
 	void fix_substrate_at_voxels( std::string substrate, std::vector<int>& voxel_indices, double new_value );

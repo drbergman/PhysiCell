@@ -235,7 +235,7 @@ void Microenvironment::fix_substrates_at_voxel( int voxel_index , std::vector<do
 	if (new_values.size() != dirichlet_value_vectors[voxel_index].size())
 	{
 		std::cerr << "Error: Incorrect number of values passed in to fix_substrates_at_voxel. Expected " << dirichlet_value_vectors[voxel_index].size() << " values, but got " << new_values.size() << "." << std::endl;
-		return;
+		exit(-1);
 	}
 	dirichlet_value_vectors[voxel_index] = new_values;
 	return fix_substrates_at_voxel( voxel_index );
@@ -264,7 +264,7 @@ void Microenvironment::fix_substrate_at_voxels( int substrate_index, std::vector
 	if (new_values.size() != voxel_indices.size())
 	{
 		std::cerr << "Error: new_values size (" << new_values.size() << ") does not match voxel_indices size (" << voxel_indices.size() << ") in Microenvironment::fix_substrate_at_voxels" << std::endl;
-		return;
+		exit(-1);
 	}
 	for( unsigned int i=0 ; i < voxel_indices.size() ; i++ )
 	{
@@ -339,7 +339,7 @@ void Microenvironment::unfix_substrates_at_voxel( int voxel_index )
 
 void Microenvironment::sync_substrate_dirichlet_activation( int substrate_index )
 {
-	for (auto voxel_activation_vector : dirichlet_activation_vectors)
+	for (const auto& voxel_activation_vector : dirichlet_activation_vectors)
 	{
 		if (voxel_activation_vector[substrate_index])
 		{
