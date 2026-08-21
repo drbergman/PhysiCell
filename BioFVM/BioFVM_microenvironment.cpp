@@ -1307,6 +1307,7 @@ void load_initial_conditions_from_csv(std::string filename)
 	// determine if header row exists 
 	std::string line; 
 	std::getline( file , line );
+	trim_cr(line);
 	char c = line.c_str()[0];
 	std::vector<int> substrate_indices;
 	bool header_provided = false;
@@ -1360,6 +1361,7 @@ void load_initial_conditions_from_csv(std::string filename)
 	
 	while (std::getline(file, line))
 	{
+		trim_cr(line);
 		get_row_from_substrate_initial_condition_csv(voxel_set, line, substrate_indices, header_provided);
 	}
 	
@@ -1380,8 +1382,23 @@ void load_initial_conditions_from_csv(std::string filename)
 void get_row_from_substrate_initial_condition_csv(std::vector<int> &voxel_set, const std::string line, const std::vector<int> substrate_indices, const bool header_provided)
 {
 	static bool warning_issued = false;
+
+	if (line.find_first_not_of(" \t\r") == std::string::npos)
+	{ return; } // skip blank lines
+
 	std::vector<double> data;
 	csv_to_vector(line.c_str(), data);
+
+	// holding a row to the expected column count is also what keeps every data[...] access below in bounds
+	if (data.size() != substrate_indices.size() + 3)
+	{
+		std::cout << "ERROR : A row of the .csv file specifying BioFVM initial conditions has the wrong number of values." << std::endl
+				  << "\tExpected: " << substrate_indices.size() + 3 << " (x, y, z and " << substrate_indices.size() << " substrate value(s))" << std::endl
+				  << "\tFound: " << data.size() << std::endl
+				  << "\tNote that an empty field is not a value here; every column must hold a number." << std::endl
+				  << "\tOffending row: " << line << std::endl;
+		exit(-1);
+	}
 
 	if (!(warning_issued) && !(header_provided) && (data.size() != (microenvironment.number_of_densities() + 3)))
 	{
@@ -1715,6 +1732,10 @@ void load_dirichlet_conditions_from_csv(std::string filename)
 void get_row_from_dirichlet_condition_csv(std::vector<int> &voxel_set, const std::string line, const std::vector<int> substrate_indices, const bool header_provided, int n_cols)
 {
 	static bool warning_issued = false;
+
+	if (line.find_first_not_of(" \t\r") == std::string::npos)
+	{ return; } // skip blank lines
+
 	std::vector<bool> is_missing;
 	std::vector<double> data;
 	is_missing.resize(n_cols);
