@@ -1324,34 +1324,57 @@ void asymmetric_division_function( Cell* pCell_parent, Cell* pCell_daughter )
 	std::string parent_name = pCell_parent->type_name;
 	int parent_type = pCell_parent->type;
 	Asymmetric_Division& parent_asym_div = pCell_parent->phenotype.cycle.asymmetric_division;
-	// probabilities meant to sum to exactly 1 land a hair over it in double precision:
-	// 0.11 + 0.33 + 0.56 is 1.000000000000000222. Configurable because how much slack a model
-	// needs depends on how many probabilities it sums and how they are computed.
-	const double tolerance = PhysiCell_settings.asymmetric_division_probability_tolerance;
 	double total = parent_asym_div.probabilities_total();
-	if (total > 1.0 + tolerance)
+
+	// The daughter pair is drawn from [0, total_weight). Left at 1.0 the stored values are absolute
+	// probabilities and whatever they leave short of 1 falls through to symmetric division; set to the
+	// map's own total they are relative weights, normalized by that total.
+	double total_weight = 1.0;
+
+	if (PhysiCell_settings.asymmetric_division_uses_weights)
 	{
-		double sym_div_prob = parent_asym_div.asymmetric_division_probability(parent_type, parent_type) + 1.0 - total;
-		if (sym_div_prob < -tolerance)
+		// An all-zero total has no normalized distribution. By convention that is symmetric division,
+		// which is what leaving total_weight at 1.0 gets: the running total never passes the draw, so
+		// select_daughter_types falls through to the parent and daughter types unchanged.
+		if (total > 0.0)
+		{ total_weight = total; }
+	}
+	else
+	{
+		// The tolerance decides only whether an overshoot is an error, never whether the
+		// probabilities get adjusted: this block rewrites the symmetric division probability, so
+		// gating entry on a user-settable threshold would let the tolerance change the model rather
+		// than just its strictness.
+		const double tolerance = PhysiCell_settings.asymmetric_division_probability_tolerance;
+		if (total > 1.0)
 		{
-			std::cerr << "Error: Asymmetric division probabilities for " + parent_name + " sum to greater than 1.0 and cannot be normalized." << std::endl;
-			std::cerr << "Adjusted sym_div_prob = " << sym_div_prob << std::endl;
-			std::cerr << "List of all asym div probabilities for this cell:" << std::endl;
-			for (auto& entry : parent_asym_div.asymmetric_division_probabilities)
+			double sym_div_prob = parent_asym_div.asymmetric_division_probability(parent_type, parent_type) + 1.0 - total;
+			// probabilities meant to sum to exactly 1 land a hair over it in double precision:
+			// 0.11 + 0.33 + 0.56 is 1.000000000000000222. How much slack a model needs depends on how
+			// many probabilities it sums and how they are computed, hence the configurable tolerance.
+			if (sym_div_prob < -tolerance)
 			{
-				std::cerr << "  - " << cell_definitions_by_index[entry.first.first]->name
-					<< " and " << cell_definitions_by_index[entry.first.second]->name
-					<< ": " << entry.second << std::endl;
+				std::cerr << "Error: Asymmetric division probabilities for " + parent_name + " sum to greater than 1.0 and cannot be normalized." << std::endl;
+				std::cerr << "Adjusted sym_div_prob = " << sym_div_prob << std::endl;
+				std::cerr << "List of all asym div probabilities for this cell:" << std::endl;
+				for (auto& entry : parent_asym_div.asymmetric_division_probabilities)
+				{
+					std::cerr << "  - " << cell_definitions_by_index[entry.first.first]->name
+						<< " and " << cell_definitions_by_index[entry.first.second]->name
+						<< ": " << entry.second << std::endl;
+				}
+				std::cerr << "If these are meant as relative weights rather than probabilities, set" << std::endl
+					<< "<asymmetric_division_mode>weights</asymmetric_division_mode> in the <options> block." << std::endl;
+				exit(-1);
 			}
-			exit(-1);
+			if (sym_div_prob < 0.0)
+			{ sym_div_prob = 0.0; } // round-off only, given the check above
+			parent_asym_div.set_asymmetric_division_probability(parent_type, parent_type, sym_div_prob);
+			pCell_daughter->phenotype.cycle.asymmetric_division.set_asymmetric_division_probability(pCell_daughter->type, pCell_daughter->type, sym_div_prob);
 		}
-		if (sym_div_prob < 0.0)
-		{ sym_div_prob = 0.0; } // round-off only, given the check above
-		parent_asym_div.set_asymmetric_division_probability(parent_type, parent_type, sym_div_prob);
-		pCell_daughter->phenotype.cycle.asymmetric_division.set_asymmetric_division_probability(pCell_daughter->type, pCell_daughter->type, sym_div_prob);
 	}
 
-	std::pair<int, int> daughter_types = parent_asym_div.select_daughter_types(pCell_parent->type, pCell_daughter->type);
+	std::pair<int, int> daughter_types = parent_asym_div.select_daughter_types(pCell_parent->type, pCell_daughter->type, total_weight);
 
 	if (daughter_types.first != pCell_parent->type) // only convert if the parent is not already the correct type
 	{ pCell_parent->convert_to_cell_definition( *cell_definitions_by_index[daughter_types.first] ); }

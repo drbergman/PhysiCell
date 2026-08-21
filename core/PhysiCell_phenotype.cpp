@@ -1450,9 +1450,11 @@ double Asymmetric_Division::asymmetric_division_probability( std::string type_na
 	return asymmetric_division_probability(n, m);
 }
 
-std::pair<int, int> Asymmetric_Division::select_daughter_types(int type_1, int type_2)
+std::pair<int, int> Asymmetric_Division::select_daughter_types(int type_1, int type_2, double total_weight)
 {
-	double r = UniformRandom();
+	// total_weight == 1.0 leaves this exactly as it was before weights existed: multiplying a double
+	// by 1.0 is exact, so a model reading these as probabilities draws the same numbers as ever.
+	double r = UniformRandom() * total_weight;
 	double cumulative = 0.0;
 	for( auto it = asymmetric_division_probabilities.begin(); it != asymmetric_division_probabilities.end(); ++it )
 	{
