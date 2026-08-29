@@ -82,10 +82,59 @@
 namespace PhysiCell{
 
 thread_local std::mt19937_64 physicell_PRNG_generator; 
-thread_local bool local_pnrg_setup_done = false; 
 
 std::uint64_t physicell_random_seed = 0; 
 std::vector<std::uint64_t> physicell_random_seeds; 
+
+// Bumped every time setup_rng() installs a new set of seeds. Each thread keeps its own copy and 
+// reseeds when the two differ, so a second call to SeedRandom() -- the episode sample project, or 
+// a random_seed user parameter -- actually reaches threads that already drew random numbers. 
+// Starting at 1 means a thread that somehow draws before setup_rng() still seeds itself rather 
+// than using a default-constructed generator. 
+static std::uint64_t physicell_rng_generation = 1; 
+thread_local std::uint64_t local_prng_generation = 0; 
+
+// The finalizing mix of Sebastiano Vigna's splitmix64 (public domain). Every step is a bijection 
+// on 64 bits -- an xor-shift by more than half the width, then a multiply by an odd constant -- so 
+// distinct inputs can never collide, and flipping one input bit flips about half the output bits. 
+static std::uint64_t mix64( std::uint64_t z )
+{
+	z = ( z ^ ( z >> 30 ) ) * 0xBF58476D1CE4E5B9ull; 
+	z = ( z ^ ( z >> 27 ) ) * 0x94D049BB133111EBull; 
+	return z ^ ( z >> 31 ); 
+}
+
+// The seed for one thread's generator. 0x9E3779B97F4A7C15 is the odd 64-bit integer nearest to 
+// 2^64/phi, the constant splitmix64 advances its state by, so this is exactly splitmix64's 
+// (thread_index+1)-th output from the base seed, written in closed form so it costs the same for 
+// every thread. The seed depends only on the base seed and the thread index -- never on how many 
+// threads are running -- and it fills the full 64-bit width of std::mt19937_64. 
+static std::uint64_t seed_for_thread( int thread_index )
+{
+	return mix64( physicell_random_seed 
+		+ ( (std::uint64_t) thread_index + 1 ) * 0x9E3779B97F4A7C15ull ); 
+}
+
+// Seeds the calling thread's generator if it is not already seeded for the current set of seeds. 
+// Every function that draws from physicell_PRNG_generator must call this first: a thread whose 
+// first random number comes from NormalRandom() or UniformInt() would otherwise draw from a 
+// default-constructed std::mt19937_64, which is the same generator on every thread. 
+static void seed_thread_rng_if_needed( void )
+{
+	if( local_prng_generation == physicell_rng_generation )
+	{ return; } 
+
+	int i = omp_get_thread_num(); 
+	// physicell_random_seeds only covers the thread count from the config file; a thread beyond 
+	// that (user code with its own num_threads clause) derives its seed the same way instead of 
+	// reading past the end of the vector 
+	std::uint64_t seed = ( i >= 0 && (std::size_t) i < physicell_random_seeds.size() ) 
+		? physicell_random_seeds[i] : seed_for_thread( i ); 
+
+	physicell_PRNG_generator.seed( seed ); 
+	local_prng_generation = physicell_rng_generation; 
+	return; 
+}
 
 void setup_rng( void )
 {
@@ -116,43 +165,19 @@ void setup_rng( void )
 		out.close();
 	}
 
-	physicell_PRNG_generator.seed( physicell_random_seed );
-
 	// now get number of threads and set up a seed for each thread 
 	int num_threads = PhysiCell_settings.omp_num_threads; 
-	physicell_random_seeds.resize( num_threads, 0 ); 
+	if( num_threads < 1 )
+	{ num_threads = 1; } // there is always a thread 0 
+	physicell_random_seeds.resize( num_threads ); 
 
-	// use std::seed_seq to create a sequence of seeds 
-	// first, use the base seed 
-	// std::seed_seq consumes 32-bit words, so a seed that does not fit in 32 bits contributes
-	// a second (high) word per thread. Seeds that do fit contribute one word each, exactly as 
-	// PhysiCell has always done, so fixed-seed runs reproduce their previous per-thread streams. 
-	std::uint64_t highest_seed = physicell_random_seed; 
-	if( num_threads > 1 && physicell_random_seed <= 0xFFFFFFFFull )
-	{ highest_seed += (std::uint64_t) ( num_threads - 1 ); } 
-	bool split_seeds_into_two_words = highest_seed > 0xFFFFFFFFull; 
-
-	std::vector<std::uint32_t> initial_sequence; 
-	initial_sequence.reserve( split_seeds_into_two_words ? 2*num_threads : num_threads ); 
 	for( int i=0; i < num_threads ; i++ )
-	{ 
-		std::uint64_t seed_i = physicell_random_seed + (std::uint64_t) i; 
-		initial_sequence.push_back( (std::uint32_t) ( seed_i & 0xFFFFFFFFull ) ); 
-		if( split_seeds_into_two_words )
-		{ initial_sequence.push_back( (std::uint32_t) ( seed_i >> 32 ) ); } 
-	} 
-	
-	// now we use std::seed_seq 
-	std::seed_seq seq(initial_sequence.begin() , initial_sequence.end() ); 
+	{ physicell_random_seeds[i] = seed_for_thread( i ); } 
 
-	// now we call the generator 
-    std::vector<std::uint32_t> seeds(num_threads);
-    seq.generate(seeds.begin(), seeds.end());
-
-	// now transfer these into the seeds for each thread 
-	physicell_random_seeds[0] = physicell_random_seed; 
-	for( int i=1; i < num_threads ; i++ )
-	{ physicell_random_seeds[i] = seeds[i]; }
+	// every thread reseeds on its next random number; seed the thread running setup now, since 
+	// setup itself draws random numbers 
+	physicell_rng_generation++; 
+	seed_thread_rng_if_needed(); 
 
 	setup_done = true;
 	return; 
@@ -168,11 +193,15 @@ void SeedRandom( void )
 { 
 	// The system clock on its own is not enough entropy: it advances in ~1 microsecond steps on 
 	// macOS, so processes launched together (parallel replicates, for example) routinely read the 
-	// same count and end up sharing a seed. Mix three independent sources instead: 
+	// same count and end up sharing a seed. Absorb three independent sources instead: 
 	//   - std::random_device, the OS entropy pool, which is the main source; 
 	//   - the system clock, which separates runs even where random_device is a deterministic stub 
 	//     (as it was on older MinGW toolchains); 
 	//   - the process id, which separates processes launched within the same clock tick. 
+	// Each source is xor-ed in and then run through mix64. Because mix64 is a bijection, two runs 
+	// that differ in any one source still differ in the seed; folding after each source also stops 
+	// a small process id from cancelling against the clock's low bits, which a flat xor of all 
+	// three would allow. 
 	std::uint64_t seed = 0; 
 	try
 	{ 
@@ -182,8 +211,8 @@ void SeedRandom( void )
 	catch( const std::exception& e )
 	{ /* no OS entropy source; the clock and process id below still separate runs */ } 
 
-	seed ^= (std::uint64_t) std::chrono::system_clock::now().time_since_epoch().count(); 
-	seed ^= ( (std::uint64_t) PhysiCell_getpid() ) * 0x9E3779B97F4A7C15ull; 
+	seed = mix64( seed ^ (std::uint64_t) std::chrono::system_clock::now().time_since_epoch().count() ); 
+	seed = mix64( seed ^ (std::uint64_t) PhysiCell_getpid() ); 
 
 	physicell_random_seed = seed; 
 	return setup_rng();
@@ -191,49 +220,30 @@ void SeedRandom( void )
 
 double UniformRandom_old_not_thread_safe()
 {
+	seed_thread_rng_if_needed(); 
 	return std::generate_canonical<double, 10>(physicell_PRNG_generator);
 }
 
 double UniformRandom( void )
 {
-	thread_local std::uniform_real_distribution<double> distribution(0.0,1.0);
-	if( local_pnrg_setup_done == false )
-	{
-		// get my thread number 
-		int i = omp_get_thread_num(); 
-    	physicell_PRNG_generator.seed( physicell_random_seeds[i] ); 
-		local_pnrg_setup_done = true; 
-/*
-		#pragma omp critical 
-		{
-		std::cout << "thread: " << i 
-		<< " seed: " << physicell_random_seeds[i]  << std::endl; 
-		std::cout << "\t first call: " << distribution(physicell_PRNG_generator) << std::endl; 
-		}
-*/
-	}
-    return distribution(physicell_PRNG_generator);
-
 	// helpful info: https://stackoverflow.com/a/29710970
-/*
-
-	static std::uniform_real_distribution<double> distribution(0.0,1.0); 
-	double out;
-	out = distribution(physicell_PRNG_generator);
-	return out; 
-*/	
+	thread_local std::uniform_real_distribution<double> distribution(0.0,1.0);
+	seed_thread_rng_if_needed(); 
+    return distribution(physicell_PRNG_generator);
 }
 
 
 int UniformInt()
 {
-	static std::uniform_int_distribution<int> int_dis;
+	thread_local std::uniform_int_distribution<int> int_dis;
+	seed_thread_rng_if_needed(); 
 	return int_dis(physicell_PRNG_generator);
 }
 
 
 double NormalRandom( double mean, double standard_deviation )
 {
+	seed_thread_rng_if_needed(); 
 	std::normal_distribution<double> d(mean,standard_deviation);
 	return d(physicell_PRNG_generator); 
 }
