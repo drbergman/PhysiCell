@@ -70,13 +70,22 @@
 
 #include "PhysiCell.h" 
 
+// for the process id, which SeedRandom() mixes into the clock-based seed
+#ifdef _WIN32
+#include <process.h>
+#define PhysiCell_getpid _getpid
+#else
+#include <unistd.h>
+#define PhysiCell_getpid getpid
+#endif
+
 namespace PhysiCell{
 
 thread_local std::mt19937_64 physicell_PRNG_generator; 
 thread_local bool local_pnrg_setup_done = false; 
 
-unsigned int physicell_random_seed = 0; 
-std::vector<unsigned int> physicell_random_seeds; 
+std::uint64_t physicell_random_seed = 0; 
+std::vector<std::uint64_t> physicell_random_seeds; 
 
 void setup_rng( void )
 {
@@ -115,11 +124,23 @@ void setup_rng( void )
 
 	// use std::seed_seq to create a sequence of seeds 
 	// first, use the base seed 
-	std::vector<unsigned int> initial_sequence( num_threads , 0 ); 
-	// int* initial_sequence; 
-	// initial_sequence = new int [num_threads]; 
+	// std::seed_seq consumes 32-bit words, so a seed that does not fit in 32 bits contributes
+	// a second (high) word per thread. Seeds that do fit contribute one word each, exactly as 
+	// PhysiCell has always done, so fixed-seed runs reproduce their previous per-thread streams. 
+	std::uint64_t highest_seed = physicell_random_seed; 
+	if( num_threads > 1 && physicell_random_seed <= 0xFFFFFFFFull )
+	{ highest_seed += (std::uint64_t) ( num_threads - 1 ); } 
+	bool split_seeds_into_two_words = highest_seed > 0xFFFFFFFFull; 
+
+	std::vector<std::uint32_t> initial_sequence; 
+	initial_sequence.reserve( split_seeds_into_two_words ? 2*num_threads : num_threads ); 
 	for( int i=0; i < num_threads ; i++ )
-	{ initial_sequence[i] = physicell_random_seed+i; } 
+	{ 
+		std::uint64_t seed_i = physicell_random_seed + (std::uint64_t) i; 
+		initial_sequence.push_back( (std::uint32_t) ( seed_i & 0xFFFFFFFFull ) ); 
+		if( split_seeds_into_two_words )
+		{ initial_sequence.push_back( (std::uint32_t) ( seed_i >> 32 ) ); } 
+	} 
 	
 	// now we use std::seed_seq 
 	std::seed_seq seq(initial_sequence.begin() , initial_sequence.end() ); 
@@ -137,7 +158,7 @@ void setup_rng( void )
 	return; 
 }
 
-void SeedRandom( unsigned int input )
+void SeedRandom( std::uint64_t input )
 { 
 	physicell_random_seed = input;
 	return setup_rng();
@@ -145,7 +166,26 @@ void SeedRandom( unsigned int input )
 
 void SeedRandom( void )
 { 
-	physicell_random_seed = std::chrono::system_clock::now().time_since_epoch().count();
+	// The system clock on its own is not enough entropy: it advances in ~1 microsecond steps on 
+	// macOS, so processes launched together (parallel replicates, for example) routinely read the 
+	// same count and end up sharing a seed. Mix three independent sources instead: 
+	//   - std::random_device, the OS entropy pool, which is the main source; 
+	//   - the system clock, which separates runs even where random_device is a deterministic stub 
+	//     (as it was on older MinGW toolchains); 
+	//   - the process id, which separates processes launched within the same clock tick. 
+	std::uint64_t seed = 0; 
+	try
+	{ 
+		std::random_device rd; 
+		seed = ( ( (std::uint64_t) rd() ) << 32 ) | (std::uint64_t) rd(); 
+	}
+	catch( const std::exception& e )
+	{ /* no OS entropy source; the clock and process id below still separate runs */ } 
+
+	seed ^= (std::uint64_t) std::chrono::system_clock::now().time_since_epoch().count(); 
+	seed ^= ( (std::uint64_t) PhysiCell_getpid() ) * 0x9E3779B97F4A7C15ull; 
+
+	physicell_random_seed = seed; 
 	return setup_rng();
 }
 
