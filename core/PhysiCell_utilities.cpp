@@ -82,16 +82,6 @@
 namespace PhysiCell{
 
 thread_local std::mt19937_64 physicell_PRNG_generator; 
-
-std::uint64_t physicell_random_seed = 0; 
-std::vector<std::uint64_t> physicell_random_seeds; 
-
-// Bumped every time setup_rng() installs a new set of seeds. Each thread keeps its own copy and 
-// reseeds when the two differ, so a second call to SeedRandom() -- the episode sample project, or 
-// a random_seed user parameter -- actually reaches threads that already drew random numbers. 
-// Starting at 1 means a thread that somehow draws before setup_rng() still seeds itself rather 
-// than using a default-constructed generator. 
-static std::uint64_t physicell_rng_generation = 1; 
 thread_local std::uint64_t local_prng_generation = 0; 
 
 // The finalizing mix of Sebastiano Vigna's splitmix64 (public domain). Every step is a bijection 
@@ -104,52 +94,61 @@ static std::uint64_t mix64( std::uint64_t z )
 	return z ^ ( z >> 31 ); 
 }
 
-// The seed for one thread's generator. 0x9E3779B97F4A7C15 is the odd 64-bit integer nearest to 
-// 2^64/phi, the constant splitmix64 advances its state by, so this is exactly splitmix64's 
-// (thread_index+1)-th output from the base seed, written in closed form so it costs the same for 
-// every thread. The seed depends only on the base seed and the thread index -- never on how many 
-// threads are running -- and it fills the full 64-bit width of std::mt19937_64. 
-static std::uint64_t seed_for_thread( int thread_index )
+// All of the RNG's seed state. The base seed and the generation stamp that tells threads to pick 
+// up a new seed can only change together, through reseed(), so they cannot drift apart -- and a 
+// bare seed variable cannot be assigned without reseeding, which used to be possible and did 
+// nothing at all: the generators had already been seeded and nothing told them to look again. 
+class RNG_State
 {
-	return mix64( physicell_random_seed 
-		+ ( (std::uint64_t) thread_index + 1 ) * 0x9E3779B97F4A7C15ull ); 
-}
+ public:
+	// Installs a new base seed. Every thread reseeds on its next draw. 
+	void reseed( std::uint64_t new_base_seed )
+	{ base_seed = new_base_seed; generation++; } 
 
-// Seeds the calling thread's generator if it is not already seeded for the current set of seeds. 
+	std::uint64_t seed( void ) const 
+	{ return base_seed; } 
+
+	std::uint64_t stamp( void ) const 
+	{ return generation; } 
+
+	// The seed for one thread. 0x9E3779B97F4A7C15 is the odd 64-bit integer nearest to 2^64/phi, 
+	// the constant splitmix64 advances its state by, so this is exactly splitmix64's 
+	// (thread_index+1)-th output from the base seed, written in closed form so it costs the same 
+	// for every thread. It depends only on the base seed and the index -- never on how many 
+	// threads are running -- it fills the full 64-bit width of std::mt19937_64, and it is defined 
+	// for every index, so a thread beyond the configured count still gets a stream of its own. 
+	std::uint64_t seed_for_thread( int thread_index ) const
+	{ 
+		return mix64( base_seed 
+			+ ( (std::uint64_t) thread_index + 1 ) * 0x9E3779B97F4A7C15ull ); 
+	}
+
+ private:
+	std::uint64_t base_seed = 0; 
+	// starts at 1 so a thread that somehow draws before the first reseed() still seeds itself 
+	// rather than using a default-constructed generator 
+	std::uint64_t generation = 1; 
+};
+
+static RNG_State physicell_rng; 
+
+std::uint64_t get_random_seed( void )
+{ return physicell_rng.seed(); }
+
+std::uint64_t get_thread_random_seed( int thread_index )
+{ return physicell_rng.seed_for_thread( thread_index ); }
+
+// Seeds the calling thread's generator if it is not already seeded for the current base seed. 
 // Every function that draws from physicell_PRNG_generator must call this first: a thread whose 
 // first random number comes from NormalRandom() or UniformInt() would otherwise draw from a 
 // default-constructed std::mt19937_64, which is the same generator on every thread. 
 static void seed_thread_rng_if_needed( void )
 {
-	if( local_prng_generation == physicell_rng_generation )
+	if( local_prng_generation == physicell_rng.stamp() )
 	{ return; } 
 
-	int i = omp_get_thread_num(); 
-	// physicell_random_seeds only covers the thread count from the config file; a thread beyond 
-	// that (user code with its own num_threads clause) derives its seed the same way instead of 
-	// reading past the end of the vector 
-	std::uint64_t seed = ( i >= 0 && (std::size_t) i < physicell_random_seeds.size() ) 
-		? physicell_random_seeds[i] : seed_for_thread( i ); 
-
-	physicell_PRNG_generator.seed( seed ); 
-	local_prng_generation = physicell_rng_generation; 
-	return; 
-}
-
-// Installs a fresh seed for every thread. Stamping the new generation is part of installing the 
-// seeds, so the two cannot drift apart: once this returns, every thread reseeds from the new set 
-// on its next draw. 
-static void install_thread_seeds( void )
-{
-	int num_threads = PhysiCell_settings.omp_num_threads; 
-	if( num_threads < 1 )
-	{ num_threads = 1; } // there is always a thread 0 
-	physicell_random_seeds.resize( num_threads ); 
-
-	for( int i=0; i < num_threads ; i++ )
-	{ physicell_random_seeds[i] = seed_for_thread( i ); } 
-
-	physicell_rng_generation++; 
+	physicell_PRNG_generator.seed( physicell_rng.seed_for_thread( omp_get_thread_num() ) ); 
+	local_prng_generation = physicell_rng.stamp(); 
 	return; 
 }
 
@@ -166,7 +165,7 @@ void setup_rng( void )
 				  << "\tFuture versions of PhysiCell may throw an error here. Kindly remove the user parameter and just use the <options><random_seed> element." << std::endl;
 		warned = true;
 	}
-	std::cout << "Setting up RNG with seed " << physicell_random_seed << std::endl;
+	std::cout << "Setting up RNG with seed " << physicell_rng.seed() << std::endl;
 
 	// save the seed to random_seed.txt
 	std::string seed_filename = PhysiCell_settings.folder + "/random_seed.txt";
@@ -178,14 +177,12 @@ void setup_rng( void )
 	}
 	else
 	{
-		out << physicell_random_seed << std::endl;
+		out << physicell_rng.seed() << std::endl;
 		out.close();
 	}
 
-	// now get number of threads and set up a seed for each thread 
-	install_thread_seeds(); 
-
-	// seed the thread running setup now, since setup itself draws random numbers 
+	// seed the thread running setup now, since setup itself draws random numbers; every other 
+	// thread reseeds on its next draw 
 	seed_thread_rng_if_needed(); 
 
 	setup_done = true;
@@ -194,7 +191,7 @@ void setup_rng( void )
 
 void SeedRandom( std::uint64_t input )
 { 
-	physicell_random_seed = input;
+	physicell_rng.reseed( input );
 	return setup_rng();
 }
 
@@ -223,7 +220,7 @@ void SeedRandom( void )
 	seed = mix64( seed ^ (std::uint64_t) std::chrono::system_clock::now().time_since_epoch().count() ); 
 	seed = mix64( seed ^ (std::uint64_t) PhysiCell_getpid() ); 
 
-	physicell_random_seed = seed; 
+	physicell_rng.reseed( seed ); 
 	return setup_rng();
 }
 

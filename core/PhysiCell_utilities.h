@@ -82,10 +82,13 @@
 namespace PhysiCell{
 
 
-	extern std::uint64_t physicell_random_seed; 
-	extern std::vector<std::uint64_t> physicell_random_seeds; 
-
 void setup_rng( void );
+
+// the seed the run is using -- the value recorded in <output>/random_seed.txt 
+std::uint64_t get_random_seed( void );
+// the seed one thread's generator is started from, derived from the seed above 
+std::uint64_t get_thread_random_seed( int thread_index );
+
 void SeedRandom( std::uint64_t input );
 void SeedRandom( void );
 
