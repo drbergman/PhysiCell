@@ -82,7 +82,6 @@
 namespace PhysiCell{
 
 thread_local std::mt19937_64 physicell_PRNG_generator; 
-thread_local std::uint64_t local_prng_generation = 0; 
 
 // The finalizing mix of Sebastiano Vigna's splitmix64 (public domain). Every step is a bijection 
 // on 64 bits -- an xor-shift by more than half the width, then a multiply by an odd constant -- so 
@@ -94,29 +93,32 @@ static std::uint64_t mix64( std::uint64_t z )
 	return z ^ ( z >> 31 ); 
 }
 
-// All of the RNG's seed state. The base seed and the generation stamp that tells threads to pick 
-// up a new seed can only change together, through reseed(), so they cannot drift apart -- and a 
-// bare seed variable cannot be assigned without reseeding, which used to be possible and did 
-// nothing at all: the generators had already been seeded and nothing told them to look again. 
+// The RNG's seed state. reseed() is the only way to change it, and it installs the base seed and 
+// every thread's generator in one step, so the seed recorded in random_seed.txt and the streams 
+// the threads actually draw from cannot disagree. 
 class RNG_State
 {
  public:
-	// Installs a new base seed. Every thread reseeds on its next draw. 
-	void reseed( std::uint64_t new_base_seed )
-	{ base_seed = new_base_seed; generation++; } 
+	void reseed( std::uint64_t new_base_seed, int num_threads )
+	{
+		base_seed = new_base_seed; 
+		if( num_threads < 1 )
+		{ num_threads = 1; } // there is always a thread 0 
+
+		// physicell_PRNG_generator is thread_local, so a thread can only be seeded by itself. The 
+		// encountering thread is this team's thread 0, so this seeds the caller too. 
+		#pragma omp parallel num_threads( num_threads )
+		{ physicell_PRNG_generator.seed( seed_for_thread( omp_get_thread_num() ) ); } 
+	}
 
 	std::uint64_t seed( void ) const 
 	{ return base_seed; } 
-
-	std::uint64_t stamp( void ) const 
-	{ return generation; } 
 
 	// The seed for one thread. 0x9E3779B97F4A7C15 is the odd 64-bit integer nearest to 2^64/phi, 
 	// the constant splitmix64 advances its state by, so this is exactly splitmix64's 
 	// (thread_index+1)-th output from the base seed, written in closed form so it costs the same 
 	// for every thread. It depends only on the base seed and the index -- never on how many 
-	// threads are running -- it fills the full 64-bit width of std::mt19937_64, and it is defined 
-	// for every index, so a thread beyond the configured count still gets a stream of its own. 
+	// threads are running -- and it fills the full 64-bit width of std::mt19937_64. 
 	std::uint64_t seed_for_thread( int thread_index ) const
 	{ 
 		return mix64( base_seed 
@@ -125,9 +127,6 @@ class RNG_State
 
  private:
 	std::uint64_t base_seed = 0; 
-	// starts at 1 so a thread that somehow draws before the first reseed() still seeds itself 
-	// rather than using a default-constructed generator 
-	std::uint64_t generation = 1; 
 };
 
 static RNG_State physicell_rng; 
@@ -138,21 +137,7 @@ std::uint64_t get_random_seed( void )
 std::uint64_t get_thread_random_seed( int thread_index )
 { return physicell_rng.seed_for_thread( thread_index ); }
 
-// Seeds the calling thread's generator if it is not already seeded for the current base seed. 
-// Every function that draws from physicell_PRNG_generator must call this first: a thread whose 
-// first random number comes from NormalRandom() or UniformInt() would otherwise draw from a 
-// default-constructed std::mt19937_64, which is the same generator on every thread. 
-static void seed_thread_rng_if_needed( void )
-{
-	if( local_prng_generation == physicell_rng.stamp() )
-	{ return; } 
-
-	physicell_PRNG_generator.seed( physicell_rng.seed_for_thread( omp_get_thread_num() ) ); 
-	local_prng_generation = physicell_rng.stamp(); 
-	return; 
-}
-
-void setup_rng( void )
+static void setup_rng( std::uint64_t seed )
 {
 	static bool setup_done = false;
 	static bool warned = false;
@@ -165,6 +150,8 @@ void setup_rng( void )
 				  << "\tFuture versions of PhysiCell may throw an error here. Kindly remove the user parameter and just use the <options><random_seed> element." << std::endl;
 		warned = true;
 	}
+	physicell_rng.reseed( seed, PhysiCell_settings.omp_num_threads ); 
+
 	std::cout << "Setting up RNG with seed " << physicell_rng.seed() << std::endl;
 
 	// save the seed to random_seed.txt
@@ -181,18 +168,13 @@ void setup_rng( void )
 		out.close();
 	}
 
-	// seed the thread running setup now, since setup itself draws random numbers; every other 
-	// thread reseeds on its next draw 
-	seed_thread_rng_if_needed(); 
-
 	setup_done = true;
 	return; 
 }
 
 void SeedRandom( std::uint64_t input )
 { 
-	physicell_rng.reseed( input );
-	return setup_rng();
+	return setup_rng( input );
 }
 
 void SeedRandom( void )
@@ -220,13 +202,11 @@ void SeedRandom( void )
 	seed = mix64( seed ^ (std::uint64_t) std::chrono::system_clock::now().time_since_epoch().count() ); 
 	seed = mix64( seed ^ (std::uint64_t) PhysiCell_getpid() ); 
 
-	physicell_rng.reseed( seed ); 
-	return setup_rng();
+	return setup_rng( seed );
 }
 
 double UniformRandom_old_not_thread_safe()
 {
-	seed_thread_rng_if_needed(); 
 	return std::generate_canonical<double, 10>(physicell_PRNG_generator);
 }
 
@@ -236,7 +216,6 @@ double UniformRandom( void )
 	// uniform_real_distribution holds only its parameters and its reset() is a no-op, so a plain 
 	// local costs nothing to build and avoids a thread_local access on the hottest RNG path 
 	std::uniform_real_distribution<double> distribution(0.0,1.0);
-	seed_thread_rng_if_needed(); 
     return distribution(physicell_PRNG_generator);
 }
 
@@ -245,14 +224,12 @@ int UniformInt()
 {
 	// likewise stateless; it was a shared static, which every thread mutated through operator() 
 	std::uniform_int_distribution<int> int_dis;
-	seed_thread_rng_if_needed(); 
 	return int_dis(physicell_PRNG_generator);
 }
 
 
 double NormalRandom( double mean, double standard_deviation )
 {
-	seed_thread_rng_if_needed(); 
 	std::normal_distribution<double> d(mean,standard_deviation);
 	return d(physicell_PRNG_generator); 
 }

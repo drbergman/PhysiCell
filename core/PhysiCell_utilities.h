@@ -82,8 +82,6 @@
 namespace PhysiCell{
 
 
-void setup_rng( void );
-
 // the seed the run is using -- the value recorded in <output>/random_seed.txt 
 std::uint64_t get_random_seed( void );
 // the seed one thread's generator is started from, derived from the seed above 
