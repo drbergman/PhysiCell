@@ -136,6 +136,23 @@ static void seed_thread_rng_if_needed( void )
 	return; 
 }
 
+// Installs a fresh seed for every thread. Stamping the new generation is part of installing the 
+// seeds, so the two cannot drift apart: once this returns, every thread reseeds from the new set 
+// on its next draw. 
+static void install_thread_seeds( void )
+{
+	int num_threads = PhysiCell_settings.omp_num_threads; 
+	if( num_threads < 1 )
+	{ num_threads = 1; } // there is always a thread 0 
+	physicell_random_seeds.resize( num_threads ); 
+
+	for( int i=0; i < num_threads ; i++ )
+	{ physicell_random_seeds[i] = seed_for_thread( i ); } 
+
+	physicell_rng_generation++; 
+	return; 
+}
+
 void setup_rng( void )
 {
 	static bool setup_done = false;
@@ -166,17 +183,9 @@ void setup_rng( void )
 	}
 
 	// now get number of threads and set up a seed for each thread 
-	int num_threads = PhysiCell_settings.omp_num_threads; 
-	if( num_threads < 1 )
-	{ num_threads = 1; } // there is always a thread 0 
-	physicell_random_seeds.resize( num_threads ); 
+	install_thread_seeds(); 
 
-	for( int i=0; i < num_threads ; i++ )
-	{ physicell_random_seeds[i] = seed_for_thread( i ); } 
-
-	// every thread reseeds on its next random number; seed the thread running setup now, since 
-	// setup itself draws random numbers 
-	physicell_rng_generation++; 
+	// seed the thread running setup now, since setup itself draws random numbers 
 	seed_thread_rng_if_needed(); 
 
 	setup_done = true;
@@ -227,7 +236,9 @@ double UniformRandom_old_not_thread_safe()
 double UniformRandom( void )
 {
 	// helpful info: https://stackoverflow.com/a/29710970
-	thread_local std::uniform_real_distribution<double> distribution(0.0,1.0);
+	// uniform_real_distribution holds only its parameters and its reset() is a no-op, so a plain 
+	// local costs nothing to build and avoids a thread_local access on the hottest RNG path 
+	std::uniform_real_distribution<double> distribution(0.0,1.0);
 	seed_thread_rng_if_needed(); 
     return distribution(physicell_PRNG_generator);
 }
@@ -235,7 +246,8 @@ double UniformRandom( void )
 
 int UniformInt()
 {
-	thread_local std::uniform_int_distribution<int> int_dis;
+	// likewise stateless; it was a shared static, which every thread mutated through operator() 
+	std::uniform_int_distribution<int> int_dis;
 	seed_thread_rng_if_needed(); 
 	return int_dis(physicell_PRNG_generator);
 }
