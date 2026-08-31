@@ -162,9 +162,9 @@ void setup_random_seed_from_config( void )
 	}
 	else
 	{
-		unsigned int seed;
+		std::uint64_t seed;
 		try
-		{ seed = std::stoul(random_seed); }
+		{ seed = std::stoull(random_seed); }
 		catch(const std::exception& e)
 		{
 			std::cout << "ERROR: " << random_seed << " is not a valid random seed. It must be an integer. Fix this within <options>." << std::endl;
